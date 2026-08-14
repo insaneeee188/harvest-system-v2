@@ -50,7 +50,7 @@ export default function HomePage() {
       {/* HERO SECTION */}
       <div className="bg-gradient-to-br from-[#083344] to-[#0d485d] text-white py-24 px-4 relative overflow-hidden rounded-b-[3rem] shadow-xl">
         <div className="max-w-3xl mx-auto text-center relative z-10">
-          <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">Membangun Masa Depan Bersama</h1>
+          <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">Welcome To Harvest Agency</h1>
           <p className="text-lg text-gray-300 mb-10 px-4">Sistem terintegrasi untuk mencetak agen asuransi profesional, memantau aktivitas harian, dan merayakan pencapaian luar biasa.</p>
           <Link href="/academy" className="block w-full sm:w-auto sm:inline-block bg-[#A8C338] hover:bg-[#96af31] text-[#083344] font-black px-10 py-4 rounded-2xl shadow-lg transition text-lg mb-8">
             Mulai Learning Path

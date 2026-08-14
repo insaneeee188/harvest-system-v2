@@ -95,7 +95,6 @@ export default function AdminDashboardPage() {
 
   const fetchUsers = async () => { const snap = await getDocs(collection(db, 'users')); setUsersList(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))); };
   
-  // Memisahkan penarikan data ke dalam list state yang berbeda
   const fetchContestsAndAchievers = async () => { 
     const snap = await getDocs(collection(db, 'agency_contests')); 
     const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -108,23 +107,35 @@ export default function AdminDashboardPage() {
   const fetchModules = async () => { const snap = await getDocs(collection(db, 'academy_modules')); setModulesList(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => a.level - b.level)); };
   const fetchQuizzes = async () => { const snap = await getDocs(collection(db, 'academy_quizzes')); setQuizzesList(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.level - b.level)); };
 
+  // FUNGSI NOTIFIKASI GLOBAL
+  const pushGlobalNotif = async (title, message) => {
+    await addDoc(collection(db, 'notifications'), { title, message, createdAt: new Date().toISOString() });
+  };
+
   const handleApprove = async (userId, userName) => { if (!window.confirm(`Setujui ${userName}?`)) return; await updateDoc(doc(db, 'users', userId), { status: 'approved' }); alert(`${userName} disetujui!`); fetchUsers(); };
   
-  // Submit Khusus Agency Contest
+  // Submit Khusus Agency Contest (Dengan Notif)
   const handleAddContest = async (e) => {
     e.preventDefault(); setIsSubmittingContest(true);
     await addDoc(collection(db, 'agency_contests'), { type: 'contest', judul: judulContest, deskripsi: deskripsiContest, posterUrl: posterContest, createdAt: new Date().toISOString() });
+    pushGlobalNotif("Kontes Baru!", `Cek kompetisi ${judulContest} sekarang di Home!`);
     alert("Kontes ditambahkan!"); setJudulContest(''); setDeskripsiContest(''); setPosterContest(''); fetchContestsAndAchievers(); setIsSubmittingContest(false);
   };
 
-  // Submit Khusus Top Achiever / Hall of Fame
   const handleAddAchiever = async (e) => {
     e.preventDefault(); setIsSubmittingAchiever(true);
     await addDoc(collection(db, 'agency_contests'), { type: 'achiever', judul: judulAchiever, periode: periodeAchiever, foto1, foto2, foto3, createdAt: new Date().toISOString() });
     alert("Top Achiever ditambahkan!"); setJudulAchiever('TOP LEADER'); setPeriodeAchiever(''); setFoto1(''); setFoto2(''); setFoto3(''); fetchContestsAndAchievers(); setIsSubmittingAchiever(false);
   };
 
-  const handleAddEvent = async (e) => { e.preventDefault(); setIsSubmittingEvent(true); await addDoc(collection(db, 'events'), { judul: judulEvent, target: targetEvent, tanggal: tanggalEvent, waktu: waktuEvent, lokasi: lokasiEvent, linkZoom: linkZoomEvent, posterUrl: posterEvent, createdAt: new Date().toISOString() }); alert("Event ditambah!"); setJudulEvent(''); setTanggalEvent(''); setWaktuEvent(''); setLokasiEvent(''); setLinkZoomEvent(''); setPosterEvent(''); fetchEvents(); setIsSubmittingEvent(false); };
+  // Submit Khusus Event (Dengan Notif)
+  const handleAddEvent = async (e) => { 
+    e.preventDefault(); setIsSubmittingEvent(true); 
+    await addDoc(collection(db, 'events'), { judul: judulEvent, target: targetEvent, tanggal: tanggalEvent, waktu: waktuEvent, lokasi: lokasiEvent, linkZoom: linkZoomEvent, posterUrl: posterEvent, createdAt: new Date().toISOString() }); 
+    pushGlobalNotif("Event Baru Ditambahkan", `Jadwal baru: ${judulEvent} pada ${tanggalEvent}. Cek menu Events.`);
+    alert("Event ditambah!"); setJudulEvent(''); setTanggalEvent(''); setWaktuEvent(''); setLokasiEvent(''); setLinkZoomEvent(''); setPosterEvent(''); fetchEvents(); setIsSubmittingEvent(false); 
+  };
+  
   const handleAddDoc = async (e) => { e.preventDefault(); setIsSubmittingDoc(true); await addDoc(collection(db, 'library_docs'), { judul: judulDoc, kategori: kategoriDoc, link: linkDoc, createdAt: new Date().toISOString() }); alert("Dokumen ditambah!"); setJudulDoc(''); setLinkDoc(''); fetchLibrary(); setIsSubmittingDoc(false); };
   const handleAddModule = async (e) => { e.preventDefault(); setIsSubmittingBab(true); const materiArr = listMateri.split('\n').filter(i => i.trim() !== ''); const videoArr = listVideo.split('\n').filter(i => i.trim() !== ''); await addDoc(collection(db, 'academy_modules'), { level: parseInt(levelBab), judul: judulBab, deskripsi: deskripsiBab, materi: materiArr, video: videoArr, createdAt: new Date().toISOString() }); alert("Modul ditambah!"); setJudulBab(''); setDeskripsiBab(''); setListMateri(''); setListVideo(''); fetchModules(); setIsSubmittingBab(false); };
   const handleAddQuiz = async (e) => { e.preventDefault(); setIsSubmittingKuis(true); await addDoc(collection(db, 'academy_quizzes'), { level: parseInt(kuisLevel), pertanyaan: kuisPertanyaan, pilihan: { A: kuisA, B: kuisB, C: kuisC, D: kuisD }, jawabanBenar: kuisJawabanBenar, createdAt: new Date().toISOString() }); alert(`Soal Kuis ditambah!`); setKuisPertanyaan(''); setKuisA(''); setKuisB(''); setKuisC(''); setKuisD(''); fetchQuizzes(); setIsSubmittingKuis(false); };
@@ -139,23 +150,21 @@ export default function AdminDashboardPage() {
   if (!isAdmin) return null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-10 bg-gray-50 min-h-screen">
+    <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 py-8 space-y-10 bg-gray-50 min-h-screen overflow-x-hidden">
       
-      <div className="bg-[#083344] p-6 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white">🛡️ Pusat Kendali Admin (FULL)</h1>
-          <p className="text-gray-300 text-sm mt-1">Kelola Seluruh Sistem Harvest: Contest, Event, Library, Academy, & Kuis.</p>
-        </div>
+      <div className="bg-[#083344] p-6 rounded-2xl shadow-sm flex flex-col items-start gap-4">
+        <h1 className="text-2xl sm:text-3xl font-black text-white">🛡️ Pusat Kendali Admin (FULL)</h1>
+        <p className="text-gray-300 text-sm mt-1">Kelola Seluruh Sistem Harvest: Contest, Event, Library, Academy, & Kuis.</p>
       </div>
 
       {/* ========================================================= */}
-      {/* 1. APPROVAL USER (DIPINDAH KE ATAS)                         */}
+      {/* 1. APPROVAL USER (RESPONSIVE)                             */}
       {/* ========================================================= */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
+      <div id="approval-section" className="bg-white rounded-2xl border border-gray-200 shadow-sm w-full overflow-hidden">
+        <div className="p-4 sm:p-6 border-b border-gray-200">
           <h2 className="text-lg font-bold text-[#083344]">🔐 Persetujuan Agen Baru</h2>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr className="bg-gray-50 text-sm text-gray-600 border-b border-gray-200">
@@ -191,101 +200,81 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ========================================================= */}
-      {/* 2A. AGENCY CONTEST (GAMBAR SAMPING KIRI)                    */}
+      {/* 2A. AGENCY CONTEST (RESPONSIVE)                             */}
       {/* ========================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 h-fit">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
           <h2 className="font-bold text-lg text-[#083344] mb-5">🎫 Input Agency Contest</h2>
           <form onSubmit={handleAddContest} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Nama Contest</label>
-              <input type="text" required value={judulContest} onChange={(e) => setJudulContest(e.target.value)} placeholder="Contoh: Funtastic Style" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Deskripsi Singkat</label>
-              <textarea required value={deskripsiContest} onChange={(e) => setDeskripsiContest(e.target.value)} placeholder="Syarat dan ketentuan..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 h-24"></textarea>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Link Gambar Poster</label>
-              <input type="url" required value={posterContest} onChange={(e) => setPosterContest(e.target.value)} placeholder="https://..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
-            </div>
-            <button type="submit" disabled={isSubmittingContest} className="w-full bg-[#A8C338] text-[#083344] font-bold py-2.5 rounded-lg text-sm transition">
-              {isSubmittingContest ? 'Menyimpan...' : 'Publish Contest'}
-            </button>
+            <div><label className="block text-xs font-bold text-gray-700 mb-1">Nama Contest</label><input type="text" required value={judulContest} onChange={(e) => setJudulContest(e.target.value)} placeholder="Contoh: Funtastic Style" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
+            <div><label className="block text-xs font-bold text-gray-700 mb-1">Deskripsi Singkat</label><textarea required value={deskripsiContest} onChange={(e) => setDeskripsiContest(e.target.value)} placeholder="Syarat dan ketentuan..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 h-24"></textarea></div>
+            <div><label className="block text-xs font-bold text-gray-700 mb-1">Link Gambar Poster</label><input type="url" required value={posterContest} onChange={(e) => setPosterContest(e.target.value)} placeholder="https://..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
+            <button type="submit" disabled={isSubmittingContest} className="w-full bg-[#A8C338] text-[#083344] font-bold py-2.5 rounded-lg text-sm transition">{isSubmittingContest ? 'Menyimpan...' : 'Publish Contest'}</button>
           </form>
         </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
           <h2 className="font-bold text-lg text-[#083344] mb-5">📋 Daftar Agency Contest</h2>
-          <table className="w-full text-left text-sm border-collapse min-w-[400px]">
-             <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">NAMA CONTEST</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
-             <tbody>
-               {contestsList.map(item => (
-                 <tr key={item.id} className="border-b hover:bg-gray-50">
-                   <td className="py-4 px-4 font-bold text-[#083344]">{item.judul}</td>
-                   <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
-                 </tr>
-               ))}
-             </tbody>
-          </table>
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left text-sm border-collapse min-w-[400px]">
+               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">NAMA CONTEST</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
+               <tbody>
+                 {contestsList.map(item => (
+                   <tr key={item.id} className="border-b hover:bg-gray-50">
+                     <td className="py-4 px-4 font-bold text-[#083344]">{item.judul}</td>
+                     <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
+                   </tr>
+                 ))}
+               </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       {/* ========================================================= */}
-      {/* 2B. TOP ACHIEVER (HALL OF FAME / PODIUM)                    */}
+      {/* 2B. TOP ACHIEVER (RESPONSIVE)                             */}
       {/* ========================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 h-fit">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
           <h2 className="font-bold text-lg text-[#083344] mb-5">🏆 Input Top Achiever</h2>
           <form onSubmit={handleAddAchiever} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">Kategori Achiever</label>
               <select value={judulAchiever} onChange={(e) => setJudulAchiever(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold">
-                <option value="TOP LEADER">TOP LEADER</option>
-                <option value="TOP PRODUCER">TOP PRODUCER</option>
-                <option value="TOP RECRUITER">TOP RECRUITER</option>
+                <option value="TOP LEADER">TOP LEADER</option><option value="TOP PRODUCER">TOP PRODUCER</option><option value="TOP RECRUITER">TOP RECRUITER</option>
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Periode</label>
-              <input type="text" required value={periodeAchiever} onChange={(e) => setPeriodeAchiever(e.target.value)} placeholder="Contoh: 3 - 17 Agustus" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
-            </div>
+            <div><label className="block text-xs font-bold text-gray-700 mb-1">Periode</label><input type="text" required value={periodeAchiever} onChange={(e) => setPeriodeAchiever(e.target.value)} placeholder="Contoh: 3 - 17 Agustus" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
             <div className="space-y-2 pt-2 border-t border-gray-100">
-              <label className="block text-xs font-bold text-[#A8C338]">🥇 Link Foto Juara 1 (Tengah)</label>
-              <input type="url" required value={foto1} onChange={(e) => setFoto1(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
-              
-              <label className="block text-xs font-bold text-gray-500 mt-2">🥈 Link Foto Juara 2 (Kiri)</label>
-              <input type="url" required value={foto2} onChange={(e) => setFoto2(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
-              
-              <label className="block text-xs font-bold text-gray-500 mt-2">🥉 Link Foto Juara 3 (Kanan)</label>
-              <input type="url" required value={foto3} onChange={(e) => setFoto3(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+              <label className="block text-xs font-bold text-[#A8C338]">🥇 Link Foto Juara 1 (Tengah)</label><input type="url" required value={foto1} onChange={(e) => setFoto1(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+              <label className="block text-xs font-bold text-gray-500 mt-2">🥈 Link Foto Juara 2 (Kiri)</label><input type="url" required value={foto2} onChange={(e) => setFoto2(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+              <label className="block text-xs font-bold text-gray-500 mt-2">🥉 Link Foto Juara 3 (Kanan)</label><input type="url" required value={foto3} onChange={(e) => setFoto3(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
             </div>
-            <button type="submit" disabled={isSubmittingAchiever} className="w-full bg-[#083344] text-white font-bold py-2.5 rounded-lg text-sm mt-4 transition">
-              {isSubmittingAchiever ? 'Menyimpan...' : 'Publish Podium'}
-            </button>
+            <button type="submit" disabled={isSubmittingAchiever} className="w-full bg-[#083344] text-white font-bold py-2.5 rounded-lg text-sm mt-4 transition">{isSubmittingAchiever ? 'Menyimpan...' : 'Publish Podium'}</button>
           </form>
         </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2">
-          <h2 className="font-bold text-lg text-[#083344] mb-5">🏅 Daftar Top Achiever / Podium</h2>
-          <table className="w-full text-left text-sm border-collapse min-w-[400px]">
-             <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">KATEGORI</th><th className="py-3 px-4 font-bold">PERIODE</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
-             <tbody>
-               {achieversList.map(item => (
-                 <tr key={item.id} className="border-b hover:bg-gray-50">
-                   <td className="py-4 px-4 font-black text-[#083344]">{item.judul}</td>
-                   <td className="py-4 px-4 text-gray-600">{item.periode}</td>
-                   <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
-                 </tr>
-               ))}
-             </tbody>
-          </table>
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
+          <h2 className="font-bold text-lg text-[#083344] mb-5">🏅 Daftar Top Achiever</h2>
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left text-sm border-collapse min-w-[400px]">
+               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">KATEGORI</th><th className="py-3 px-4 font-bold">PERIODE</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
+               <tbody>
+                 {achieversList.map(item => (
+                   <tr key={item.id} className="border-b hover:bg-gray-50">
+                     <td className="py-4 px-4 font-black text-[#083344]">{item.judul}</td><td className="py-4 px-4 text-gray-600">{item.periode}</td>
+                     <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
+                   </tr>
+                 ))}
+               </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       {/* ========================================================= */}
-      {/* 3. EVENT & TRAINING                                         */}
+      {/* 3. EVENT & TRAINING (RESPONSIVE)                            */}
       {/* ========================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 h-fit">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden h-fit">
           <h2 className="font-bold text-lg text-[#083344] mb-5">➕ Tambah Event / Training</h2>
           <form onSubmit={handleAddEvent} className="space-y-4">
             <div><label className="block text-xs font-bold mb-1">Judul Kegiatan</label><input type="text" value={judulEvent} onChange={(e) => setJudulEvent(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
@@ -299,28 +288,30 @@ export default function AdminDashboardPage() {
             <button type="submit" disabled={isSubmittingEvent} className="w-full bg-[#A8C338] text-[#083344] font-bold py-2.5 rounded-lg text-sm">{isSubmittingEvent ? 'Menyimpan...' : 'Publish Event'}</button>
           </form>
         </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
           <h2 className="font-bold text-lg text-[#083344] mb-5">📅 Jadwal Event</h2>
-          <table className="w-full text-left text-sm border-collapse min-w-[500px]">
-             <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">INFO EVENT</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
-             <tbody>
-               {eventsList.map((event) => (
-                 <tr key={event.id} className="border-b hover:bg-gray-50">
-                   <td className="py-4 px-4"><p className="font-bold text-[#083344]">{event.judul}</p><p className="text-xs text-gray-500">{event.tanggal} | {event.waktu}</p></td>
-                   <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteEvent(event.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
-                 </tr>
-               ))}
-             </tbody>
-          </table>
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left text-sm border-collapse min-w-[500px]">
+               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">INFO EVENT</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
+               <tbody>
+                 {eventsList.map((event) => (
+                   <tr key={event.id} className="border-b hover:bg-gray-50">
+                     <td className="py-4 px-4"><p className="font-bold text-[#083344]">{event.judul}</p><p className="text-xs text-gray-500">{event.tanggal} | {event.waktu}</p></td>
+                     <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteEvent(event.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
+                   </tr>
+                 ))}
+               </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       {/* ========================================================= */}
-      {/* 4. RESOURCE LIBRARY                                         */}
+      {/* 4. RESOURCE LIBRARY (RESPONSIVE)                            */}
       {/* ========================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 h-fit">
-          <h2 className="font-bold text-lg text-[#083344] mb-5">📁 Tambah Dokumen Library</h2>
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden h-fit">
+          <h2 className="font-bold text-lg text-[#083344] mb-5">📁 Tambah Dokumen</h2>
           <form onSubmit={handleAddDoc} className="space-y-4">
             <div><label className="block text-xs font-bold mb-1">Judul Dokumen</label><input type="text" value={judulDoc} onChange={(e) => setJudulDoc(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
             <div>
@@ -333,27 +324,29 @@ export default function AdminDashboardPage() {
             <button type="submit" disabled={isSubmittingDoc} className="w-full bg-[#083344] text-white font-bold py-2.5 rounded-lg text-sm">{isSubmittingDoc ? 'Menyimpan...' : 'Publish Dokumen'}</button>
           </form>
         </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
           <h2 className="font-bold text-lg text-[#083344] mb-5">📂 Daftar Dokumen</h2>
-          <table className="w-full text-left text-sm border-collapse min-w-[400px]">
-             <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">JUDUL</th><th className="py-3 px-4 font-bold">KATEGORI</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
-             <tbody>
-               {libraryList.map((docItem) => (
-                 <tr key={docItem.id} className="border-b hover:bg-gray-50">
-                   <td className="py-4 px-4 font-bold text-[#083344]">{docItem.judul}</td>
-                   <td className="py-4 px-4"><span className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs font-bold uppercase">{docItem.kategori}</span></td>
-                   <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteDoc(docItem.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
-                 </tr>
-               ))}
-             </tbody>
-          </table>
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left text-sm border-collapse min-w-[400px]">
+               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">JUDUL</th><th className="py-3 px-4 font-bold">KATEGORI</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
+               <tbody>
+                 {libraryList.map((docItem) => (
+                   <tr key={docItem.id} className="border-b hover:bg-gray-50">
+                     <td className="py-4 px-4 font-bold text-[#083344]">{docItem.judul}</td>
+                     <td className="py-4 px-4"><span className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs font-bold uppercase">{docItem.kategori}</span></td>
+                     <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteDoc(docItem.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
+                   </tr>
+                 ))}
+               </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       {/* ========================================================= */}
-      {/* 5. LEARNING PATH (ACADEMY MODUL)                            */}
+      {/* 5. LEARNING PATH (ACADEMY MODUL) (RESPONSIVE)               */}
       {/* ========================================================= */}
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+      <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 w-full overflow-hidden">
         <h2 className="font-bold text-xl text-[#083344] mb-6">🎓 Manajemen Learning Path</h2>
         <form onSubmit={handleAddModule} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
@@ -367,26 +360,28 @@ export default function AdminDashboardPage() {
             <button type="submit" disabled={isSubmittingBab} className="w-full bg-[#A8C338] text-[#083344] font-bold py-3 rounded-xl text-sm">{isSubmittingBab ? 'Menyimpan...' : 'Publish Modul'}</button>
           </div>
         </form>
-        <div className="mt-8 border-t pt-8">
+        <div className="mt-8 border-t pt-8 w-full overflow-hidden">
           <h2 className="font-bold text-lg text-[#083344] mb-5">📂 Daftar Modul Pembelajaran</h2>
-          <table className="w-full text-left text-sm border-collapse min-w-[500px]">
-             <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">LEVEL & JUDUL</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
-             <tbody>
-               {modulesList.map((modul) => (
-                 <tr key={modul.id} className="border-b hover:bg-gray-50">
-                   <td className="py-4 px-4"><span className="bg-[#A8C338] text-[#083344] px-2 py-1 rounded-full text-[10px] font-black mr-2">LVL {modul.level}</span><span className="font-bold">{modul.judul}</span></td>
-                   <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteModule(modul.id)} className="text-red-500 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
-                 </tr>
-               ))}
-             </tbody>
-          </table>
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left text-sm border-collapse min-w-[500px]">
+               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">LEVEL & JUDUL</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
+               <tbody>
+                 {modulesList.map((modul) => (
+                   <tr key={modul.id} className="border-b hover:bg-gray-50">
+                     <td className="py-4 px-4"><span className="bg-[#A8C338] text-[#083344] px-2 py-1 rounded-full text-[10px] font-black mr-2">LVL {modul.level}</span><span className="font-bold">{modul.judul}</span></td>
+                     <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteModule(modul.id)} className="text-red-500 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
+                   </tr>
+                 ))}
+               </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       {/* ========================================================= */}
-      {/* 6. BANK SOAL (KUIS)                                         */}
+      {/* 6. BANK SOAL (KUIS) (RESPONSIVE)                            */}
       {/* ========================================================= */}
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+      <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 w-full overflow-hidden">
         <h2 className="font-bold text-xl text-[#083344] mb-6">📝 Manajemen Bank Soal (Kuis)</h2>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 bg-gray-50 p-5 rounded-xl border border-gray-200">
@@ -409,23 +404,25 @@ export default function AdminDashboardPage() {
               <button type="submit" disabled={isSubmittingKuis} className="w-full bg-[#083344] text-white font-bold py-2.5 rounded-lg text-sm">{isSubmittingKuis ? 'Menyimpan...' : 'Simpan Soal'}</button>
             </form>
           </div>
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 w-full overflow-hidden">
             <h3 className="font-bold mb-4">Daftar Soal Tersimpan</h3>
-            <table className="w-full text-left text-sm border-collapse min-w-[500px]">
-               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-2 px-3 font-bold w-16">LVL</th><th className="py-2 px-3 font-bold">PERTANYAAN & JAWABAN</th><th className="py-2 px-3 font-bold text-center">AKSI</th></tr></thead>
-               <tbody>
-                 {quizzesList.map((kuis) => (
-                   <tr key={kuis.id} className="border-b hover:bg-gray-50">
-                     <td className="py-3 px-3 font-black text-[#A8C338] text-center">{kuis.level}</td>
-                     <td className="py-3 px-3">
-                       <p className="font-bold text-[#083344] text-sm mb-1">{kuis.pertanyaan}</p>
-                       <p className="text-[10px] text-green-600 font-bold">Benar: {kuis.jawabanBenar}</p>
-                     </td>
-                     <td className="py-3 px-3 text-center"><button onClick={() => handleDeleteQuiz(kuis.id)} className="text-red-500 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
-                   </tr>
-                 ))}
-               </tbody>
-            </table>
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm border-collapse min-w-[500px]">
+                 <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-2 px-3 font-bold w-16">LVL</th><th className="py-2 px-3 font-bold">PERTANYAAN & JAWABAN</th><th className="py-2 px-3 font-bold text-center">AKSI</th></tr></thead>
+                 <tbody>
+                   {quizzesList.map((kuis) => (
+                     <tr key={kuis.id} className="border-b hover:bg-gray-50">
+                       <td className="py-3 px-3 font-black text-[#A8C338] text-center">{kuis.level}</td>
+                       <td className="py-3 px-3">
+                         <p className="font-bold text-[#083344] text-sm mb-1">{kuis.pertanyaan}</p>
+                         <p className="text-[10px] text-green-600 font-bold">Benar: {kuis.jawabanBenar}</p>
+                       </td>
+                       <td className="py-3 px-3 text-center"><button onClick={() => handleDeleteQuiz(kuis.id)} className="text-red-500 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
+                     </tr>
+                   ))}
+                 </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

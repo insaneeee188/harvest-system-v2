@@ -104,7 +104,7 @@ export default function ContestPage() {
       <div className="max-w-[1400px] mx-auto px-4 pt-8">
         <div className="bg-[#083344] rounded-3xl p-8 md:p-10 text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
           <div className="z-10 flex-1">
-            <h1 className="text-3xl md:text-5xl font-black mb-2 flex items-center gap-3">CONTEST</h1>
+            <h1 className="text-3xl md:text-5xl font-black mb-2 flex items-center gap-3">🏆CONTEST</h1>
             <p className="text-gray-300 text-sm opacity-90">Ikuti seluruh agenda bimbingan, kelas eksklusif, dan sinkronisasi bersama tim.</p>
           </div>
           
@@ -140,7 +140,6 @@ export default function ContestPage() {
               <>
                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex items-center justify-between mb-2">
                    <h2 className="text-xl font-black text-[#083344] flex items-center gap-3">🏆 Agency Contest</h2>
-                   <div className="text-xs font-bold text-gray-400 border border-gray-200 px-4 py-2 rounded-full hidden md:block">Cari Contest</div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

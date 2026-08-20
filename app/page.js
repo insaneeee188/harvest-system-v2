@@ -100,12 +100,17 @@ export default function HomePage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-white font-sans">
-        {/* Hero Section */}
+        {/* Hero Section dengan Logo */}
         <div className="bg-[#083344] text-white py-20 px-4 rounded-b-[3rem] shadow-xl text-center">
           <div className="max-w-4xl mx-auto flex flex-col items-center">
+           <img src="/harvest-logo.png" alt="Harvest Agency Logo" className="h-30 md:h-40 object-contain mb-8" onError={(e) => { e.target.style.display = 'none'; }} />
             <h1 className="text-4xl md:text-6xl font-black mb-6">Welcome To Harvest Agency</h1>
-            <p className="text-gray-300 text-sm md:text-base mb-10 max-w-2xl mx-auto leading-relaxed border-t border-white/20 pt-6">Sistem terintegrasi untuk mencetak agen asuransi profesional dan sukses bersama Harvest.</p>
-            <Link href="/login" className="inline-block bg-[#A8C338] text-[#083344] font-bold px-8 py-3.5 rounded-full hover:bg-white transition-all shadow-lg">Masuk / Daftar</Link>
+            <p className="text-gray-300 text-sm md:text-base mb-10 max-w-2xl mx-auto leading-relaxed border-t border-white/20 pt-6">
+              Sistem terintegrasi untuk mencetak agen asuransi profesional dan sukses bersama Harvest.
+            </p>
+            <Link href="/login" className="inline-block bg-[#A8C338] text-[#083344] font-bold px-8 py-3.5 rounded-full hover:bg-white transition-all shadow-lg">
+              Mulai Harvest Academy
+            </Link>
           </div>
         </div>
 
@@ -175,36 +180,6 @@ export default function HomePage() {
       </div>
 
       {/* Bagian Profil Agency & Visi Misi (Untuk User yang Telah Login) */}
-      <div className="max-w-[1400px] mx-auto px-4 mt-16">
-        <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-gray-100">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-black text-[#083344] mb-2">Profil Agency</h2>
-            <div className="w-12 h-1 bg-[#A8C338] mx-auto rounded-full"></div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Visi */}
-            <div className="bg-blue-50/40 border border-blue-100/60 p-6 md:p-8 rounded-3xl">
-              <div className="text-3xl mb-3">🔭</div>
-              <h3 className="text-xl font-black text-[#083344] mb-3">Visi Kami</h3>
-              <p className="text-gray-600 leading-relaxed text-sm">
-                Menjadi agensi asuransi terdepan dan terpercaya di Indonesia yang melahirkan para profesional berdedikasi tinggi, berintegritas, dan mampu memberikan solusi perlindungan finansial terbaik bagi setiap keluarga.
-              </p>
-            </div>
-
-            {/* Misi */}
-            <div className="bg-blue-50/40 border border-blue-100/60 p-6 md:p-8 rounded-3xl">
-              <div className="text-3xl mb-3">🎯</div>
-              <h3 className="text-xl font-black text-[#083344] mb-3">Misi Kami</h3>
-              <ul className="space-y-2.5 text-gray-600 text-sm">
-                <li className="flex items-start gap-2"><span>✔</span> Memberikan pelatihan dan edukasi agen secara berkelanjutan.</li>
-                <li className="flex items-start gap-2"><span>✔</span> Membangun lingkungan kerja yang kompetitif, suportif, & kolaboratif.</li>
-                <li className="flex items-start gap-2"><span>✔</span> Menghargai setiap pencapaian melalui sistem penghargaan yang adil.</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Bagian Events & Kalender Kegiatan */}
       <div className="max-w-[1400px] mx-auto px-4 mt-12">

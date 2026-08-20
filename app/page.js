@@ -50,7 +50,7 @@ export default function HomePage() {
             <img 
               src="/harvest-logo.png" 
               alt="Harvest Agency Logo" 
-              className="h-20 md:h-28 object-contain mb-8"
+              className="w-64 md:w-80 lg:w-96 h-auto object-contain mx-auto mb-10"
               onError={(e) => { e.target.style.display = 'none'; }} // Antisipasi jika gambar tidak ditemukan
             />
 
@@ -60,7 +60,7 @@ export default function HomePage() {
               dan merayakan pencapaian luar biasa.
             </p>
             <Link href="/login" className="inline-block bg-[#A8C338] text-[#083344] font-bold px-8 py-3.5 rounded-full hover:bg-white transition-all shadow-lg">
-              Mulai Learning Path
+              Mulai Harvest Academy
             </Link>
           </div>
         </div>

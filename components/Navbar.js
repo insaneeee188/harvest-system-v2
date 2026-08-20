@@ -85,7 +85,7 @@ export default function Navbar() {
             <Link href="/daily-activity" className="text-white hover:text-[#A8C338] text-sm font-bold transition">My Activity</Link>
             <Link href="/academy" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Harvest Academy</Link>
             <Link href="/events" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Events</Link>
-            <Link href="/dashboard" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Contest</Link>
+            <Link href="/contest" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Contest</Link>
             
             {user ? (
               <div className="flex items-center gap-4 ml-4 border-l border-white/20 pl-6">
@@ -203,7 +203,7 @@ export default function Navbar() {
           <Link href="/daily-activity" onClick={closeAll} className="block text-white text-sm font-bold">My Activity</Link>
           <Link href="/academy" onClick={closeAll} className="block text-white text-sm font-bold">Harvest Academy</Link>
           <Link href="/events" onClick={closeAll} className="block text-white text-sm font-bold">Events</Link>
-          <Link href="/dashboard" onClick={closeAll} className="block text-white text-sm font-bold">My Dashboard</Link>
+          <Link href="/contest" onClick={closeAll} className="block text-white text-sm font-bold">Contest</Link>
           {!user && (
             <div className="pt-4 border-t border-white/10 mt-2">
               <Link href="/login" onClick={closeAll} className="inline-block border border-[#A8C338] text-[#A8C338] px-6 py-2 rounded-full text-sm font-bold">Masuk / Daftar</Link>

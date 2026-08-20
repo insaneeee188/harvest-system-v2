@@ -19,7 +19,7 @@ export default function HomePage() {
 
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
 
-  // === BARU: State Untuk Achievers Slider ===
+  // States Untuk Achievers Slider
   const [achieversList, setAchieversList] = useState([]);
   const [currentAchieverIndex, setCurrentAchieverIndex] = useState(0);
 
@@ -39,7 +39,6 @@ export default function HomePage() {
     return () => { isMounted = false; unsubscribe(); };
   }, []);
 
-  // === BARU: Fungsi Fetch Event & Achievers Sekaligus ===
   const fetchEventsAndAchievers = async () => {
     // 1. Fetch Events
     const snapEvent = await getDocs(collection(db, 'events'));
@@ -88,7 +87,6 @@ export default function HomePage() {
 
   const openModal = (item) => { setSelectedItem(item); setIsModalOpen(true); };
 
-  // === BARU: Fungsi Navigasi Slider Achievers ===
   const nextAchiever = () => {
     setCurrentAchieverIndex((prev) => (prev + 1) % achieversList.length);
   };
@@ -97,24 +95,64 @@ export default function HomePage() {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#083344]"></div></div>;
+
+  // ================= TAMPILAN GUEST (BELUM LOGIN) =================
   if (!user) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-white font-sans">
+        {/* Hero Section */}
         <div className="bg-[#083344] text-white py-20 px-4 rounded-b-[3rem] shadow-xl text-center">
           <div className="max-w-4xl mx-auto flex flex-col items-center">
-            <img src="/harvest-logo.png" alt="Harvest Agency Logo" className="h-20 md:h-28 object-contain mb-8" onError={(e) => { e.target.style.display = 'none'; }} />
             <h1 className="text-4xl md:text-6xl font-black mb-6">Welcome To Harvest Agency</h1>
-            <p className="text-gray-300 text-sm md:text-base mb-10 max-w-2xl mx-auto leading-relaxed border-t border-white/20 pt-6">Sistem terintegrasi untuk mencetak agen asuransi profesional.</p>
-            <Link href="/login" className="inline-block bg-[#A8C338] text-[#083344] font-bold px-8 py-3.5 rounded-full hover:bg-white transition-all shadow-lg">Mulai Harvest Academy</Link>
+            <p className="text-gray-300 text-sm md:text-base mb-10 max-w-2xl mx-auto leading-relaxed border-t border-white/20 pt-6">Sistem terintegrasi untuk mencetak agen asuransi profesional dan sukses bersama Harvest.</p>
+            <Link href="/login" className="inline-block bg-[#A8C338] text-[#083344] font-bold px-8 py-3.5 rounded-full hover:bg-white transition-all shadow-lg">Masuk / Daftar</Link>
           </div>
         </div>
+
+        {/* Profil Agency & Visi Misi untuk Guest */}
+        <div className="max-w-[1200px] mx-auto px-4 py-20">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-black text-[#083344] mb-3">Profil Agency</h2>
+            <div className="w-16 h-1 bg-[#A8C338] mx-auto rounded-full"></div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Visi */}
+            <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
+              <div className="text-4xl mb-4">🔭</div>
+              <h3 className="text-2xl font-black text-[#083344] mb-4">Visi Kami</h3>
+              <p className="text-gray-600 leading-relaxed text-sm md:text-base">
+                Menjadi agensi asuransi terdepan dan terpercaya di Indonesia yang melahirkan para profesional berdedikasi tinggi, berintegritas, dan mampu memberikan solusi perlindungan finansial terbaik bagi setiap keluarga.
+              </p>
+            </div>
+
+            {/* Misi */}
+            <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
+              <div className="text-4xl mb-4">🎯</div>
+              <h3 className="text-2xl font-black text-[#083344] mb-4">Misi Kami</h3>
+              <ul className="space-y-3 text-gray-600 text-sm md:text-base">
+                <li className="flex items-start gap-2"><span>✔</span> Memberikan pelatihan dan edukasi agen secara berkelanjutan.</li>
+                <li className="flex items-start gap-2"><span>✔</span> Membangun lingkungan kerja yang kompetitif, suportif, & kolaboratif.</li>
+                <li className="flex items-start gap-2"><span>✔</span> Menghargai setiap pencapaian melalui sistem penghargaan yang adil.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Sederhana */}
+        <footer className="bg-[#083344] text-white py-6 text-center text-xs text-gray-400">
+          <p className="font-bold text-[#A8C338] mb-1">HARVEST AGENCY</p>
+          <p>© 2026 Harvest Agency. All Rights Reserved.</p>
+        </footer>
       </div>
     );
   }
 
+  // ================= TAMPILAN USER LOGIN =================
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans">
       
+      {/* Banner Sapaan */}
       <div className="max-w-[1400px] mx-auto px-4 pt-8">
         <div className="bg-[#083344] rounded-3xl p-8 md:p-12 text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
           <div className="z-10">
@@ -125,6 +163,7 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Menu Shortcut */}
       <div className="max-w-[1400px] mx-auto px-4 mt-8">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
           {[{url: '/', icon: '🏠', title: 'Home', desc: 'Kembali ke beranda'}, {url: '/daily-activity', icon: '📝', title: 'Activity', desc: 'Isi form harian'}, {url: '/academy', icon: '🎓', title: 'Academy', desc: 'Modul belajar & Bank File'}, {url: '/events', icon: '🗓️', title: 'Events', desc: 'Jadwal Training & Events'}, {url: '/contest', icon: '🏆', title: 'Contest', desc: 'Lihat kontes'}].map(menu => (
@@ -135,9 +174,43 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Bagian Profil Agency & Visi Misi (Untuk User yang Telah Login) */}
+      <div className="max-w-[1400px] mx-auto px-4 mt-16">
+        <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-gray-100">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-black text-[#083344] mb-2">Profil Agency</h2>
+            <div className="w-12 h-1 bg-[#A8C338] mx-auto rounded-full"></div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Visi */}
+            <div className="bg-blue-50/40 border border-blue-100/60 p-6 md:p-8 rounded-3xl">
+              <div className="text-3xl mb-3">🔭</div>
+              <h3 className="text-xl font-black text-[#083344] mb-3">Visi Kami</h3>
+              <p className="text-gray-600 leading-relaxed text-sm">
+                Menjadi agensi asuransi terdepan dan terpercaya di Indonesia yang melahirkan para profesional berdedikasi tinggi, berintegritas, dan mampu memberikan solusi perlindungan finansial terbaik bagi setiap keluarga.
+              </p>
+            </div>
+
+            {/* Misi */}
+            <div className="bg-blue-50/40 border border-blue-100/60 p-6 md:p-8 rounded-3xl">
+              <div className="text-3xl mb-3">🎯</div>
+              <h3 className="text-xl font-black text-[#083344] mb-3">Misi Kami</h3>
+              <ul className="space-y-2.5 text-gray-600 text-sm">
+                <li className="flex items-start gap-2"><span>✔</span> Memberikan pelatihan dan edukasi agen secara berkelanjutan.</li>
+                <li className="flex items-start gap-2"><span>✔</span> Membangun lingkungan kerja yang kompetitif, suportif, & kolaboratif.</li>
+                <li className="flex items-start gap-2"><span>✔</span> Menghargai setiap pencapaian melalui sistem penghargaan yang adil.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bagian Events & Kalender Kegiatan */}
       <div className="max-w-[1400px] mx-auto px-4 mt-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           
+          {/* KIRI: GRID EVENT */}
           <div className="lg:col-span-2 bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3 mb-6">
               <span className="text-2xl">🚀</span><h2 className="text-xl md:text-2xl font-black text-[#083344]">Training & Kegiatan Mendatang</h2>
@@ -177,6 +250,7 @@ export default function HomePage() {
             )}
           </div>
 
+          {/* KANAN: KALENDER PINTAR */}
           <div className="lg:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
               <h3 className="font-black text-[#083344] flex items-center gap-2">📅 Kalender Kegiatan</h3>
@@ -204,28 +278,23 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ================= BARU: BAGIAN PODIUM TOP ACHIEVER ================= */}
+      {/* BAGIAN PODIUM TOP ACHIEVER */}
       {achieversList.length > 0 && (
         <div className="max-w-[1400px] mx-auto px-4 mt-20 mb-10">
           <div className="flex items-center justify-between relative bg-white/50 py-12 px-4 rounded-[3rem] shadow-sm border border-white/60 backdrop-blur-sm">
             
-            {/* Navigasi Kiri */}
             <button onClick={prevAchiever} className="z-20 w-12 h-12 flex items-center justify-center bg-white border-2 border-[#083344] text-[#083344] rounded-full shadow-md hover:bg-[#083344] hover:text-white transition-all transform hover:-translate-x-1 font-black text-xl">
               &lt;
             </button>
 
-            {/* Area Konten Podium */}
             <div className="flex flex-col items-center flex-1 mx-4 animate-fade-in text-center">
-              {/* Tipografi Mengikuti Gambar Anda */}
               <h4 className="text-gray-500 tracking-[0.3em] text-sm md:text-base font-bold mb-1">TOP ACHIEVER</h4>
               <h2 className="font-serif text-4xl md:text-6xl font-black text-black uppercase leading-none">BEST OF THE BEST</h2>
               <h3 className="font-serif text-3xl md:text-5xl font-black text-black uppercase mb-3 leading-none">{achieversList[currentAchieverIndex].periode}</h3>
               <p className="text-xl md:text-2xl font-black text-black uppercase tracking-wide mb-12">{achieversList[currentAchieverIndex].judul}</p>
 
-              {/* Grid Podium */}
               <div className="flex items-end justify-center gap-4 md:gap-10">
                 
-                {/* JUARA 2 (KIRI) */}
                 {(achieversList[currentAchieverIndex].foto2 || achieversList[currentAchieverIndex].nama2) && (
                   <div className="flex flex-col items-center pb-4 md:pb-8">
                     <div className="relative w-24 h-24 md:w-40 md:h-40 rounded-full border-[5px] border-[#93c5fd] shadow-lg mb-4 bg-gray-100">
@@ -236,7 +305,6 @@ export default function HomePage() {
                   </div>
                 )}
 
-                {/* JUARA 1 (TENGAH) */}
                 <div className="flex flex-col items-center">
                   <div className="relative w-32 h-32 md:w-56 md:h-56 rounded-full border-[6px] border-[#bfdbfe] shadow-2xl mb-4 z-10 bg-gray-100">
                     <img src={achieversList[currentAchieverIndex].foto1 || 'https://via.placeholder.com/200'} alt="Juara 1" className="w-full h-full object-cover rounded-full" />
@@ -245,7 +313,6 @@ export default function HomePage() {
                   <p className="font-black text-sm md:text-2xl text-center uppercase leading-tight w-32 md:w-56 break-words text-[#083344]">{achieversList[currentAchieverIndex].nama1}</p>
                 </div>
 
-                {/* JUARA 3 (KANAN) */}
                 {(achieversList[currentAchieverIndex].foto3 || achieversList[currentAchieverIndex].nama3) && (
                   <div className="flex flex-col items-center pb-4 md:pb-8">
                     <div className="relative w-24 h-24 md:w-40 md:h-40 rounded-full border-[5px] border-[#93c5fd] shadow-lg mb-4 bg-gray-100">
@@ -259,7 +326,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Navigasi Kanan */}
             <button onClick={nextAchiever} className="z-20 w-12 h-12 flex items-center justify-center bg-white border-2 border-[#083344] text-[#083344] rounded-full shadow-md hover:bg-[#083344] hover:text-white transition-all transform hover:translate-x-1 font-black text-xl">
               &gt;
             </button>
@@ -267,7 +333,6 @@ export default function HomePage() {
           </div>
         </div>
       )}
-      {/* ================= AKHIR BAGIAN PODIUM ================= */}
 
       {/* POP-UP MODAL (EVENT) */}
       {isModalOpen && selectedItem && (

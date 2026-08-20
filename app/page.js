@@ -3,16 +3,12 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function HomePage() {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  
-  // State untuk Kontes & Achiever di tampilan user
-  const [contests, setContests] = useState([]);
-  const [achievers, setAchievers] = useState([]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -23,8 +19,6 @@ export default function HomePage() {
         if (userDoc.exists()) {
           setUserData(userDoc.data());
         }
-        // Ambil data kontes
-        fetchContests();
       } else {
         setUser(null);
         setUserData(null);
@@ -35,17 +29,6 @@ export default function HomePage() {
     return () => unsubscribe();
   }, []);
 
-  const fetchContests = async () => {
-    try {
-      const snap = await getDocs(collection(db, 'agency_contests'));
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setContests(data.filter(i => i.type === 'contest'));
-      setAchievers(data.filter(i => i.type === 'achiever'));
-    } catch (error) {
-      console.log("Error mengambil kontes:", error);
-    }
-  };
-
   // 1. TAMPILAN SAAT LOADING
   if (loading) {
     return (
@@ -55,19 +38,22 @@ export default function HomePage() {
     );
   }
 
-  // 2. TAMPILAN GUEST (BELUM LOGIN - Seperti Gambar 1)
+  // 2. TAMPILAN GUEST (BELUM LOGIN)
   if (!user) {
     return (
       <div className="min-h-screen bg-white">
         {/* Hero Section */}
         <div className="bg-[#083344] text-white py-20 px-4 rounded-b-[3rem] shadow-xl text-center">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto flex flex-col items-center">
+            
+            {/* 🌟 LOGO HARVEST AGENCY DITAMBAHKAN DI SINI */}
             <img 
               src="/harvest-logo.png" 
               alt="Harvest Agency Logo" 
               className="h-20 md:h-28 object-contain mb-8"
               onError={(e) => { e.target.style.display = 'none'; }} // Antisipasi jika gambar tidak ditemukan
             />
+
             <h1 className="text-4xl md:text-6xl font-black mb-6">Welcome To Harvest Agency</h1>
             <p className="text-gray-300 text-sm md:text-base mb-10 max-w-2xl mx-auto leading-relaxed border-t border-white/20 pt-6">
               Sistem terintegrasi untuk mencetak agen asuransi profesional, memantau aktivitas harian, 
@@ -76,8 +62,6 @@ export default function HomePage() {
             <Link href="/login" className="inline-block bg-[#A8C338] text-[#083344] font-bold px-8 py-3.5 rounded-full hover:bg-white transition-all shadow-lg">
               Mulai Learning Path
             </Link>
-            <div className="mt-8 flex justify-center gap-6 text-xs font-bold text-gray-400">
-            </div>
           </div>
         </div>
 
@@ -108,7 +92,7 @@ export default function HomePage() {
     );
   }
 
-  // 3. TAMPILAN USER (SUDAH LOGIN - Seperti Gambar 2)
+  // 3. TAMPILAN USER (SUDAH LOGIN)
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       
@@ -151,30 +135,6 @@ export default function HomePage() {
             <p className="text-[10px] text-gray-400 mt-1">Jadwal Training.</p>
           </Link>
         </div>
-      </div>
-
-      {/* Agency Contest Section */}
-      <div className="max-w-7xl mx-auto px-4 mt-12">
-        <span className="bg-[#A8C338]/20 text-[#083344] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider">Kompetisi Aktif</span>
-        <h2 className="text-2xl font-black text-[#083344] mt-2 mb-6">Agency Contest</h2>
-        
-        {contests.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {contests.map((c) => (
-              <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <img src={c.posterUrl} alt={c.judul} className="w-full h-48 object-cover bg-gray-100" />
-                <div className="p-5">
-                  <h3 className="font-bold text-[#083344] text-lg mb-2">{c.judul}</h3>
-                  <p className="text-xs text-gray-500 line-clamp-2">{c.deskripsi}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="bg-white border border-gray-100 border-dashed rounded-3xl p-10 text-center">
-            <p className="text-gray-400 text-sm">Belum ada kontes yang sedang berlangsung.</p>
-          </div>
-        )}
       </div>
 
     </div>

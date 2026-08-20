@@ -44,7 +44,7 @@ export default function LoginPage() {
         alert(`Selamat datang kembali, ${userData.name}! (Role Anda: ${userData.role.toUpperCase()})`);
         
         // Nantinya kita bisa membedakan rute Admin dan Agent di sini
-        router.push('/dashboard'); 
+        router.push('/'); 
 
       } else {
         setError('Data pengguna tidak ditemukan di database utama kami.');

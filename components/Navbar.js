@@ -85,7 +85,7 @@ export default function Navbar() {
             <Link href="/daily-activity" className="text-white hover:text-[#A8C338] text-sm font-bold transition">My Activity</Link>
             <Link href="/academy" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Harvest Academy</Link>
             <Link href="/events" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Events</Link>
-            <Link href="/dashboard" className="text-white hover:text-[#A8C338] text-sm font-bold transition">My Dashboard</Link>
+            <Link href="/dashboard" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Contest</Link>
             
             {user ? (
               <div className="flex items-center gap-4 ml-4 border-l border-white/20 pl-6">

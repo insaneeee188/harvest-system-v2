@@ -89,7 +89,7 @@ export default function DashboardPage() {
       <div className="bg-[#083344] rounded-3xl p-8 md:p-12 shadow-lg text-white flex justify-between items-center relative overflow-hidden">
         <div className="z-10">
           <h1 className="text-3xl md:text-5xl font-black mb-2">
-            Selamat Datang, <span className="text-[#A8C338]">{userData.name || 'Agen'}</span>!
+            Semangat Pagi, <span className="text-[#A8C338]">{userData.name || 'Agen'}</span>!
           </h1>
           <p className="text-gray-300 text-sm md:text-base">Siap untuk mencapai target baru hari ini? Pantau aktivitas dan jadwal Anda di sini.</p>
         </div>

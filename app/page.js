@@ -62,6 +62,12 @@ export default function HomePage() {
         {/* Hero Section */}
         <div className="bg-[#083344] text-white py-20 px-4 rounded-b-[3rem] shadow-xl text-center">
           <div className="max-w-4xl mx-auto">
+            <img 
+              src="/harvest-logo.png" 
+              alt="Harvest Agency Logo" 
+              className="h-20 md:h-28 object-contain mb-8"
+              onError={(e) => { e.target.style.display = 'none'; }} // Antisipasi jika gambar tidak ditemukan
+            />
             <h1 className="text-4xl md:text-6xl font-black mb-6">Welcome To Harvest Agency</h1>
             <p className="text-gray-300 text-sm md:text-base mb-10 max-w-2xl mx-auto leading-relaxed border-t border-white/20 pt-6">
               Sistem terintegrasi untuk mencetak agen asuransi profesional, memantau aktivitas harian, 
@@ -71,9 +77,6 @@ export default function HomePage() {
               Mulai Learning Path
             </Link>
             <div className="mt-8 flex justify-center gap-6 text-xs font-bold text-gray-400">
-              <span className="flex items-center gap-2">👇 Agency Contest</span>
-              <span>|</span>
-              <span className="flex items-center gap-2">👇 Top Achiever</span>
             </div>
           </div>
         </div>

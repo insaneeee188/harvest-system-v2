@@ -11,7 +11,7 @@ export default function AdminDashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // 1. STATE MANAJEMEN USER & PAGINATION (Per 5 Item)
+  // States Users
   const [usersList, setUsersList] = useState([]);
   const [currentPageUsers, setCurrentPageUsers] = useState(1);
   const usersPerPage = 5; 
@@ -20,24 +20,36 @@ export default function AdminDashboardPage() {
   const currentUsers = usersList.slice(indexOfFirstUser, indexOfLastUser);
   const totalPagesUsers = Math.ceil(usersList.length / usersPerPage);
 
-  // 2. STATE KONTEN LAINNYA
+  // --- CONTEST STATES & EDIT ---
   const [contestsList, setContestsList] = useState([]);
+  const [editContestId, setEditContestId] = useState(null);
   const [judulContest, setJudulContest] = useState('');
   const [deskripsiContest, setDeskripsiContest] = useState('');
   const [posterContest, setPosterContest] = useState('');
+  const [kategoriContest, setKategoriContest] = useState('Agency'); 
+  const [targetContest, setTargetContest] = useState('Semua');
+  const [periodeContest, setPeriodeContest] = useState('');
   const [isSubmittingContest, setIsSubmittingContest] = useState(false);
 
+  // --- ACHIEVER STATES & EDIT ---
   const [achieversList, setAchieversList] = useState([]);
+  const [editAchieverId, setEditAchieverId] = useState(null);
   const [judulAchiever, setJudulAchiever] = useState('TOP LEADER');
   const [periodeAchiever, setPeriodeAchiever] = useState('');
   const [foto1, setFoto1] = useState('');
+  const [nama1, setNama1] = useState('');
   const [foto2, setFoto2] = useState('');
+  const [nama2, setNama2] = useState('');
   const [foto3, setFoto3] = useState('');
+  const [nama3, setNama3] = useState('');
   const [isSubmittingAchiever, setIsSubmittingAchiever] = useState(false);
 
+  // --- EVENT STATES & EDIT ---
   const [eventsList, setEventsList] = useState([]);
+  const [editEventId, setEditEventId] = useState(null);
   const [judulEvent, setJudulEvent] = useState('');
-  const [targetEvent, setTargetEvent] = useState('Semua User');
+  const [targetEvent, setTargetEvent] = useState('Semua'); 
+  const [kategoriEvent, setKategoriEvent] = useState('Agency');
   const [tanggalEvent, setTanggalEvent] = useState('');
   const [waktuEvent, setWaktuEvent] = useState('');
   const [lokasiEvent, setLokasiEvent] = useState('');
@@ -45,13 +57,15 @@ export default function AdminDashboardPage() {
   const [posterEvent, setPosterEvent] = useState(''); 
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
 
+  // --- DOCUMENT STATES & EDIT ---
   const [libraryList, setLibraryList] = useState([]);
+  const [editDocId, setEditDocId] = useState(null);
   const [judulDoc, setJudulDoc] = useState('');
   const [kategoriDoc, setKategoriDoc] = useState('Selling');
   const [linkDoc, setLinkDoc] = useState('');
   const [isSubmittingDoc, setIsSubmittingDoc] = useState(false);
 
-  // 5. STATE MANAJEMEN MODUL (SESI & URUTAN) & PAGINATION
+  // Academy Modules & Quizzes
   const [modulesList, setModulesList] = useState([]); 
   const [currentPageMods, setCurrentPageMods] = useState(1);
   const modsPerPage = 5; 
@@ -61,7 +75,7 @@ export default function AdminDashboardPage() {
   const totalPagesMods = Math.ceil(modulesList.length / modsPerPage);
 
   const [editModuleId, setEditModuleId] = useState(null);
-  const [sesiBab, setSesiBab] = useState('1'); // Menggantikan level
+  const [sesiBab, setSesiBab] = useState('1'); 
   const [urutanBab, setUrutanBab] = useState('1'); 
   const [judulBab, setJudulBab] = useState('');
   const [deskripsiBab, setDeskripsiBab] = useState('');
@@ -108,42 +122,133 @@ export default function AdminDashboardPage() {
   const fetchEvents = async () => { const snap = await getDocs(collection(db, 'events')); setEventsList(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))); };
   const fetchLibrary = async () => { const snap = await getDocs(collection(db, 'library_docs')); setLibraryList(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))); };
   
-  // Mengurutkan dengan rapi (Berdasarkan Sesi lalu Urutan)
   const fetchModules = async () => { 
     const snap = await getDocs(collection(db, 'academy_modules')); 
     let data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    data = data.map(m => ({
-      ...m,
-      sesi: parseInt(m.sesi ?? m.level ?? 1),
-      urutan: parseInt(m.urutan ?? 1)
-    }));
+    data = data.map(m => ({ ...m, sesi: parseInt(m.sesi ?? m.level ?? 1), urutan: parseInt(m.urutan ?? 1) }));
     setModulesList(data.sort((a,b) => (a.sesi - b.sesi) || (a.urutan - b.urutan))); 
   };
   
   const fetchQuizzes = async () => { const snap = await getDocs(collection(db, 'academy_quizzes')); setQuizzesList(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.level - b.level)); };
 
-  const pushGlobalNotif = async (title, message) => { await addDoc(collection(db, 'notifications'), { title, message, createdAt: new Date().toISOString() }); };
   const handleApprove = async (userId, userName) => { if (!window.confirm(`Setujui ${userName}?`)) return; await updateDoc(doc(db, 'users', userId), { status: 'approved' }); alert(`${userName} disetujui!`); fetchUsers(); };
   
-  const handleAddContest = async (e) => { e.preventDefault(); setIsSubmittingContest(true); await addDoc(collection(db, 'agency_contests'), { type: 'contest', judul: judulContest, deskripsi: deskripsiContest, posterUrl: posterContest, createdAt: new Date().toISOString() }); pushGlobalNotif("Kontes Baru!", `Cek kompetisi ${judulContest} sekarang di Home!`); alert("Kontes ditambahkan!"); setJudulContest(''); setDeskripsiContest(''); setPosterContest(''); fetchContestsAndAchievers(); setIsSubmittingContest(false); };
-  const handleAddAchiever = async (e) => { e.preventDefault(); setIsSubmittingAchiever(true); await addDoc(collection(db, 'agency_contests'), { type: 'achiever', judul: judulAchiever, periode: periodeAchiever, foto1, foto2, foto3, createdAt: new Date().toISOString() }); alert("Top Achiever ditambahkan!"); setJudulAchiever('TOP LEADER'); setPeriodeAchiever(''); setFoto1(''); setFoto2(''); setFoto3(''); fetchContestsAndAchievers(); setIsSubmittingAchiever(false); };
-  const handleAddEvent = async (e) => { e.preventDefault(); setIsSubmittingEvent(true); await addDoc(collection(db, 'events'), { judul: judulEvent, target: targetEvent, tanggal: tanggalEvent, waktu: waktuEvent, lokasi: lokasiEvent, linkZoom: linkZoomEvent, posterUrl: posterEvent, createdAt: new Date().toISOString() }); pushGlobalNotif("Event Baru Ditambahkan", `Jadwal baru: ${judulEvent} pada ${tanggalEvent}. Cek menu Events.`); alert("Event ditambah!"); setJudulEvent(''); setTanggalEvent(''); setWaktuEvent(''); setLokasiEvent(''); setLinkZoomEvent(''); setPosterEvent(''); fetchEvents(); setIsSubmittingEvent(false); };
-  const handleAddDoc = async (e) => { e.preventDefault(); setIsSubmittingDoc(true); await addDoc(collection(db, 'library_docs'), { judul: judulDoc, kategori: kategoriDoc, link: linkDoc, createdAt: new Date().toISOString() }); alert("Dokumen ditambah!"); setJudulDoc(''); setLinkDoc(''); fetchLibrary(); setIsSubmittingDoc(false); };
+  // --- SUBMIT & EDIT CONTEST ---
+  const handleSaveContest = async (e) => { 
+    e.preventDefault(); 
+    setIsSubmittingContest(true); 
+    const payload = { type: 'contest', judul: judulContest, deskripsi: deskripsiContest, posterUrl: posterContest, kategori: kategoriContest, target: targetContest, periode: periodeContest };
+    
+    if (editContestId) {
+      await updateDoc(doc(db, 'agency_contests', editContestId), { ...payload, updatedAt: new Date().toISOString() });
+      alert("Kontes berhasil diperbarui!"); setEditContestId(null);
+    } else {
+      await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
+      alert("Kontes ditambahkan!"); 
+    }
+    setJudulContest(''); setDeskripsiContest(''); setPosterContest(''); setKategoriContest('Agency'); setTargetContest('Semua'); setPeriodeContest('');
+    fetchContestsAndAchievers(); setIsSubmittingContest(false); 
+  };
 
+  const handleEditContest = (item) => {
+    setEditContestId(item.id);
+    setJudulContest(item.judul || '');
+    setDeskripsiContest(item.deskripsi || '');
+    setPosterContest(item.posterUrl || '');
+    setKategoriContest(item.kategori || 'Agency');
+    setTargetContest(item.target || 'Semua');
+    setPeriodeContest(item.periode || '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // --- SUBMIT & EDIT ACHIEVER ---
+  const handleSaveAchiever = async (e) => { 
+    e.preventDefault(); 
+    setIsSubmittingAchiever(true); 
+    const payload = { type: 'achiever', judul: judulAchiever, periode: periodeAchiever, foto1, nama1, foto2, nama2, foto3, nama3 };
+
+    if (editAchieverId) {
+      await updateDoc(doc(db, 'agency_contests', editAchieverId), { ...payload, updatedAt: new Date().toISOString() });
+      alert("Top Achiever berhasil diperbarui!"); setEditAchieverId(null);
+    } else {
+      await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
+      alert("Top Achiever ditambahkan!"); 
+    }
+    setJudulAchiever('TOP LEADER'); setPeriodeAchiever(''); setFoto1(''); setNama1(''); setFoto2(''); setNama2(''); setFoto3(''); setNama3(''); 
+    fetchContestsAndAchievers(); setIsSubmittingAchiever(false); 
+  };
+
+  const handleEditAchiever = (item) => {
+    setEditAchieverId(item.id);
+    setJudulAchiever(item.judul || 'TOP LEADER');
+    setPeriodeAchiever(item.periode || '');
+    setFoto1(item.foto1 || ''); setNama1(item.nama1 || '');
+    setFoto2(item.foto2 || ''); setNama2(item.nama2 || '');
+    setFoto3(item.foto3 || ''); setNama3(item.nama3 || '');
+    window.scrollTo({ top: 400, behavior: 'smooth' });
+  };
+  
+  // --- SUBMIT & EDIT EVENT ---
+  const handleSaveEvent = async (e) => { 
+    e.preventDefault(); 
+    setIsSubmittingEvent(true); 
+    const payload = { judul: judulEvent, target: targetEvent, kategori: kategoriEvent, tanggal: tanggalEvent, waktu: waktuEvent, lokasi: lokasiEvent, linkZoom: linkZoomEvent, posterUrl: posterEvent };
+
+    if (editEventId) {
+      await updateDoc(doc(db, 'events', editEventId), { ...payload, updatedAt: new Date().toISOString() });
+      alert("Event berhasil diperbarui!"); setEditEventId(null);
+    } else {
+      await addDoc(collection(db, 'events'), { ...payload, createdAt: new Date().toISOString() });
+      alert("Event ditambah!"); 
+    }
+    setJudulEvent(''); setTanggalEvent(''); setWaktuEvent(''); setLokasiEvent(''); setLinkZoomEvent(''); setPosterEvent(''); setKategoriEvent('Agency'); setTargetEvent('Semua');
+    fetchEvents(); setIsSubmittingEvent(false); 
+  };
+
+  const handleEditEvent = (item) => {
+    setEditEventId(item.id);
+    setJudulEvent(item.judul || '');
+    setTargetEvent(item.target || 'Semua');
+    setKategoriEvent(item.kategori || 'Agency');
+    setTanggalEvent(item.tanggal || '');
+    setWaktuEvent(item.waktu || '');
+    setLokasiEvent(item.lokasi || '');
+    setLinkZoomEvent(item.linkZoom || '');
+    setPosterEvent(item.posterUrl || '');
+    window.scrollTo({ top: 800, behavior: 'smooth' });
+  };
+
+  // --- SUBMIT & EDIT DOKUMEN ---
+  const handleSaveDoc = async (e) => { 
+    e.preventDefault(); 
+    setIsSubmittingDoc(true); 
+    const payload = { judul: judulDoc, kategori: kategoriDoc, link: linkDoc };
+
+    if (editDocId) {
+      await updateDoc(doc(db, 'library_docs', editDocId), { ...payload, updatedAt: new Date().toISOString() });
+      alert("Dokumen berhasil diperbarui!"); setEditDocId(null);
+    } else {
+      await addDoc(collection(db, 'library_docs'), { ...payload, createdAt: new Date().toISOString() });
+      alert("Dokumen ditambah!"); 
+    }
+    setJudulDoc(''); setLinkDoc(''); setKategoriDoc('Selling');
+    fetchLibrary(); setIsSubmittingDoc(false); 
+  };
+
+  const handleEditDoc = (item) => {
+    setEditDocId(item.id);
+    setJudulDoc(item.judul || '');
+    setKategoriDoc(item.kategori || 'Selling');
+    setLinkDoc(item.link || '');
+    window.scrollTo({ top: 1200, behavior: 'smooth' });
+  };
+
+  // --- MODULES & QUIZZES ---
   const handleSaveModule = async (e) => { 
     e.preventDefault(); setIsSubmittingBab(true); 
     const materiArr = listMateri.split('\n').filter(i => i.trim() !== ''); 
     const videoArr = listVideo.split('\n').filter(i => i.trim() !== ''); 
-    
-    const payload = { 
-      sesi: parseInt(sesiBab), 
-      urutan: parseInt(urutanBab),
-      level: parseInt(sesiBab), // Kompatibilitas mundur
-      judul: judulBab, 
-      deskripsi: deskripsiBab, 
-      materi: materiArr, 
-      video: videoArr 
-    };
+    const payload = { sesi: parseInt(sesiBab), urutan: parseInt(urutanBab), level: parseInt(sesiBab), judul: judulBab, deskripsi: deskripsiBab, materi: materiArr, video: videoArr };
 
     if (editModuleId) {
       await updateDoc(doc(db, 'academy_modules', editModuleId), { ...payload, updatedAt: new Date().toISOString() });
@@ -152,7 +257,6 @@ export default function AdminDashboardPage() {
       await addDoc(collection(db, 'academy_modules'), { ...payload, createdAt: new Date().toISOString() });
       alert("Modul baru berhasil ditambah!");
     }
-
     setJudulBab(''); setDeskripsiBab(''); setListMateri(''); setListVideo(''); setSesiBab('1'); setUrutanBab('1');
     fetchModules(); setIsSubmittingBab(false); 
   };
@@ -161,12 +265,9 @@ export default function AdminDashboardPage() {
     setEditModuleId(modul.id);
     setSesiBab(modul.sesi?.toString() || modul.level?.toString() || '1');
     setUrutanBab(modul.urutan?.toString() || '1');
-    setJudulBab(modul.judul);
-    setDeskripsiBab(modul.deskripsi);
-    setListMateri(modul.materi ? modul.materi.join('\n') : '');
-    setListVideo(modul.video ? modul.video.join('\n') : '');
-    const el = document.getElementById("form-modul");
-    if(el) el.scrollIntoView({ behavior: "smooth" });
+    setJudulBab(modul.judul); setDeskripsiBab(modul.deskripsi);
+    setListMateri(modul.materi ? modul.materi.join('\n') : ''); setListVideo(modul.video ? modul.video.join('\n') : '');
+    const el = document.getElementById("form-modul"); if(el) el.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleAddQuiz = async (e) => { e.preventDefault(); setIsSubmittingKuis(true); await addDoc(collection(db, 'academy_quizzes'), { level: parseInt(kuisLevel), pertanyaan: kuisPertanyaan, pilihan: { A: kuisA, B: kuisB, C: kuisC, D: kuisD }, jawabanBenar: kuisJawabanBenar, createdAt: new Date().toISOString() }); alert(`Soal Kuis ditambah!`); setKuisPertanyaan(''); setKuisA(''); setKuisB(''); setKuisC(''); setKuisD(''); fetchQuizzes(); setIsSubmittingKuis(false); };
@@ -188,7 +289,7 @@ export default function AdminDashboardPage() {
         <p className="text-gray-300 text-sm mt-1">Kelola Seluruh Sistem Harvest: Contest, Event, Library, Academy, & Kuis.</p>
       </div>
 
-      {/* 1. APPROVAL USER DENGAN PAGINATION */}
+      {/* 1. APPROVAL USER */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm w-full overflow-hidden">
         <div className="p-4 sm:p-6 border-b border-gray-200"><h2 className="text-lg font-bold text-[#083344]">🔐 Persetujuan Agen Baru</h2></div>
         <div className="overflow-x-auto w-full">
@@ -206,7 +307,6 @@ export default function AdminDashboardPage() {
             </tbody>
           </table>
         </div>
-        {/* Tombol Pagination Users */}
         {totalPagesUsers > 1 && (
           <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50">
             <button onClick={() => setCurrentPageUsers(p => Math.max(p - 1, 1))} disabled={currentPageUsers === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">← Sebelumnya</button>
@@ -216,15 +316,23 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
-      {/* 2A, 2B, 3, 4 (CONTEST, ACHIEVER, EVENT, LIBRARY - Tetap sama) */}
+      {/* 2. AGENCY CONTEST (DENGAN FITUR EDIT) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
-          <h2 className="font-bold text-lg text-[#083344] mb-5">🎫 Input Agency Contest</h2>
-          <form onSubmit={handleAddContest} className="space-y-4">
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="font-bold text-lg text-[#083344]">🎫 {editContestId ? 'Edit Contest' : 'Input Agency Contest'}</h2>
+            {editContestId && <button onClick={() => { setEditContestId(null); setJudulContest(''); setDeskripsiContest(''); setPosterContest(''); }} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
+          </div>
+          <form onSubmit={handleSaveContest} className="space-y-4">
             <div><label className="block text-xs font-bold text-gray-700 mb-1">Nama Contest</label><input type="text" required value={judulContest} onChange={(e) => setJudulContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
             <div><label className="block text-xs font-bold text-gray-700 mb-1">Deskripsi Singkat</label><textarea required value={deskripsiContest} onChange={(e) => setDeskripsiContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 h-24"></textarea></div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="block text-xs font-bold text-gray-700 mb-1">Kategori</label><select value={kategoriContest} onChange={(e) => setKategoriContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50"><option value="Agency">Agency</option><option value="Prudential">Prudential</option></select></div>
+              <div><label className="block text-xs font-bold text-gray-700 mb-1">Target</label><select value={targetContest} onChange={(e) => setTargetContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50"><option value="Semua">Semua</option><option value="Agent">Agent</option><option value="Leader">Leader</option></select></div>
+            </div>
+            <div><label className="block text-xs font-bold text-gray-700 mb-1">Periode</label><input type="text" value={periodeContest} onChange={(e) => setPeriodeContest(e.target.value)} placeholder="Misal: 1 - 31 Juli 2026" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
             <div><label className="block text-xs font-bold text-gray-700 mb-1">Link Gambar Poster</label><input type="url" required value={posterContest} onChange={(e) => setPosterContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
-            <button type="submit" disabled={isSubmittingContest} className="w-full bg-[#A8C338] text-[#083344] font-bold py-2.5 rounded-lg text-sm transition">{isSubmittingContest ? 'Menyimpan...' : 'Publish Contest'}</button>
+            <button type="submit" disabled={isSubmittingContest} className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${editContestId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'}`}>{isSubmittingContest ? 'Menyimpan...' : (editContestId ? 'Simpan Perubahan Contest' : 'Publish Contest')}</button>
           </form>
         </div>
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
@@ -235,8 +343,11 @@ export default function AdminDashboardPage() {
                <tbody>
                  {contestsList.map(item => (
                    <tr key={item.id} className="border-b hover:bg-gray-50">
-                     <td className="py-4 px-4 font-bold text-[#083344]">{item.judul}</td>
-                     <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
+                     <td className="py-4 px-4 font-bold text-[#083344]">{item.judul}<div className="text-[10px] font-normal text-gray-500 mt-1 flex flex-wrap gap-2"><span className="bg-gray-100 px-2 py-0.5 rounded">Kat: {item.kategori || 'Agency'}</span><span className="bg-gray-100 px-2 py-0.5 rounded">Trg: {item.target || 'Semua'}</span><span className="bg-gray-100 px-2 py-0.5 rounded">Per: {item.periode || '-'}</span></div></td>
+                     <td className="py-4 px-4 text-center whitespace-nowrap">
+                       <button onClick={() => handleEditContest(item)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                       <button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
+                     </td>
                    </tr>
                  ))}
                </tbody>
@@ -245,35 +356,57 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* 3. TOP ACHIEVER (DENGAN FITUR EDIT & NAMA PEMENANG) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
-          <h2 className="font-bold text-lg text-[#083344] mb-5">🏆 Input Top Achiever</h2>
-          <form onSubmit={handleAddAchiever} className="space-y-4">
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="font-bold text-lg text-[#083344]">🏆 {editAchieverId ? 'Edit Top Achiever' : 'Input Top Achiever'}</h2>
+            {editAchieverId && <button onClick={() => { setEditAchieverId(null); setPeriodeAchiever(''); setFoto1(''); setNama1(''); setFoto2(''); setNama2(''); setFoto3(''); setNama3(''); }} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
+          </div>
+          <form onSubmit={handleSaveAchiever} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">Kategori Achiever</label>
               <select value={judulAchiever} onChange={(e) => setJudulAchiever(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold">
                 <option value="TOP LEADER">TOP LEADER</option><option value="TOP PRODUCER">TOP PRODUCER</option><option value="TOP RECRUITER">TOP RECRUITER</option>
+                <option value="TOP AGENCY BUILDER">TOP AGENCY BUILDER</option><option value="TOP ASSOCIATE AGENCY BUILDER">TOP ASSOCIATE AGENCY BUILDER</option>
               </select>
             </div>
-            <div><label className="block text-xs font-bold text-gray-700 mb-1">Periode</label><input type="text" required value={periodeAchiever} onChange={(e) => setPeriodeAchiever(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
-            <div className="space-y-2 pt-2 border-t border-gray-100">
-              <label className="block text-xs font-bold text-[#A8C338]">🥇 Foto Juara 1 (Tengah)</label><input type="url" required value={foto1} onChange={(e) => setFoto1(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
-              <label className="block text-xs font-bold text-gray-500 mt-2">🥈 Foto Juara 2 (Kiri)</label><input type="url" required value={foto2} onChange={(e) => setFoto2(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
-              <label className="block text-xs font-bold text-gray-500 mt-2">🥉 Foto Juara 3 (Kanan)</label><input type="url" required value={foto3} onChange={(e) => setFoto3(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            <div><label className="block text-xs font-bold text-gray-700 mb-1">Periode (Misal: MARET 2026)</label><input type="text" required value={periodeAchiever} onChange={(e) => setPeriodeAchiever(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 uppercase" /></div>
+            
+            <div className="space-y-3 pt-2 border-t border-gray-100">
+              <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100">
+                <label className="block text-xs font-bold text-yellow-700">🥇 Juara 1 (Tengah)</label>
+                <input type="text" required placeholder="Nama Lengkap" value={nama1} onChange={(e) => setNama1(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+                <input type="url" required placeholder="URL Foto" value={foto1} onChange={(e) => setFoto1(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+              </div>
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+                <label className="block text-xs font-bold text-gray-600">🥈 Juara 2 (Kiri)</label>
+                <input type="text" placeholder="Nama Lengkap" value={nama2} onChange={(e) => setNama2(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+                <input type="url" placeholder="URL Foto" value={foto2} onChange={(e) => setFoto2(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+              </div>
+              <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
+                <label className="block text-xs font-bold text-orange-700">🥉 Juara 3 (Kanan)</label>
+                <input type="text" placeholder="Nama Lengkap" value={nama3} onChange={(e) => setNama3(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+                <input type="url" placeholder="URL Foto" value={foto3} onChange={(e) => setFoto3(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+              </div>
             </div>
-            <button type="submit" disabled={isSubmittingAchiever} className="w-full bg-[#083344] text-white font-bold py-2.5 rounded-lg text-sm mt-4 transition">{isSubmittingAchiever ? 'Menyimpan...' : 'Publish Podium'}</button>
+            <button type="submit" disabled={isSubmittingAchiever} className={`w-full font-bold py-2.5 rounded-lg text-sm mt-4 transition ${editAchieverId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'}`}>{isSubmittingAchiever ? 'Menyimpan...' : (editAchieverId ? 'Simpan Perubahan Podium' : 'Publish Podium')}</button>
           </form>
         </div>
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
           <h2 className="font-bold text-lg text-[#083344] mb-5">🏅 Daftar Top Achiever</h2>
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-sm border-collapse min-w-[400px]">
-               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">KATEGORI</th><th className="py-3 px-4 font-bold">PERIODE</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
+               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">KATEGORI & PERIODE</th><th className="py-3 px-4 font-bold">PEMENANG (J1)</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
                <tbody>
                  {achieversList.map(item => (
                    <tr key={item.id} className="border-b hover:bg-gray-50">
-                     <td className="py-4 px-4 font-black text-[#083344]">{item.judul}</td><td className="py-4 px-4 text-gray-600">{item.periode}</td>
-                     <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
+                     <td className="py-4 px-4"><p className="font-black text-[#083344]">{item.judul}</p><p className="text-xs text-gray-600">{item.periode}</p></td>
+                     <td className="py-4 px-4 text-sm font-bold text-gray-700">{item.nama1 || 'Tanpa Nama'}</td>
+                     <td className="py-4 px-4 text-center whitespace-nowrap">
+                       <button onClick={() => handleEditAchiever(item)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                       <button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
+                     </td>
                    </tr>
                  ))}
                </tbody>
@@ -282,19 +415,26 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* 4. EVENT / TRAINING (DENGAN FITUR EDIT) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden h-fit">
-          <h2 className="font-bold text-lg text-[#083344] mb-5">➕ Tambah Event / Training</h2>
-          <form onSubmit={handleAddEvent} className="space-y-4">
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="font-bold text-lg text-[#083344]">➕ {editEventId ? 'Edit Event' : 'Tambah Event / Training'}</h2>
+            {editEventId && <button onClick={() => { setEditEventId(null); setJudulEvent(''); setTanggalEvent(''); setWaktuEvent(''); setLokasiEvent(''); setLinkZoomEvent(''); setPosterEvent(''); }} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
+          </div>
+          <form onSubmit={handleSaveEvent} className="space-y-4">
             <div><label className="block text-xs font-bold mb-1">Judul Kegiatan</label><input type="text" value={judulEvent} onChange={(e) => setJudulEvent(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
-            <div><label className="block text-xs font-bold mb-1">Target Peserta</label><input type="text" value={targetEvent} onChange={(e) => setTargetEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="block text-xs font-bold mb-1">Kategori</label><select value={kategoriEvent} onChange={(e) => setKategoriEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50"><option value="Agency">Agency</option><option value="Prudential">Prudential</option></select></div>
+              <div><label className="block text-xs font-bold mb-1">Target Peserta</label><select value={targetEvent} onChange={(e) => setTargetEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50"><option value="Semua">Semua</option><option value="Agent">Agent</option><option value="Leader">Leader</option></select></div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="block text-xs font-bold mb-1">Tanggal</label><input type="date" value={tanggalEvent} onChange={(e) => setTanggalEvent(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
               <div><label className="block text-xs font-bold mb-1">Waktu</label><input type="time" value={waktuEvent} onChange={(e) => setWaktuEvent(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
             </div>
             <div><label className="block text-xs font-bold mb-1">Lokasi / Link Zoom</label><input type="text" value={linkZoomEvent} onChange={(e) => setLinkZoomEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
             <div><label className="block text-xs font-bold mb-1">Poster URL (Opsional)</label><input type="url" value={posterEvent} onChange={(e) => setPosterEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
-            <button type="submit" disabled={isSubmittingEvent} className="w-full bg-[#A8C338] text-[#083344] font-bold py-2.5 rounded-lg text-sm">{isSubmittingEvent ? 'Menyimpan...' : 'Publish Event'}</button>
+            <button type="submit" disabled={isSubmittingEvent} className={`w-full font-bold py-2.5 rounded-lg text-sm ${editEventId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'}`}>{isSubmittingEvent ? 'Menyimpan...' : (editEventId ? 'Simpan Perubahan Event' : 'Publish Event')}</button>
           </form>
         </div>
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
@@ -305,8 +445,18 @@ export default function AdminDashboardPage() {
                <tbody>
                  {eventsList.map((event) => (
                    <tr key={event.id} className="border-b hover:bg-gray-50">
-                     <td className="py-4 px-4"><p className="font-bold text-[#083344]">{event.judul}</p><p className="text-xs text-gray-500">{event.tanggal} | {event.waktu}</p></td>
-                     <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteEvent(event.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
+                     <td className="py-4 px-4">
+                       <p className="font-bold text-[#083344]">{event.judul}</p>
+                       <p className="text-xs text-gray-500">{event.tanggal} | {event.waktu}</p>
+                       <div className="text-[10px] font-normal text-gray-500 mt-1 flex flex-wrap gap-2">
+                         <span className="bg-gray-100 px-2 py-0.5 rounded">Kat: {event.kategori || 'Agency'}</span>
+                         <span className="bg-gray-100 px-2 py-0.5 rounded">Trg: {event.target || 'Semua'}</span>
+                       </div>
+                     </td>
+                     <td className="py-4 px-4 text-center whitespace-nowrap">
+                       <button onClick={() => handleEditEvent(event)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                       <button onClick={() => handleDeleteEvent(event.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
+                     </td>
                    </tr>
                  ))}
                </tbody>
@@ -315,10 +465,14 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* 5. TAMBAH DOKUMEN / LIBRARY (DENGAN FITUR EDIT) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden h-fit">
-          <h2 className="font-bold text-lg text-[#083344] mb-5">📁 Tambah Dokumen</h2>
-          <form onSubmit={handleAddDoc} className="space-y-4">
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="font-bold text-lg text-[#083344]">📁 {editDocId ? 'Edit Dokumen' : 'Tambah Dokumen'}</h2>
+            {editDocId && <button onClick={() => { setEditDocId(null); setJudulDoc(''); setLinkDoc(''); }} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
+          </div>
+          <form onSubmit={handleSaveDoc} className="space-y-4">
             <div><label className="block text-xs font-bold mb-1">Judul Dokumen</label><input type="text" value={judulDoc} onChange={(e) => setJudulDoc(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
             <div>
               <label className="block text-xs font-bold mb-1">Kategori</label>
@@ -327,7 +481,7 @@ export default function AdminDashboardPage() {
               </select>
             </div>
             <div><label className="block text-xs font-bold mb-1">Link Akses</label><input type="url" value={linkDoc} onChange={(e) => setLinkDoc(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
-            <button type="submit" disabled={isSubmittingDoc} className="w-full bg-[#083344] text-white font-bold py-2.5 rounded-lg text-sm">{isSubmittingDoc ? 'Menyimpan...' : 'Publish Dokumen'}</button>
+            <button type="submit" disabled={isSubmittingDoc} className={`w-full font-bold py-2.5 rounded-lg text-sm ${editDocId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'}`}>{isSubmittingDoc ? 'Menyimpan...' : (editDocId ? 'Simpan Perubahan Dokumen' : 'Publish Dokumen')}</button>
           </form>
         </div>
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
@@ -340,7 +494,10 @@ export default function AdminDashboardPage() {
                    <tr key={docItem.id} className="border-b hover:bg-gray-50">
                      <td className="py-4 px-4 font-bold text-[#083344]">{docItem.judul}</td>
                      <td className="py-4 px-4"><span className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs font-bold uppercase">{docItem.kategori}</span></td>
-                     <td className="py-4 px-4 text-center"><button onClick={() => handleDeleteDoc(docItem.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
+                     <td className="py-4 px-4 text-center whitespace-nowrap">
+                       <button onClick={() => handleEditDoc(docItem)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                       <button onClick={() => handleDeleteDoc(docItem.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
+                     </td>
                    </tr>
                  ))}
                </tbody>
@@ -349,7 +506,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 5. LEARNING PATH (ACADEMY MODUL) DENGAN SISTEM TERBARU */}
+      {/* 6. LEARNING PATH (ACADEMY MODUL) */}
       <div id="form-modul" className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 w-full overflow-hidden">
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-bold text-xl text-[#083344]">🎓 {editModuleId ? 'Edit Modul Pembelajaran' : 'Manajemen Learning Path'}</h2>
@@ -362,9 +519,7 @@ export default function AdminDashboardPage() {
               <div>
                 <label className="text-xs font-bold text-blue-900">Sesi Great Start</label>
                 <select required value={sesiBab} onChange={(e) => setSesiBab(e.target.value)} className="w-full mt-1 px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white font-bold">
-                  <option value="1">Great Start 1</option>
-                  <option value="2">Great Start 2</option>
-                  <option value="3">Great Start 3</option>
+                  <option value="1">Great Start 1</option><option value="2">Great Start 2</option><option value="3">Great Start 3</option>
                 </select>
               </div>
               <div>
@@ -409,7 +564,6 @@ export default function AdminDashboardPage() {
                </tbody>
             </table>
           </div>
-          {/* Tombol Pagination Modul (Next/Sebelum) */}
           {totalPagesMods > 1 && (
             <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 mt-4 rounded-b-xl">
               <button onClick={() => setCurrentPageMods(p => Math.max(p - 1, 1))} disabled={currentPageMods === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">← Sebelumnya</button>
@@ -420,7 +574,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 6. BANK SOAL (KUIS) */}
+      {/* 7. BANK SOAL (KUIS) */}
       <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 w-full overflow-hidden">
         <h2 className="font-bold text-xl text-[#083344] mb-6">📝 Manajemen Bank Soal (Kuis)</h2>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -431,7 +585,7 @@ export default function AdminDashboardPage() {
               <div><label className="text-xs font-bold">Pertanyaan</label><textarea value={kuisPertanyaan} onChange={(e) => setKuisPertanyaan(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-white h-20"></textarea></div>
               <div className="space-y-2">
                 <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">A</span><input type="text" value={kuisA} onChange={(e) => setKuisA(e.target.value)} className="w-full px-2 py-1 border text-xs" /></div>
-                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">B</span><input type="text" value={kuisB} onChange={(e) => setKuisB(e.target.value)} className="w-full px-2 py-1 border text-xs" /></div>
+                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">B</span><input type="text" value={kuisB} onChange={(e) => setKuisB(e.target.value)} className="w-full px-2 py-2 border text-xs" /></div>
                 <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">C</span><input type="text" value={kuisC} onChange={(e) => setKuisC(e.target.value)} className="w-full px-2 py-1 border text-xs" /></div>
                 <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">D</span><input type="text" value={kuisD} onChange={(e) => setKuisD(e.target.value)} className="w-full px-2 py-1 border text-xs" /></div>
               </div>

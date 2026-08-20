@@ -127,7 +127,7 @@ export default function HomePage() {
 
       <div className="max-w-[1400px] mx-auto px-4 mt-8">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
-          {[{url: '/', icon: '🏠', title: 'Home', desc: 'Kembali ke beranda'}, {url: '/daily-activity', icon: '📝', title: 'Activity', desc: 'Isi form harian'}, {url: '/academy', icon: '🎓', title: 'Academy', desc: 'Modul belajar'}, {url: '/events', icon: '🗓️', title: 'Events', desc: 'Jadwal Training & Events Yang akan Datang'}, {url: '/contest', icon: '🏆', title: 'Contest', desc: 'Lihat kontes'}].map(menu => (
+          {[{url: '/', icon: '🏠', title: 'Home', desc: 'Kembali ke beranda'}, {url: '/daily-activity', icon: '📝', title: 'Activity', desc: 'Isi form harian'}, {url: '/academy', icon: '🎓', title: 'Academy', desc: 'Modul belajar & Bank File'}, {url: '/events', icon: '🗓️', title: 'Events', desc: 'Jadwal Training & Events'}, {url: '/contest', icon: '🏆', title: 'Contest', desc: 'Lihat kontes'}].map(menu => (
             <Link key={menu.url} href={menu.url} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 text-center hover:-translate-y-1 hover:shadow-md hover:border-[#A8C338] transition-all duration-300 group">
               <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">{menu.icon}</div><h3 className="font-bold text-[#083344] text-sm md:text-base">{menu.title}</h3><p className="text-[10px] text-gray-400 mt-1">{menu.desc}</p>
             </Link>

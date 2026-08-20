@@ -90,7 +90,7 @@ export default function HomePage() {
             <img src="/harvest-logo.png" alt="Harvest Agency Logo" className="h-20 md:h-28 object-contain mb-8" onError={(e) => { e.target.style.display = 'none'; }} />
             <h1 className="text-4xl md:text-6xl font-black mb-6">Welcome To Harvest Agency</h1>
             <p className="text-gray-300 text-sm md:text-base mb-10 max-w-2xl mx-auto leading-relaxed border-t border-white/20 pt-6">Sistem terintegrasi untuk mencetak agen asuransi profesional, memantau aktivitas harian, dan merayakan pencapaian luar biasa.</p>
-            <Link href="/login" className="inline-block bg-[#A8C338] text-[#083344] font-bold px-8 py-3.5 rounded-full hover:bg-white transition-all shadow-lg">Mulai Learning Path</Link>
+            <Link href="/login" className="inline-block bg-[#A8C338] text-[#083344] font-bold px-8 py-3.5 rounded-full hover:bg-white transition-all shadow-lg">Mulai Harvest Academy</Link>
           </div>
         </div>
         <div className="max-w-5xl mx-auto px-4 py-16">

@@ -183,16 +183,27 @@ export default function AcademyPage() {
               return (
                 <div key={modul.id} id={`modul-${modul.globalLevel}`} className={`rounded-3xl border transition-all duration-300 scroll-mt-28 overflow-hidden ${isUnlocked ? 'bg-white border-gray-200 shadow-md' : 'bg-gray-50 border-gray-100 opacity-70 grayscale'}`}>
                   
+                  {/* ====== BAGIAN JUDUL DENGAN BACKGROUND PILL DAN FONT BESAR ====== */}
                   <div className="p-6 md:p-8 border-b border-gray-100">
-                    <div className="flex items-center gap-3">
-                      <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${isUnlocked ? 'bg-[#A8C338] text-[#083344]' : 'bg-gray-300 text-gray-600'}`}>
+                    <div className="flex flex-col md:flex-row items-start md:items-center gap-5">
+                      {/* Badge / Pill Great Start (Diperbesar) */}
+                      <span className={`px-6 py-2.5 rounded-full text-2xl md:text-4xl font-black uppercase tracking-widest shadow-sm ${isUnlocked ? 'bg-[#A8C338] text-[#083344]' : 'bg-gray-300 text-gray-600'}`}>
                         Great Start {modul.sesi}
                       </span>
-                      <h2 className="text-2xl font-black text-[#083344] flex-1">{modul.judul}</h2>
-                      {!isUnlocked && <span className="text-2xl">🔒</span>}
-                      {isCompleted && <span className="text-2xl">✅</span>}
+                      
+                      {/* Judul Sesi */}
+                      <h2 className={`text-xl md:text-2xl font-black flex-1 mt-2 md:mt-0 ${isUnlocked ? 'text-[#083344]' : 'text-gray-500'}`}>
+                        {modul.judul}
+                      </h2>
+                      
+                      {/* Ikon Status */}
+                      <div className="flex items-center gap-2">
+                        {!isUnlocked && <span className="text-3xl md:text-4xl flex-shrink-0">🔒</span>}
+                        {isCompleted && <span className="text-3xl md:text-4xl flex-shrink-0">✅</span>}
+                      </div>
                     </div>
-                    <p className="text-gray-500 mt-4 text-sm leading-relaxed max-w-3xl">{modul.deskripsi}</p>
+                    
+                    <p className="text-gray-500 mt-6 text-sm leading-relaxed max-w-3xl">{modul.deskripsi}</p>
                   </div>
 
                   {isUnlocked ? (
@@ -224,7 +235,6 @@ export default function AcademyPage() {
                                   <div key={idx} className="space-y-3 bg-white border border-gray-100 p-4 rounded-3xl shadow-sm">
                                     {judulVid && <p className="text-sm font-black text-[#083344] px-2">{judulVid}</p>}
                                     <div className="bg-black rounded-2xl overflow-hidden aspect-video shadow-md border border-gray-200">
-                                      {/* SOLUSI ERROR GAMBAR 1: Tampilkan teks jika bukan link valid */}
                                       {embedLink ? (
                                         <iframe src={embedLink} className="w-full h-full border-0" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
                                       ) : (

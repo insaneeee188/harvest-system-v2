@@ -40,7 +40,6 @@ export default function HomePage() {
   }, []);
 
   const fetchEventsAndAchievers = async () => {
-    // 1. Fetch Events
     const snapEvent = await getDocs(collection(db, 'events'));
     const allEvents = snapEvent.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     const today = new Date();
@@ -48,7 +47,6 @@ export default function HomePage() {
     const upcoming = allEvents.filter(ev => ev.tanggal >= todayStr).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
     setEventsList(upcoming);
 
-    // 2. Fetch Achievers
     const snapContest = await getDocs(collection(db, 'agency_contests'));
     const allContests = snapContest.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     const achieversData = allContests.filter(i => i.type === 'achiever');
@@ -100,7 +98,6 @@ export default function HomePage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-white font-sans">
-        {/* Hero Section dengan Logo */}
         <div className="bg-[#083344] text-white py-20 px-4 rounded-b-[3rem] shadow-xl text-center">
           <div className="max-w-4xl mx-auto flex flex-col items-center">
            <img src="/harvest-logo.png" alt="Harvest Agency Logo" className="h-30 md:h-40 object-contain mb-8" onError={(e) => { e.target.style.display = 'none'; }} />
@@ -114,7 +111,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Profil Agency & Visi Misi untuk Guest */}
         <div className="max-w-[1200px] mx-auto px-4 py-20">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-black text-[#083344] mb-3">Profil Agency</h2>
@@ -122,7 +118,6 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Visi */}
             <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
               <div className="text-4xl mb-4">🔭</div>
               <h3 className="text-2xl font-black text-[#083344] mb-4">Visi Kami</h3>
@@ -130,8 +125,6 @@ export default function HomePage() {
                 Menjadi agensi asuransi terdepan dan terpercaya di Indonesia yang melahirkan para profesional berdedikasi tinggi, berintegritas, dan mampu memberikan solusi perlindungan finansial terbaik bagi setiap keluarga.
               </p>
             </div>
-
-            {/* Misi */}
             <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl shadow-sm hover:shadow-md transition-shadow">
               <div className="text-4xl mb-4">🎯</div>
               <h3 className="text-2xl font-black text-[#083344] mb-4">Misi Kami</h3>
@@ -144,7 +137,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Footer Sederhana */}
         <footer className="bg-[#083344] text-white py-6 text-center text-xs text-gray-400">
           <p className="font-bold text-[#A8C338] mb-1">HARVEST AGENCY</p>
           <p>© 2026 Harvest Agency. All Rights Reserved.</p>
@@ -157,7 +149,6 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans">
       
-      {/* Banner Sapaan */}
       <div className="max-w-[1400px] mx-auto px-4 pt-8">
         <div className="bg-[#083344] rounded-3xl p-8 md:p-12 text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
           <div className="z-10">
@@ -168,7 +159,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Menu Shortcut */}
       <div className="max-w-[1400px] mx-auto px-4 mt-8">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
           {[{url: '/', icon: '🏠', title: 'Home', desc: 'Kembali ke beranda'}, {url: '/daily-activity', icon: '📝', title: 'Activity', desc: 'Isi form harian'}, {url: '/academy', icon: '🎓', title: 'Academy', desc: 'Modul belajar & Bank File'}, {url: '/events', icon: '🗓️', title: 'Events', desc: 'Jadwal Training & Events'}, {url: '/contest', icon: '🏆', title: 'Contest', desc: 'Lihat kontes'}].map(menu => (
@@ -179,13 +169,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Bagian Profil Agency & Visi Misi (Untuk User yang Telah Login) */}
-
-      {/* Bagian Events & Kalender Kegiatan */}
       <div className="max-w-[1400px] mx-auto px-4 mt-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          
-          {/* KIRI: GRID EVENT */}
           <div className="lg:col-span-2 bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3 mb-6">
               <span className="text-2xl">🚀</span><h2 className="text-xl md:text-2xl font-black text-[#083344]">Training & Kegiatan Mendatang</h2>
@@ -225,7 +210,6 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* KANAN: KALENDER PINTAR */}
           <div className="lg:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
               <h3 className="font-black text-[#083344] flex items-center gap-2">📅 Kalender Kegiatan</h3>
@@ -253,7 +237,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* BAGIAN PODIUM TOP ACHIEVER */}
       {achieversList.length > 0 && (
         <div className="max-w-[1400px] mx-auto px-4 mt-20 mb-10">
           <div className="flex items-center justify-between relative bg-white/50 py-12 px-4 rounded-[3rem] shadow-sm border border-white/60 backdrop-blur-sm">
@@ -270,31 +253,43 @@ export default function HomePage() {
 
               <div className="flex items-end justify-center gap-4 md:gap-10">
                 
+                {/* --- JUARA 2 (KIRI) --- */}
                 {(achieversList[currentAchieverIndex].foto2 || achieversList[currentAchieverIndex].nama2) && (
                   <div className="flex flex-col items-center pb-4 md:pb-8">
                     <div className="relative w-24 h-24 md:w-40 md:h-40 rounded-full border-[5px] border-[#93c5fd] shadow-lg mb-4 bg-gray-100">
                       <img src={achieversList[currentAchieverIndex].foto2 || 'https://via.placeholder.com/150'} alt="Juara 2" className="w-full h-full object-cover rounded-full" />
                       <div className="absolute -bottom-2 -right-2 bg-red-500 text-white font-black w-8 h-8 md:w-10 md:h-10 flex items-center justify-center border-[3px] border-white shadow-md rounded-sm" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%)' }}>2</div>
                     </div>
-                    <p className="font-black text-xs md:text-lg text-center uppercase leading-tight w-24 md:w-40 break-words text-[#083344]">{achieversList[currentAchieverIndex].nama2}</p>
+                    {/* WADAH TEKS FIX-HEIGHT (Agar podium tidak naik turun) */}
+                    <div className="min-h-[3rem] md:min-h-[4rem] flex items-start justify-center">
+                      <p className="font-black text-xs md:text-lg text-center uppercase leading-tight w-24 md:w-40 break-words text-[#083344]">{achieversList[currentAchieverIndex].nama2}</p>
+                    </div>
                   </div>
                 )}
 
+                {/* --- JUARA 1 (TENGAH) --- */}
                 <div className="flex flex-col items-center">
                   <div className="relative w-32 h-32 md:w-56 md:h-56 rounded-full border-[6px] border-[#bfdbfe] shadow-2xl mb-4 z-10 bg-gray-100">
                     <img src={achieversList[currentAchieverIndex].foto1 || 'https://via.placeholder.com/200'} alt="Juara 1" className="w-full h-full object-cover rounded-full" />
                     <div className="absolute -bottom-3 -right-2 bg-red-500 text-yellow-300 font-black text-lg md:text-xl w-10 h-10 md:w-14 md:h-14 flex items-center justify-center border-[4px] border-white shadow-md rounded-sm" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%)' }}>1</div>
                   </div>
-                  <p className="font-black text-sm md:text-2xl text-center uppercase leading-tight w-32 md:w-56 break-words text-[#083344]">{achieversList[currentAchieverIndex].nama1}</p>
+                  {/* WADAH TEKS FIX-HEIGHT */}
+                  <div className="min-h-[3rem] md:min-h-[4rem] flex items-start justify-center">
+                    <p className="font-black text-sm md:text-2xl text-center uppercase leading-tight w-32 md:w-56 break-words text-[#083344]">{achieversList[currentAchieverIndex].nama1}</p>
+                  </div>
                 </div>
 
+                {/* --- JUARA 3 (KANAN) --- */}
                 {(achieversList[currentAchieverIndex].foto3 || achieversList[currentAchieverIndex].nama3) && (
                   <div className="flex flex-col items-center pb-4 md:pb-8">
                     <div className="relative w-24 h-24 md:w-40 md:h-40 rounded-full border-[5px] border-[#93c5fd] shadow-lg mb-4 bg-gray-100">
                       <img src={achieversList[currentAchieverIndex].foto3 || 'https://via.placeholder.com/150'} alt="Juara 3" className="w-full h-full object-cover rounded-full" />
                       <div className="absolute -bottom-2 -right-2 bg-red-500 text-white font-black w-8 h-8 md:w-10 md:h-10 flex items-center justify-center border-[3px] border-white shadow-md rounded-sm" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%)' }}>3</div>
                     </div>
-                    <p className="font-black text-xs md:text-lg text-center uppercase leading-tight w-24 md:w-40 break-words text-[#083344]">{achieversList[currentAchieverIndex].nama3}</p>
+                    {/* WADAH TEKS FIX-HEIGHT */}
+                    <div className="min-h-[3rem] md:min-h-[4rem] flex items-start justify-center">
+                      <p className="font-black text-xs md:text-lg text-center uppercase leading-tight w-24 md:w-40 break-words text-[#083344]">{achieversList[currentAchieverIndex].nama3}</p>
+                    </div>
                   </div>
                 )}
                 
@@ -309,7 +304,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* POP-UP MODAL (EVENT) */}
       {isModalOpen && selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#083344]/80 backdrop-blur-sm animate-fade-in">
           <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh]">

@@ -75,8 +75,8 @@ export default function AdminDashboardPage() {
   const totalPagesMods = Math.ceil(modulesList.length / modsPerPage);
 
   const [editModuleId, setEditModuleId] = useState(null);
-  const [sesiBab, setSesiBab] = useState('1'); 
-  const [urutanBab, setUrutanBab] = useState('1'); 
+  const [sesiBab, setSesiBab] = useState(''); 
+  const [urutanBab, setUrutanBab] = useState(''); 
   const [judulBab, setJudulBab] = useState('');
   const [deskripsiBab, setDeskripsiBab] = useState('');
   const [listMateri, setListMateri] = useState('');
@@ -84,7 +84,7 @@ export default function AdminDashboardPage() {
   const [isSubmittingBab, setIsSubmittingBab] = useState(false);
 
   const [quizzesList, setQuizzesList] = useState([]);
-  const [kuisLevel, setKuisLevel] = useState('1');
+  const [kuisLevel, setKuisLevel] = useState('');
   const [kuisPertanyaan, setKuisPertanyaan] = useState('');
   const [kuisA, setKuisA] = useState('');
   const [kuisB, setKuisB] = useState('');
@@ -248,7 +248,7 @@ export default function AdminDashboardPage() {
     e.preventDefault(); setIsSubmittingBab(true); 
     const materiArr = listMateri.split('\n').filter(i => i.trim() !== ''); 
     const videoArr = listVideo.split('\n').filter(i => i.trim() !== ''); 
-    const payload = { sesi: parseInt(sesiBab), urutan: parseInt(urutanBab), level: parseInt(sesiBab), judul: judulBab, deskripsi: deskripsiBab, materi: materiArr, video: videoArr };
+    const payload = { sesi: parseInt(sesiBab) || 1, urutan: parseInt(urutanBab) || 1, level: parseInt(sesiBab) || 1, judul: judulBab, deskripsi: deskripsiBab, materi: materiArr, video: videoArr };
 
     if (editModuleId) {
       await updateDoc(doc(db, 'academy_modules', editModuleId), { ...payload, updatedAt: new Date().toISOString() });
@@ -257,15 +257,15 @@ export default function AdminDashboardPage() {
       await addDoc(collection(db, 'academy_modules'), { ...payload, createdAt: new Date().toISOString() });
       alert("Modul baru berhasil ditambah!");
     }
-    setJudulBab(''); setDeskripsiBab(''); setListMateri(''); setListVideo(''); setSesiBab('1'); setUrutanBab('1');
+    setJudulBab(''); setDeskripsiBab(''); setListMateri(''); setListVideo(''); setSesiBab(''); setUrutanBab('');
     fetchModules(); setIsSubmittingBab(false); 
   };
 
   const handleEditModule = (modul) => {
     setEditModuleId(modul.id);
-    setSesiBab(modul.sesi?.toString() || modul.level?.toString() || '1');
-    setUrutanBab(modul.urutan?.toString() || '1');
-    setJudulBab(modul.judul); setDeskripsiBab(modul.deskripsi);
+    setSesiBab(modul.sesi?.toString() || modul.level?.toString() || '');
+    setUrutanBab(modul.urutan?.toString() || '');
+    setJudulBab(modul.judul || ''); setDeskripsiBab(modul.deskripsi || '');
     setListMateri(modul.materi ? modul.materi.join('\n') : ''); setListVideo(modul.video ? modul.video.join('\n') : '');
     const el = document.getElementById("form-modul"); if(el) el.scrollIntoView({ behavior: "smooth" });
   };
@@ -324,14 +324,26 @@ export default function AdminDashboardPage() {
             {editContestId && <button onClick={() => { setEditContestId(null); setJudulContest(''); setDeskripsiContest(''); setPosterContest(''); }} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
           </div>
           <form onSubmit={handleSaveContest} className="space-y-4">
-            <div><label className="block text-xs font-bold text-gray-700 mb-1">Nama Contest</label><input type="text" required value={judulContest} onChange={(e) => setJudulContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
-            <div><label className="block text-xs font-bold text-gray-700 mb-1">Deskripsi Singkat</label><textarea required value={deskripsiContest} onChange={(e) => setDeskripsiContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 h-24"></textarea></div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Nama Contest</label>
+              <input type="text" required value={judulContest} onChange={(e) => setJudulContest(e.target.value)} placeholder="Contoh: Contest Agent Of The Month" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Deskripsi Singkat</label>
+              <textarea required value={deskripsiContest} onChange={(e) => setDeskripsiContest(e.target.value)} placeholder="Masukkan deskripsi atau rincian kontes di sini..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 h-24"></textarea>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <div><label className="block text-xs font-bold text-gray-700 mb-1">Kategori</label><select value={kategoriContest} onChange={(e) => setKategoriContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50"><option value="Agency">Agency</option><option value="Prudential">Prudential</option></select></div>
               <div><label className="block text-xs font-bold text-gray-700 mb-1">Target</label><select value={targetContest} onChange={(e) => setTargetContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50"><option value="Semua">Semua</option><option value="Agent">Agent</option><option value="Leader">Leader</option></select></div>
             </div>
-            <div><label className="block text-xs font-bold text-gray-700 mb-1">Periode</label><input type="text" value={periodeContest} onChange={(e) => setPeriodeContest(e.target.value)} placeholder="Misal: 1 - 31 Juli 2026" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
-            <div><label className="block text-xs font-bold text-gray-700 mb-1">Link Gambar Poster</label><input type="url" required value={posterContest} onChange={(e) => setPosterContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Periode</label>
+              <input type="text" value={periodeContest} onChange={(e) => setPeriodeContest(e.target.value)} placeholder="Contoh: 1 - 31 Juli 2026" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Link Gambar Poster</label>
+              <input type="url" required value={posterContest} onChange={(e) => setPosterContest(e.target.value)} placeholder="Contoh: https://link-gambar.com/poster.jpg" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
             <button type="submit" disabled={isSubmittingContest} className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${editContestId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'}`}>{isSubmittingContest ? 'Menyimpan...' : (editContestId ? 'Simpan Perubahan Contest' : 'Publish Contest')}</button>
           </form>
         </div>
@@ -371,23 +383,26 @@ export default function AdminDashboardPage() {
                 <option value="TOP AGENCY BUILDER">TOP AGENCY BUILDER</option><option value="TOP ASSOCIATE AGENCY BUILDER">TOP ASSOCIATE AGENCY BUILDER</option>
               </select>
             </div>
-            <div><label className="block text-xs font-bold text-gray-700 mb-1">Periode (Misal: MARET 2026)</label><input type="text" required value={periodeAchiever} onChange={(e) => setPeriodeAchiever(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 uppercase" /></div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Periode</label>
+              <input type="text" required value={periodeAchiever} onChange={(e) => setPeriodeAchiever(e.target.value)} placeholder="Contoh: AGUSTUS 2026" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 uppercase" />
+            </div>
             
             <div className="space-y-3 pt-2 border-t border-gray-100">
               <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100">
                 <label className="block text-xs font-bold text-yellow-700">🥇 Juara 1 (Tengah)</label>
-                <input type="text" required placeholder="Nama Lengkap" value={nama1} onChange={(e) => setNama1(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
-                <input type="url" required placeholder="URL Foto" value={foto1} onChange={(e) => setFoto1(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+                <input type="text" required placeholder="Nama Lengkap Pemenang" value={nama1} onChange={(e) => setNama1(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+                <input type="url" required placeholder="Link URL Foto Pemenang" value={foto1} onChange={(e) => setFoto1(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
               </div>
               <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
                 <label className="block text-xs font-bold text-gray-600">🥈 Juara 2 (Kiri)</label>
-                <input type="text" placeholder="Nama Lengkap" value={nama2} onChange={(e) => setNama2(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
-                <input type="url" placeholder="URL Foto" value={foto2} onChange={(e) => setFoto2(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+                <input type="text" placeholder="Nama Lengkap Pemenang (Opsional)" value={nama2} onChange={(e) => setNama2(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+                <input type="url" placeholder="Link URL Foto Pemenang (Opsional)" value={foto2} onChange={(e) => setFoto2(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
               </div>
               <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
                 <label className="block text-xs font-bold text-orange-700">🥉 Juara 3 (Kanan)</label>
-                <input type="text" placeholder="Nama Lengkap" value={nama3} onChange={(e) => setNama3(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
-                <input type="url" placeholder="URL Foto" value={foto3} onChange={(e) => setFoto3(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+                <input type="text" placeholder="Nama Lengkap Pemenang (Opsional)" value={nama3} onChange={(e) => setNama3(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+                <input type="url" placeholder="Link URL Foto Pemenang (Opsional)" value={foto3} onChange={(e) => setFoto3(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
               </div>
             </div>
             <button type="submit" disabled={isSubmittingAchiever} className={`w-full font-bold py-2.5 rounded-lg text-sm mt-4 transition ${editAchieverId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'}`}>{isSubmittingAchiever ? 'Menyimpan...' : (editAchieverId ? 'Simpan Perubahan Podium' : 'Publish Podium')}</button>
@@ -423,7 +438,10 @@ export default function AdminDashboardPage() {
             {editEventId && <button onClick={() => { setEditEventId(null); setJudulEvent(''); setTanggalEvent(''); setWaktuEvent(''); setLokasiEvent(''); setLinkZoomEvent(''); setPosterEvent(''); }} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
           </div>
           <form onSubmit={handleSaveEvent} className="space-y-4">
-            <div><label className="block text-xs font-bold mb-1">Judul Kegiatan</label><input type="text" value={judulEvent} onChange={(e) => setJudulEvent(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
+            <div>
+              <label className="block text-xs font-bold mb-1">Judul Kegiatan</label>
+              <input type="text" value={judulEvent} onChange={(e) => setJudulEvent(e.target.value)} required placeholder="Contoh: Training Basic Selling Skill" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <div><label className="block text-xs font-bold mb-1">Kategori</label><select value={kategoriEvent} onChange={(e) => setKategoriEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50"><option value="Agency">Agency</option><option value="Prudential">Prudential</option></select></div>
               <div><label className="block text-xs font-bold mb-1">Target Peserta</label><select value={targetEvent} onChange={(e) => setTargetEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50"><option value="Semua">Semua</option><option value="Agent">Agent</option><option value="Leader">Leader</option></select></div>
@@ -432,8 +450,14 @@ export default function AdminDashboardPage() {
               <div><label className="block text-xs font-bold mb-1">Tanggal</label><input type="date" value={tanggalEvent} onChange={(e) => setTanggalEvent(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
               <div><label className="block text-xs font-bold mb-1">Waktu</label><input type="time" value={waktuEvent} onChange={(e) => setWaktuEvent(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
             </div>
-            <div><label className="block text-xs font-bold mb-1">Lokasi / Link Zoom</label><input type="text" value={linkZoomEvent} onChange={(e) => setLinkZoomEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
-            <div><label className="block text-xs font-bold mb-1">Poster URL (Opsional)</label><input type="url" value={posterEvent} onChange={(e) => setPosterEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
+            <div>
+              <label className="block text-xs font-bold mb-1">Lokasi / Link Zoom</label>
+              <input type="text" value={linkZoomEvent} onChange={(e) => setLinkZoomEvent(e.target.value)} placeholder="Contoh: Kantor SBY / https://zoom.us/..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1">Poster URL (Opsional)</label>
+              <input type="url" value={posterEvent} onChange={(e) => setPosterEvent(e.target.value)} placeholder="Contoh: https://link-gambar.com/event.jpg" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
             <button type="submit" disabled={isSubmittingEvent} className={`w-full font-bold py-2.5 rounded-lg text-sm ${editEventId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'}`}>{isSubmittingEvent ? 'Menyimpan...' : (editEventId ? 'Simpan Perubahan Event' : 'Publish Event')}</button>
           </form>
         </div>
@@ -473,14 +497,20 @@ export default function AdminDashboardPage() {
             {editDocId && <button onClick={() => { setEditDocId(null); setJudulDoc(''); setLinkDoc(''); }} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
           </div>
           <form onSubmit={handleSaveDoc} className="space-y-4">
-            <div><label className="block text-xs font-bold mb-1">Judul Dokumen</label><input type="text" value={judulDoc} onChange={(e) => setJudulDoc(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
+            <div>
+              <label className="block text-xs font-bold mb-1">Judul Dokumen</label>
+              <input type="text" value={judulDoc} onChange={(e) => setJudulDoc(e.target.value)} required placeholder="Contoh: Dokumen Panduan Klaim" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
             <div>
               <label className="block text-xs font-bold mb-1">Kategori</label>
               <select value={kategoriDoc} onChange={(e) => setKategoriDoc(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50">
                 <option value="Selling">Selling</option><option value="Product Knowledge">Product Knowledge</option><option value="Recruiting Skill">Recruiting Skill</option><option value="Soft Skill">Soft Skill</option>
               </select>
             </div>
-            <div><label className="block text-xs font-bold mb-1">Link Akses</label><input type="url" value={linkDoc} onChange={(e) => setLinkDoc(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
+            <div>
+              <label className="block text-xs font-bold mb-1">Link Akses</label>
+              <input type="url" value={linkDoc} onChange={(e) => setLinkDoc(e.target.value)} required placeholder="Contoh: https://drive.google.com/..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
             <button type="submit" disabled={isSubmittingDoc} className={`w-full font-bold py-2.5 rounded-lg text-sm ${editDocId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'}`}>{isSubmittingDoc ? 'Menyimpan...' : (editDocId ? 'Simpan Perubahan Dokumen' : 'Publish Dokumen')}</button>
           </form>
         </div>
@@ -510,7 +540,7 @@ export default function AdminDashboardPage() {
       <div id="form-modul" className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 w-full overflow-hidden">
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-bold text-xl text-[#083344]">🎓 {editModuleId ? 'Edit Modul Pembelajaran' : 'Manajemen Learning Path'}</h2>
-          {editModuleId && <button onClick={() => { setEditModuleId(null); setJudulBab(''); setDeskripsiBab(''); setListMateri(''); setListVideo(''); setSesiBab('1'); setUrutanBab('1'); }} className="text-xs bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full font-bold hover:bg-gray-300 transition">Batal Edit</button>}
+          {editModuleId && <button onClick={() => { setEditModuleId(null); setJudulBab(''); setDeskripsiBab(''); setListMateri(''); setListVideo(''); setSesiBab(''); setUrutanBab(''); }} className="text-xs bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full font-bold hover:bg-gray-300 transition">Batal Edit</button>}
         </div>
         
         <form onSubmit={handleSaveModule} className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -518,21 +548,33 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-2 gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
               <div>
                 <label className="text-xs font-bold text-blue-900">Sesi Great Start</label>
-                <select required value={sesiBab} onChange={(e) => setSesiBab(e.target.value)} className="w-full mt-1 px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white font-bold">
-                  <option value="1">Great Start 1</option><option value="2">Great Start 2</option><option value="3">Great Start 3</option>
-                </select>
+                {/* Diubah menjadi Input Teks Angka Tak Terbatas */}
+                <input type="number" min="1" required value={sesiBab} onChange={(e) => setSesiBab(e.target.value)} placeholder="Contoh: 1, 2, 4..." className="w-full mt-1 px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white font-bold" />
               </div>
               <div>
                 <label className="text-xs font-bold text-blue-900">Urutan Tampil (Posisi)</label>
-                <input type="number" required value={urutanBab} onChange={(e) => setUrutanBab(e.target.value)} placeholder="Misal: 1" className="w-full mt-1 px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white" />
+                <input type="number" min="1" required value={urutanBab} onChange={(e) => setUrutanBab(e.target.value)} placeholder="Contoh: 1" className="w-full mt-1 px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white" />
               </div>
             </div>
-            <div><label className="text-xs font-bold text-gray-700">Judul Sesi</label><input type="text" required value={judulBab} onChange={(e) => setJudulBab(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
-            <div><label className="text-xs font-bold text-gray-700">Deskripsi</label><textarea required value={deskripsiBab} onChange={(e) => setDeskripsiBab(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm bg-gray-50 h-20"></textarea></div>
+            <div>
+              <label className="text-xs font-bold text-gray-700">Judul Sesi</label>
+              <input type="text" required value={judulBab} onChange={(e) => setJudulBab(e.target.value)} placeholder="Contoh: Mindset Menjadi Top Agent" className="w-full mt-1 px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-700">Deskripsi (Opsional)</label>
+              {/* Atribut Required dihapus */}
+              <textarea value={deskripsiBab} onChange={(e) => setDeskripsiBab(e.target.value)} placeholder="Tulis rincian singkat materi di sini (opsional)..." className="w-full mt-1 px-3 py-2 border rounded-lg text-sm bg-gray-50 h-20"></textarea>
+            </div>
           </div>
           <div className="space-y-4">
-            <div><label className="text-xs font-bold text-gray-700">Link Materi (Format: Judul|Link)</label><textarea value={listMateri} onChange={(e) => setListMateri(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm bg-gray-50 h-16 font-mono"></textarea></div>
-            <div><label className="text-xs font-bold text-gray-700">Link Video (Format: Judul|Link)</label><textarea value={listVideo} onChange={(e) => setListVideo(e.target.value)} className="w-full mt-1 px-3 py-2 border rounded-lg text-sm bg-gray-50 h-16 font-mono"></textarea></div>
+            <div>
+              <label className="text-xs font-bold text-gray-700">Link Materi (Format: Judul|Link)</label>
+              <textarea value={listMateri} onChange={(e) => setListMateri(e.target.value)} placeholder="Judul Dokumen|https://link-dokumen.com&#10;Materi PDF|https://link-pdf.com" className="w-full mt-1 px-3 py-2 border rounded-lg text-sm bg-gray-50 h-16 font-mono"></textarea>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-700">Link Video (Format: Judul|Link)</label>
+              <textarea value={listVideo} onChange={(e) => setListVideo(e.target.value)} placeholder="Judul Video 1|https://youtube.com/watch...&#10;Judul Video 2|https://drive.google.com/..." className="w-full mt-1 px-3 py-2 border rounded-lg text-sm bg-gray-50 h-16 font-mono"></textarea>
+            </div>
             <button type="submit" disabled={isSubmittingBab} className={`w-full text-white font-bold py-3 rounded-xl text-sm transition-all ${editModuleId ? 'bg-blue-600 hover:bg-blue-700 shadow-md' : 'bg-[#A8C338] text-[#083344] hover:bg-[#96af31]'}`}>
               {isSubmittingBab ? 'Menyimpan...' : (editModuleId ? 'Simpan Perubahan Modul' : 'Publish Modul Baru')}
             </button>
@@ -581,13 +623,19 @@ export default function AdminDashboardPage() {
           <div className="lg:col-span-1 bg-gray-50 p-5 rounded-xl border border-gray-200">
             <h3 className="font-bold mb-4">Buat Pertanyaan</h3>
             <form onSubmit={handleAddQuiz} className="space-y-4">
-              <div><label className="text-xs font-bold">Level Kuis</label><input type="number" value={kuisLevel} onChange={(e) => setKuisLevel(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-white" /></div>
-              <div><label className="text-xs font-bold">Pertanyaan</label><textarea value={kuisPertanyaan} onChange={(e) => setKuisPertanyaan(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-white h-20"></textarea></div>
+              <div>
+                <label className="text-xs font-bold">Level Kuis</label>
+                <input type="number" min="1" value={kuisLevel} onChange={(e) => setKuisLevel(e.target.value)} placeholder="Contoh: 1" className="w-full px-3 py-2 border rounded-lg text-sm bg-white" />
+              </div>
+              <div>
+                <label className="text-xs font-bold">Pertanyaan</label>
+                <textarea value={kuisPertanyaan} onChange={(e) => setKuisPertanyaan(e.target.value)} placeholder="Tuliskan soal ujian kuis di sini..." className="w-full px-3 py-2 border rounded-lg text-sm bg-white h-20"></textarea>
+              </div>
               <div className="space-y-2">
-                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">A</span><input type="text" value={kuisA} onChange={(e) => setKuisA(e.target.value)} className="w-full px-2 py-1 border text-xs" /></div>
-                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">B</span><input type="text" value={kuisB} onChange={(e) => setKuisB(e.target.value)} className="w-full px-2 py-2 border text-xs" /></div>
-                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">C</span><input type="text" value={kuisC} onChange={(e) => setKuisC(e.target.value)} className="w-full px-2 py-1 border text-xs" /></div>
-                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">D</span><input type="text" value={kuisD} onChange={(e) => setKuisD(e.target.value)} className="w-full px-2 py-1 border text-xs" /></div>
+                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">A</span><input type="text" value={kuisA} onChange={(e) => setKuisA(e.target.value)} placeholder="Jawaban A" className="w-full px-2 py-1 border text-xs" /></div>
+                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">B</span><input type="text" value={kuisB} onChange={(e) => setKuisB(e.target.value)} placeholder="Jawaban B" className="w-full px-2 py-2 border text-xs" /></div>
+                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">C</span><input type="text" value={kuisC} onChange={(e) => setKuisC(e.target.value)} placeholder="Jawaban C" className="w-full px-2 py-1 border text-xs" /></div>
+                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">D</span><input type="text" value={kuisD} onChange={(e) => setKuisD(e.target.value)} placeholder="Jawaban D" className="w-full px-2 py-1 border text-xs" /></div>
               </div>
               <div>
                 <label className="text-xs font-bold">Jawaban Benar</label>

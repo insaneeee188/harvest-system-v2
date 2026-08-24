@@ -1,7 +1,7 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { auth, db } from '../../firebase'; // Sesuaikan path jika letaknya bukan di luar app
+import { auth, db } from '../../firebase'; // Sesuaikan path
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -13,8 +13,8 @@ export default function EventsPage() {
 
   // States Event & Filtering
   const [eventsList, setEventsList] = useState([]);
-  const [filterKategori, setFilterKategori] = useState('Semua'); // Semua, Agency, Prudential
-  const [filterTarget, setFilterTarget] = useState('Semua'); // Semua, Agent, Leader
+  const [filterKategori, setFilterKategori] = useState('Semua'); 
+  const [filterTarget, setFilterTarget] = useState('Semua'); 
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -23,6 +23,13 @@ export default function EventsPage() {
   // States Modal Pop-Up
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+
+  // LOGIKA ZOOM & DRAG POSTER
+  const [zoomScale, setZoomScale] = useState(1);
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const touchStartDist = useRef(null);
 
   // States Kalender Pintar
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
@@ -44,7 +51,6 @@ export default function EventsPage() {
   const fetchEvents = async () => {
     const snap = await getDocs(collection(db, 'events'));
     const allEvents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    // Urutkan dari yang terdekat
     const todayStr = new Date().toISOString().split('T')[0]; 
     const upcoming = allEvents
       .filter(ev => ev.tanggal >= todayStr)
@@ -65,7 +71,6 @@ export default function EventsPage() {
   const currentEvents = filteredEvents.slice(indexOfFirstEvent, indexOfLastEvent);
   const totalPages = Math.ceil(filteredEvents.length / eventsPerPage);
 
-  // Reset page kalau ganti filter
   useEffect(() => { setCurrentPage(1); }, [filterKategori, filterTarget]);
 
   // LOGIKA KALENDER
@@ -90,7 +95,74 @@ export default function EventsPage() {
 
   const openModal = (item) => {
     setSelectedEvent(item);
+    setZoomScale(1);
+    setDragPos({ x: 0, y: 0 });
     setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedEvent(null);
+    setZoomScale(1);
+    setDragPos({ x: 0, y: 0 });
+  };
+
+  // KONTROL ZOOM
+  const zoomIn = () => setZoomScale(prev => Math.min(prev + 0.4, 3.5));
+  const zoomOut = () => {
+    setZoomScale(prev => {
+      const nextScale = Math.max(prev - 0.4, 1);
+      if (nextScale === 1) setDragPos({ x: 0, y: 0 });
+      return nextScale;
+    });
+  };
+  const resetZoom = () => {
+    setZoomScale(1);
+    setDragPos({ x: 0, y: 0 });
+  };
+
+  const handleMouseDown = (e) => {
+    if (zoomScale > 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - dragPos.x, y: e.clientY - dragPos.y });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging && zoomScale > 1) {
+      setDragPos({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+    }
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      touchStartDist.current = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    } else if (e.touches.length === 1 && zoomScale > 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.touches[0].clientX - dragPos.x, y: e.touches[0].clientY - dragPos.y });
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 2 && touchStartDist.current) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const diff = dist - touchStartDist.current;
+      if (Math.abs(diff) > 10) {
+        if (diff > 0) zoomIn();
+        else zoomOut();
+        touchStartDist.current = dist;
+      }
+    } else if (e.touches.length === 1 && isDragging && zoomScale > 1) {
+      setDragPos({ x: e.touches[0].clientX - dragStart.x, y: e.touches[0].clientY - dragStart.y });
+    }
   };
 
   if (loading) return <div className="text-center mt-20 font-bold text-[#083344] animate-pulse">Memuat Events...</div>;
@@ -99,7 +171,7 @@ export default function EventsPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans">
       
-      {/* BANNER UTAMA (Seperti gambar ke 1) */}
+      {/* BANNER UTAMA */}
       <div className="max-w-[1400px] mx-auto px-4 pt-8">
         <div className="bg-[#083344] rounded-3xl p-8 md:p-10 text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
           <div className="z-10 flex-1">
@@ -107,9 +179,7 @@ export default function EventsPage() {
             <p className="text-gray-300 text-sm opacity-90">Ikuti seluruh agenda bimbingan, kelas eksklusif, dan sinkronisasi bersama tim.</p>
           </div>
           
-          {/* FILTER BUTTONS DI DALAM BANNER */}
           <div className="z-10 flex flex-col items-end gap-3 w-full md:w-auto">
-            {/* Filter Target (Semua, Agent, Leader) */}
             <div className="flex bg-white/10 p-1 rounded-full border border-white/20">
               {['Semua', 'Agent', 'Leader'].map(cat => (
                 <button key={cat} onClick={() => setFilterTarget(cat)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterTarget === cat ? 'bg-[#A8C338] text-[#083344] shadow-md' : 'text-gray-300 hover:text-white'}`}>
@@ -117,7 +187,6 @@ export default function EventsPage() {
                 </button>
               ))}
             </div>
-            {/* Filter Kategori (Semua, Agency, Prudential) */}
             <div className="flex bg-white/10 p-1 rounded-full border border-white/20">
               {['Semua', 'Agency', 'Prudential'].map(cat => (
                 <button key={cat} onClick={() => setFilterKategori(cat)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterKategori === cat ? 'bg-[#A8C338] text-[#083344] shadow-md' : 'text-gray-300 hover:text-white'}`}>
@@ -140,27 +209,24 @@ export default function EventsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {currentEvents.map(ev => (
                     <div key={ev.id} onClick={() => openModal(ev)} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all hover:shadow-lg hover:border-[#A8C338] cursor-pointer group pb-4">
-                      {/* Gambar & Badge */}
                       <div className="h-48 bg-gray-100 relative overflow-hidden">
                         {ev.posterUrl ? <img src={ev.posterUrl} alt={ev.judul} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center text-gray-400">Tidak ada poster</div>}
                         <div className="absolute top-3 left-3 bg-[#083344] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase shadow-md">{ev.target || 'SEMUA USER'}</div>
                         <div className="absolute top-3 right-3 bg-white text-red-600 text-[10px] font-black px-3 py-1 rounded-full shadow-md">{ev.waktu} WIB</div>
                       </div>
                       
-                      {/* Info Text */}
                       <div className="p-6 flex flex-col flex-grow">
                         <h3 className="font-black text-[#083344] text-xl leading-tight mb-3 line-clamp-2">{ev.judul}</h3>
                         <div className="space-y-1 mb-5">
                           <p className="text-xs text-gray-500 font-bold flex items-center gap-2">🗓️ Tanggal: <span className="font-normal">{ev.tanggal}</span></p>
                           <p className="text-xs text-gray-500 font-bold flex items-center gap-2">📍 Lokasi: <span className="font-normal truncate">{ev.lokasi}</span></p>
                         </div>
-                        <button className="mt-auto w-full text-center bg-[#A8C338] text-[#083344] font-black text-xs py-3 rounded-xl transition">🔗 Gabung Link Zoom / Meeting</button>
+                        <button className="mt-auto w-full text-center bg-[#A8C338] text-[#083344] font-black text-xs py-3 rounded-xl transition">🔍 Lihat Detail & Zoom Poster</button>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {/* PAGINASI */}
                 {totalPages > 1 && (
                   <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                     <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="text-xs font-bold px-4 py-2 bg-gray-50 text-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-100">← Sebelumnya</button>
@@ -202,33 +268,73 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {/* POP-UP MODAL EVENT (Gambar ke 2) */}
+      {/* POP-UP MODAL EVENT DENGAN FITUR ZOOM INTERAKSI */}
       {isModalOpen && selectedEvent && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#083344]/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-transparent w-full max-w-lg relative flex flex-col items-center">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-[#083344]/80 backdrop-blur-md animate-fade-in">
+          <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl relative flex flex-col overflow-hidden max-h-[90vh]">
             
             {/* Tombol Close X */}
-            <button onClick={() => setIsModalOpen(false)} className="absolute -top-4 -right-4 bg-red-600 hover:bg-red-700 text-white w-10 h-10 rounded-full font-black flex items-center justify-center shadow-2xl z-50 transition-transform hover:scale-110">X</button>
-            
-            {/* Poster Gambar (Tampil menonjol ke atas) */}
-            <div className="w-full z-10 shadow-2xl rounded-2xl overflow-hidden mb-[-2rem]">
-               <img src={selectedEvent.posterUrl || 'https://via.placeholder.com/800x600'} alt="Poster" className="w-full object-contain bg-black max-h-[60vh]" />
+            <button 
+              onClick={closeModal} 
+              className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white w-10 h-10 rounded-full font-black flex items-center justify-center shadow-2xl z-50 transition-transform hover:scale-110"
+            >
+              ✕
+            </button>
+
+            {/* AREA POSTER DENGAN ZOOM & DRAG */}
+            <div 
+              className="relative w-full h-[50vh] sm:h-[55vh] bg-black overflow-hidden flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleMouseUp}
+            >
+              <img 
+                src={selectedEvent.posterUrl || 'https://placehold.co/800x600/083344/ffffff?text=Poster'} 
+                alt="Poster Event" 
+                className="max-h-full max-w-full object-contain transition-transform duration-100 ease-out pointer-events-none" 
+                style={{
+                  transform: `translate(${dragPos.x}px, ${dragPos.y}px) scale(${zoomScale})`
+                }}
+              />
+
+              {/* CONTROLS (ZOOM IN, OUT, RESET) */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/75 backdrop-blur-md text-white px-4 py-1.5 rounded-full flex items-center gap-3 shadow-xl z-20 border border-white/20">
+                <button onClick={zoomOut} className="text-sm font-bold px-2 py-1 hover:bg-white/20 rounded">🔍-</button>
+                <span className="text-xs font-mono font-bold min-w-[40px] text-center">{Math.round(zoomScale * 100)}%</span>
+                <button onClick={zoomIn} className="text-sm font-bold px-2 py-1 hover:bg-white/20 rounded">🔍+</button>
+                {zoomScale > 1 && (
+                  <button onClick={resetZoom} className="text-[10px] bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-full font-bold ml-1">Reset</button>
+                )}
+              </div>
             </div>
 
-            {/* Box Putih Deskripsi (Berada di bawah poster) */}
-            <div className="bg-white w-11/12 rounded-3xl p-8 pt-12 shadow-xl z-0 text-center">
-               <h2 className="text-xl font-black text-[#083344] mb-4">"{selectedEvent.judul}"</h2>
-               <div className="text-gray-600 text-xs md:text-sm leading-relaxed whitespace-pre-wrap mb-4 text-justify">
-                 {selectedEvent.deskripsi || 'Saksikan dan ikuti event spektakuler ini bersama Harvest Agency!'}
-               </div>
-               <div className="bg-gray-50 border border-gray-100 p-3 rounded-xl">
-                 <p className="text-xs font-bold text-gray-700">🗓️ Periode: {selectedEvent.tanggal} | {selectedEvent.waktu} WIB</p>
-               </div>
-               {selectedEvent.linkZoom && (
-                 <a href={selectedEvent.linkZoom} target="_blank" rel="noreferrer" className="inline-block mt-4 bg-[#A8C338] text-[#083344] font-black px-8 py-3 rounded-full text-sm hover:shadow-lg transition-all hover:-translate-y-1">
-                   Gabung Sekarang
-                 </a>
-               )}
+            {/* BOX DESKRIPSI DI BAWAH POSTER */}
+            <div className="p-6 overflow-y-auto bg-white flex-1 text-center space-y-3">
+              <h2 className="text-xl font-black text-[#083344]">"{selectedEvent.judul}"</h2>
+              
+              <div className="text-gray-600 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-justify">
+                {selectedEvent.deskripsi || 'Saksikan dan ikuti event spektakuler ini bersama Harvest Agency!'}
+              </div>
+              
+              <div className="bg-gray-50 border border-gray-100 p-3.5 rounded-2xl text-xs font-bold text-gray-700">
+                <p>🗓️ Jadwal: {selectedEvent.tanggal} | {selectedEvent.waktu} WIB</p>
+                {selectedEvent.lokasi && <p className="mt-1">📍 Lokasi: {selectedEvent.lokasi}</p>}
+              </div>
+
+              {selectedEvent.linkZoom && (
+                <a 
+                  href={selectedEvent.linkZoom} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="inline-block mt-2 bg-[#A8C338] text-[#083344] font-black px-8 py-3 rounded-full text-sm hover:shadow-lg transition-all hover:-translate-y-0.5"
+                >
+                  🔗 Gabung Sekarang (Link Zoom / Meeting)
+                </a>
+              )}
             </div>
 
           </div>

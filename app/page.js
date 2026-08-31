@@ -100,13 +100,13 @@ export default function HomePage() {
       <div className="min-h-screen bg-white font-sans">
         <div className="bg-[#083344] text-white py-20 px-4 rounded-b-[3rem] shadow-xl text-center">
           <div className="max-w-4xl mx-auto flex flex-col items-center">
-           <img src="/harvest-logo.png" alt="Harvest Agency Logo" className="h-30 md:h-40 object-contain mb-8" onError={(e) => { e.target.style.display = 'none'; }} />
+            <img src="/harvest-logo.png" alt="Harvest Agency Logo" className="h-30 md:h-40 object-contain mb-8" onError={(e) => { e.target.style.display = 'none'; }} />
             <h1 className="text-4xl md:text-6xl font-black mb-6">Welcome To Harvest Agency</h1>
             <p className="text-gray-300 text-sm md:text-base mb-10 max-w-2xl mx-auto leading-relaxed border-t border-white/20 pt-6">
               Sistem terintegrasi untuk mencetak agen asuransi profesional dan sukses bersama Harvest.
             </p>
             <Link href="/login" className="inline-block bg-[#A8C338] text-[#083344] font-bold px-8 py-3.5 rounded-full hover:bg-white transition-all shadow-lg">
-              Mulai Harvest Academy
+              Masuk/Daftar
             </Link>
           </div>
         </div>
@@ -159,11 +159,19 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* QUICK MENU (4 ITEM) */}
       <div className="max-w-[1400px] mx-auto px-4 mt-8">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
-          {[{url: '/', icon: '🏠', title: 'Home', desc: 'Kembali ke beranda'}, {url: '/daily-activity', icon: '📝', title: 'Activity', desc: 'Isi form harian'}, {url: '/academy', icon: '🎓', title: 'Academy', desc: 'Modul belajar & Bank File'}, {url: '/events', icon: '🗓️', title: 'Events', desc: 'Jadwal Training & Events'}, {url: '/contest', icon: '🏆', title: 'Contest', desc: 'Lihat kontes'}].map(menu => (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          {[
+            {url: '/daily-activity', icon: '📝', title: 'Activity', desc: 'Isi form harian'}, 
+            {url: '/academy', icon: '🎓', title: 'Academy', desc: 'Modul belajar & Bank File'}, 
+            {url: '/events', icon: '🗓️', title: 'Events', desc: 'Jadwal Training & Events'}, 
+            {url: '/contest', icon: '🏆', title: 'Contest', desc: 'Lihat kontes'}
+          ].map(menu => (
             <Link key={menu.url} href={menu.url} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 text-center hover:-translate-y-1 hover:shadow-md hover:border-[#A8C338] transition-all duration-300 group">
-              <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">{menu.icon}</div><h3 className="font-bold text-[#083344] text-sm md:text-base">{menu.title}</h3><p className="text-[10px] text-gray-400 mt-1">{menu.desc}</p>
+              <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">{menu.icon}</div>
+              <h3 className="font-bold text-[#083344] text-sm md:text-base">{menu.title}</h3>
+              <p className="text-[10px] text-gray-400 mt-1">{menu.desc}</p>
             </Link>
           ))}
         </div>
@@ -260,7 +268,6 @@ export default function HomePage() {
                       <img src={achieversList[currentAchieverIndex].foto2 || 'https://via.placeholder.com/150'} alt="Juara 2" className="w-full h-full object-cover rounded-full" />
                       <div className="absolute -bottom-2 -right-2 bg-red-500 text-white font-black w-8 h-8 md:w-10 md:h-10 flex items-center justify-center border-[3px] border-white shadow-md rounded-sm" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%)' }}>2</div>
                     </div>
-                    {/* WADAH TEKS FIX-HEIGHT (Agar podium tidak naik turun) */}
                     <div className="min-h-[3rem] md:min-h-[4rem] flex items-start justify-center">
                       <p className="font-black text-xs md:text-lg text-center uppercase leading-tight w-24 md:w-40 break-words text-[#083344]">{achieversList[currentAchieverIndex].nama2}</p>
                     </div>
@@ -273,7 +280,6 @@ export default function HomePage() {
                     <img src={achieversList[currentAchieverIndex].foto1 || 'https://via.placeholder.com/200'} alt="Juara 1" className="w-full h-full object-cover rounded-full" />
                     <div className="absolute -bottom-3 -right-2 bg-red-500 text-yellow-300 font-black text-lg md:text-xl w-10 h-10 md:w-14 md:h-14 flex items-center justify-center border-[4px] border-white shadow-md rounded-sm" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%)' }}>1</div>
                   </div>
-                  {/* WADAH TEKS FIX-HEIGHT */}
                   <div className="min-h-[3rem] md:min-h-[4rem] flex items-start justify-center">
                     <p className="font-black text-sm md:text-2xl text-center uppercase leading-tight w-32 md:w-56 break-words text-[#083344]">{achieversList[currentAchieverIndex].nama1}</p>
                   </div>
@@ -286,7 +292,6 @@ export default function HomePage() {
                       <img src={achieversList[currentAchieverIndex].foto3 || 'https://via.placeholder.com/150'} alt="Juara 3" className="w-full h-full object-cover rounded-full" />
                       <div className="absolute -bottom-2 -right-2 bg-red-500 text-white font-black w-8 h-8 md:w-10 md:h-10 flex items-center justify-center border-[3px] border-white shadow-md rounded-sm" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%)' }}>3</div>
                     </div>
-                    {/* WADAH TEKS FIX-HEIGHT */}
                     <div className="min-h-[3rem] md:min-h-[4rem] flex items-start justify-center">
                       <p className="font-black text-xs md:text-lg text-center uppercase leading-tight w-24 md:w-40 break-words text-[#083344]">{achieversList[currentAchieverIndex].nama3}</p>
                     </div>

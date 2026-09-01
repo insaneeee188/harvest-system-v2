@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -25,7 +25,7 @@ export default function AdminDashboardPage() {
   const indexOfLastUser = currentPageUsers * usersPerPage;
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
   const currentUsers = usersList.slice(indexOfFirstUser, indexOfLastUser);
-  const totalPagesUsers = Math.ceil(usersList.length / usersPerPage);
+  const totalPagesUsers = Math.ceil(usersList.length / usersPerPage) || 1;
 
   // --- CONTEST STATES & EDIT ---
   const [contestsList, setContestsList] = useState([]);
@@ -45,17 +45,31 @@ export default function AdminDashboardPage() {
   const [judulAchiever, setJudulAchiever] = useState('TOP LEADER');
   const [periodeAchiever, setPeriodeAchiever] = useState('');
   const [tanggalSelesaiAchiever, setTanggalSelesaiAchiever] = useState(getDefaultOneMonthLater());
+  
+  // Juara 1 (dengan Adjustment)
   const [foto1, setFoto1] = useState('');
   const [nama1, setNama1] = useState('');
+  const [scale1, setScale1] = useState(1);
+  const [offsetY1, setOffsetY1] = useState(0);
+
+  // Juara 2 (dengan Adjustment)
   const [foto2, setFoto2] = useState('');
   const [nama2, setNama2] = useState('');
+  const [scale2, setScale2] = useState(1);
+  const [offsetY2, setOffsetY2] = useState(0);
+
+  // Juara 3 (dengan Adjustment)
   const [foto3, setFoto3] = useState('');
   const [nama3, setNama3] = useState('');
+  const [scale3, setScale3] = useState(1);
+  const [offsetY3, setOffsetY3] = useState(0);
+
   const [isSubmittingAchiever, setIsSubmittingAchiever] = useState(false);
 
-  // --- EVENT STATES & EDIT ---
+  // --- EVENT & TRAINING STATES ---
   const [eventsList, setEventsList] = useState([]);
   const [editEventId, setEditEventId] = useState(null);
+  const [modeKegiatan, setModeKegiatan] = useState('event'); // 'event' | 'training'
   const [judulEvent, setJudulEvent] = useState('');
   const [targetEvent, setTargetEvent] = useState('Semua'); 
   const [kategoriEvent, setKategoriEvent] = useState('Agency');
@@ -75,14 +89,14 @@ export default function AdminDashboardPage() {
   const [linkDoc, setLinkDoc] = useState('');
   const [isSubmittingDoc, setIsSubmittingDoc] = useState(false);
 
-  // Academy Modules & Quizzes
+  // --- ACADEMY MODULES & QUIZZES STATES & EDIT ---
   const [modulesList, setModulesList] = useState([]); 
   const [currentPageMods, setCurrentPageMods] = useState(1);
   const modsPerPage = 5; 
   const indexOfLastMod = currentPageMods * modsPerPage;
   const indexOfFirstMod = indexOfLastMod - modsPerPage;
   const currentMods = modulesList.slice(indexOfFirstMod, indexOfLastMod);
-  const totalPagesMods = Math.ceil(modulesList.length / modsPerPage);
+  const totalPagesMods = Math.ceil(modulesList.length / modsPerPage) || 1;
 
   const [editModuleId, setEditModuleId] = useState(null);
   const [sesiBab, setSesiBab] = useState(''); 
@@ -93,7 +107,9 @@ export default function AdminDashboardPage() {
   const [listVideo, setListVideo] = useState('');
   const [isSubmittingBab, setIsSubmittingBab] = useState(false);
 
+  // Quiz States & Edit Feature
   const [quizzesList, setQuizzesList] = useState([]);
+  const [editQuizId, setEditQuizId] = useState(null);
   const [kuisLevel, setKuisLevel] = useState('');
   const [kuisPertanyaan, setKuisPertanyaan] = useState('');
   const [kuisA, setKuisA] = useState('');
@@ -103,91 +119,116 @@ export default function AdminDashboardPage() {
   const [kuisJawabanBenar, setKuisJawabanBenar] = useState('A');
   const [isSubmittingKuis, setIsSubmittingKuis] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) { if (isMounted) router.push('/login'); return; }
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists() && isMounted) {
-        const data = userDoc.data();
-        if (data.role?.toLowerCase() === 'admin') {
-          setIsAdmin(true); setUserData(data);
-          fetchUsers(); fetchContestsAndAchievers(); fetchEvents(); fetchLibrary(); fetchModules(); fetchQuizzes(); 
-        } else {
-          alert('Akses Ditolak!'); router.push('/');
-        }
-      }
-      if (isMounted) setLoading(false);
-    });
-    return () => { isMounted = false; unsubscribe(); };
-  }, [router]);
-
-  const fetchUsers = async () => { 
+  // --- DATA FETCHING METHODS ---
+  const fetchUsers = useCallback(async () => { 
     const snap = await getDocs(collection(db, 'users')); 
-    setUsersList(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))); 
-  };
+    setUsersList(snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))); 
+  }, []);
   
-  // FETCH CONTEST & ACHIEVER + AUTO CLEANUP EXPIRING ITEMS
-  const fetchContestsAndAchievers = async () => { 
+  const fetchContestsAndAchievers = useCallback(async () => { 
     const snap = await getDocs(collection(db, 'agency_contests')); 
     const today = new Date().toISOString().split('T')[0];
     const data = [];
+    const expiredDeletes = [];
 
-    for (const docSnap of snap.docs) {
+    snap.docs.forEach(docSnap => {
       const item = { id: docSnap.id, ...docSnap.data() };
-      // Hapus otomatis jika tanggalSelesai sudah lewat dari hari ini
       if (item.tanggalSelesai && item.tanggalSelesai < today) {
-        await deleteDoc(doc(db, 'agency_contests', docSnap.id));
+        expiredDeletes.push(deleteDoc(doc(db, 'agency_contests', docSnap.id)));
       } else {
         data.push(item);
       }
-    }
+    });
+
+    if (expiredDeletes.length > 0) await Promise.all(expiredDeletes);
 
     setContestsList(data.filter(i => i.type === 'contest'));
     setAchieversList(data.filter(i => i.type === 'achiever'));
-  };
+  }, []);
 
-  // FETCH EVENTS + AUTO CLEANUP EXPIRED EVENTS
-  const fetchEvents = async () => { 
+  const fetchEvents = useCallback(async () => { 
     const snap = await getDocs(collection(db, 'events')); 
     const today = new Date().toISOString().split('T')[0];
     const activeEvents = [];
+    const expiredDeletes = [];
 
-    for (const docSnap of snap.docs) {
+    snap.docs.forEach(docSnap => {
       const eventData = docSnap.data();
       const expDate = eventData.tanggalSelesai || eventData.tanggal;
-      // Hapus event secara otomatis dari Firestore jika tanggal selesainya sudah lewat
       if (expDate && expDate < today) {
-        await deleteDoc(doc(db, 'events', docSnap.id));
+        expiredDeletes.push(deleteDoc(doc(db, 'events', docSnap.id)));
       } else {
         activeEvents.push({ id: docSnap.id, ...eventData });
       }
-    }
+    });
+
+    if (expiredDeletes.length > 0) await Promise.all(expiredDeletes);
 
     setEventsList(activeEvents); 
-  };
+  }, []);
 
-  const fetchLibrary = async () => { 
+  const fetchLibrary = useCallback(async () => { 
     const snap = await getDocs(collection(db, 'library_docs')); 
-    setLibraryList(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))); 
-  };
+    setLibraryList(snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))); 
+  }, []);
   
-  const fetchModules = async () => { 
+  const fetchModules = useCallback(async () => { 
     const snap = await getDocs(collection(db, 'academy_modules')); 
-    let data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    data = data.map(m => ({ ...m, sesi: parseInt(m.sesi ?? m.level ?? 1), urutan: parseInt(m.urutan ?? 1) }));
+    let data = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+    data = data.map(m => ({ ...m, sesi: parseInt(m.sesi ?? m.level ?? 1, 10), urutan: parseInt(m.urutan ?? 1, 10) }));
     setModulesList(data.sort((a,b) => (a.sesi - b.sesi) || (a.urutan - b.urutan))); 
-  };
+  }, []);
   
-  const fetchQuizzes = async () => { 
+  const fetchQuizzes = useCallback(async () => { 
     const snap = await getDocs(collection(db, 'academy_quizzes')); 
-    setQuizzesList(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.level - b.level)); 
-  };
+    setQuizzesList(snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })).sort((a, b) => (a.level || 0) - (b.level || 0))); 
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) { 
+        if (isMounted) router.push('/login'); 
+        return; 
+      }
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists() && isMounted) {
+          const data = userDoc.data();
+          if (data.role?.toLowerCase() === 'admin') {
+            setIsAdmin(true); 
+            setUserData(data);
+            await Promise.all([
+              fetchUsers(), 
+              fetchContestsAndAchievers(), 
+              fetchEvents(), 
+              fetchLibrary(), 
+              fetchModules(), 
+              fetchQuizzes()
+            ]);
+          } else {
+            alert('Akses Ditolak!'); 
+            router.push('/');
+          }
+        }
+      } catch (err) {
+        console.error("Auth check failed:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    });
+    return () => { isMounted = false; unsubscribe(); };
+  }, [router, fetchUsers, fetchContestsAndAchievers, fetchEvents, fetchLibrary, fetchModules, fetchQuizzes]);
 
   const handleApprove = async (userId, userName) => { 
     if (!window.confirm(`Setujui ${userName}?`)) return; 
-    await updateDoc(doc(db, 'users', userId), { status: 'approved' }); 
-    alert(`${userName} disetujui!`); fetchUsers(); 
+    try {
+      await updateDoc(doc(db, 'users', userId), { status: 'approved' }); 
+      alert(`${userName} disetujui!`); 
+      fetchUsers(); 
+    } catch (e) {
+      alert("Gagal menyetujui user.");
+    }
   };
   
   // --- SUBMIT & EDIT CONTEST ---
@@ -205,15 +246,33 @@ export default function AdminDashboardPage() {
       tanggalSelesai: tanggalSelesaiContest 
     };
     
-    if (editContestId) {
-      await updateDoc(doc(db, 'agency_contests', editContestId), { ...payload, updatedAt: new Date().toISOString() });
-      alert("Kontes berhasil diperbarui!"); setEditContestId(null);
-    } else {
-      await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
-      alert("Kontes ditambahkan!"); 
+    try {
+      if (editContestId) {
+        await updateDoc(doc(db, 'agency_contests', editContestId), { ...payload, updatedAt: new Date().toISOString() });
+        alert("Kontes berhasil diperbarui!"); 
+        setEditContestId(null);
+      } else {
+        await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
+        alert("Kontes ditambahkan!"); 
+      }
+      resetContestForm();
+      fetchContestsAndAchievers(); 
+    } catch (err) {
+      alert("Gagal menyimpan kontes.");
+    } finally {
+      setIsSubmittingContest(false); 
     }
-    setJudulContest(''); setDeskripsiContest(''); setPosterContest(''); setKategoriContest('Agency'); setTargetContest('Semua'); setPeriodeContest(''); setTanggalSelesaiContest(getDefaultOneMonthLater());
-    fetchContestsAndAchievers(); setIsSubmittingContest(false); 
+  };
+
+  const resetContestForm = () => {
+    setEditContestId(null);
+    setJudulContest(''); 
+    setDeskripsiContest(''); 
+    setPosterContest(''); 
+    setKategoriContest('Agency'); 
+    setTargetContest('Semua'); 
+    setPeriodeContest(''); 
+    setTanggalSelesaiContest(getDefaultOneMonthLater());
   };
 
   const handleEditContest = (item) => {
@@ -226,7 +285,6 @@ export default function AdminDashboardPage() {
     setPeriodeContest(item.periode || '');
     setTanggalSelesaiContest(item.tanggalSelesai || getDefaultOneMonthLater());
     
-    // Smooth scroll ke Form Contest
     const el = document.getElementById("form-contest");
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
@@ -240,18 +298,36 @@ export default function AdminDashboardPage() {
       judul: judulAchiever, 
       periode: periodeAchiever, 
       tanggalSelesai: tanggalSelesaiAchiever,
-      foto1, nama1, foto2, nama2, foto3, nama3 
+      foto1, nama1, scale1, offsetY1,
+      foto2, nama2, scale2, offsetY2,
+      foto3, nama3, scale3, offsetY3
     };
 
-    if (editAchieverId) {
-      await updateDoc(doc(db, 'agency_contests', editAchieverId), { ...payload, updatedAt: new Date().toISOString() });
-      alert("Top Achiever berhasil diperbarui!"); setEditAchieverId(null);
-    } else {
-      await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
-      alert("Top Achiever ditambahkan!"); 
+    try {
+      if (editAchieverId) {
+        await updateDoc(doc(db, 'agency_contests', editAchieverId), { ...payload, updatedAt: new Date().toISOString() });
+        alert("Top Achiever berhasil diperbarui!"); 
+      } else {
+        await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
+        alert("Top Achiever ditambahkan!"); 
+      }
+      resetAchieverForm();
+      fetchContestsAndAchievers(); 
+    } catch (err) {
+      alert("Gagal menyimpan Top Achiever.");
+    } finally {
+      setIsSubmittingAchiever(false); 
     }
-    setJudulAchiever('TOP LEADER'); setPeriodeAchiever(''); setTanggalSelesaiAchiever(getDefaultOneMonthLater()); setFoto1(''); setNama1(''); setFoto2(''); setNama2(''); setFoto3(''); setNama3(''); 
-    fetchContestsAndAchievers(); setIsSubmittingAchiever(false); 
+  };
+
+  const resetAchieverForm = () => {
+    setEditAchieverId(null);
+    setJudulAchiever('TOP LEADER'); 
+    setPeriodeAchiever(''); 
+    setTanggalSelesaiAchiever(getDefaultOneMonthLater()); 
+    setFoto1(''); setNama1(''); setScale1(1); setOffsetY1(0);
+    setFoto2(''); setNama2(''); setScale2(1); setOffsetY2(0);
+    setFoto3(''); setNama3(''); setScale3(1); setOffsetY3(0);
   };
 
   const handleEditAchiever = (item) => {
@@ -259,44 +335,70 @@ export default function AdminDashboardPage() {
     setJudulAchiever(item.judul || 'TOP LEADER');
     setPeriodeAchiever(item.periode || '');
     setTanggalSelesaiAchiever(item.tanggalSelesai || getDefaultOneMonthLater());
-    setFoto1(item.foto1 || ''); setNama1(item.nama1 || '');
-    setFoto2(item.foto2 || ''); setNama2(item.nama2 || '');
-    setFoto3(item.foto3 || ''); setNama3(item.nama3 || '');
     
-    // Smooth scroll ke Form Achiever
+    setFoto1(item.foto1 || ''); setNama1(item.nama1 || '');
+    setScale1(item.scale1 ?? 1); setOffsetY1(item.offsetY1 ?? 0);
+
+    setFoto2(item.foto2 || ''); setNama2(item.nama2 || '');
+    setScale2(item.scale2 ?? 1); setOffsetY2(item.offsetY2 ?? 0);
+
+    setFoto3(item.foto3 || ''); setNama3(item.nama3 || '');
+    setScale3(item.scale3 ?? 1); setOffsetY3(item.offsetY3 ?? 0);
+    
     const el = document.getElementById("form-achiever");
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
   
-  // --- SUBMIT & EDIT EVENT ---
+  // --- SUBMIT & EDIT EVENT / TRAINING ---
   const handleSaveEvent = async (e) => { 
     e.preventDefault(); 
     setIsSubmittingEvent(true); 
     const payload = { 
+      jenisKegiatan: modeKegiatan, 
       judul: judulEvent, 
       target: targetEvent, 
       kategori: kategoriEvent, 
       tanggal: tanggalEvent, 
       tanggalSelesai: tanggalSelesaiEvent,
-      waktu: waktuEvent, 
-      lokasi: lokasiEvent, 
-      linkZoom: linkZoomEvent, 
+      waktu: modeKegiatan === 'training' ? waktuEvent : '', 
+      lokasi: modeKegiatan === 'training' ? lokasiEvent : '', 
+      linkZoom: modeKegiatan === 'training' ? linkZoomEvent : '', 
       posterUrl: posterEvent 
     };
 
-    if (editEventId) {
-      await updateDoc(doc(db, 'events', editEventId), { ...payload, updatedAt: new Date().toISOString() });
-      alert("Event berhasil diperbarui!"); setEditEventId(null);
-    } else {
-      await addDoc(collection(db, 'events'), { ...payload, createdAt: new Date().toISOString() });
-      alert("Event ditambah!"); 
+    try {
+      if (editEventId) {
+        await updateDoc(doc(db, 'events', editEventId), { ...payload, updatedAt: new Date().toISOString() });
+        alert(`${modeKegiatan === 'training' ? 'Training' : 'Event'} berhasil diperbarui!`); 
+      } else {
+        await addDoc(collection(db, 'events'), { ...payload, createdAt: new Date().toISOString() });
+        alert(`${modeKegiatan === 'training' ? 'Training' : 'Event'} berhasil ditambahkan!`); 
+      }
+      resetEventForm();
+      fetchEvents(); 
+    } catch (err) {
+      alert("Gagal menyimpan kegiatan.");
+    } finally {
+      setIsSubmittingEvent(false); 
     }
-    setJudulEvent(''); setTanggalEvent(''); setTanggalSelesaiEvent(getDefaultOneMonthLater()); setWaktuEvent(''); setLokasiEvent(''); setLinkZoomEvent(''); setPosterEvent(''); setKategoriEvent('Agency'); setTargetEvent('Semua');
-    fetchEvents(); setIsSubmittingEvent(false); 
+  };
+
+  const resetEventForm = () => {
+    setEditEventId(null);
+    setJudulEvent(''); 
+    setTanggalEvent(''); 
+    setTanggalSelesaiEvent(getDefaultOneMonthLater()); 
+    setWaktuEvent(''); 
+    setLokasiEvent(''); 
+    setLinkZoomEvent(''); 
+    setPosterEvent(''); 
+    setKategoriEvent('Agency'); 
+    setTargetEvent('Semua');
   };
 
   const handleEditEvent = (item) => {
     setEditEventId(item.id);
+    setModeKegiatan(item.jenisKegiatan || 'event');
     setJudulEvent(item.judul || '');
     setTargetEvent(item.target || 'Semua');
     setKategoriEvent(item.kategori || 'Agency');
@@ -307,7 +409,6 @@ export default function AdminDashboardPage() {
     setLinkZoomEvent(item.linkZoom || '');
     setPosterEvent(item.posterUrl || '');
     
-    // Smooth scroll ke Form Event
     const el = document.getElementById("form-event");
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
@@ -318,15 +419,22 @@ export default function AdminDashboardPage() {
     setIsSubmittingDoc(true); 
     const payload = { judul: judulDoc, kategori: kategoriDoc, link: linkDoc };
 
-    if (editDocId) {
-      await updateDoc(doc(db, 'library_docs', editDocId), { ...payload, updatedAt: new Date().toISOString() });
-      alert("Dokumen berhasil diperbarui!"); setEditDocId(null);
-    } else {
-      await addDoc(collection(db, 'library_docs'), { ...payload, createdAt: new Date().toISOString() });
-      alert("Dokumen ditambah!"); 
+    try {
+      if (editDocId) {
+        await updateDoc(doc(db, 'library_docs', editDocId), { ...payload, updatedAt: new Date().toISOString() });
+        alert("Dokumen berhasil diperbarui!"); 
+        setEditDocId(null);
+      } else {
+        await addDoc(collection(db, 'library_docs'), { ...payload, createdAt: new Date().toISOString() });
+        alert("Dokumen ditambah!"); 
+      }
+      setJudulDoc(''); setLinkDoc(''); setKategoriDoc('Selling');
+      fetchLibrary(); 
+    } catch (err) {
+      alert("Gagal menyimpan dokumen.");
+    } finally {
+      setIsSubmittingDoc(false); 
     }
-    setJudulDoc(''); setLinkDoc(''); setKategoriDoc('Selling');
-    fetchLibrary(); setIsSubmittingDoc(false); 
   };
 
   const handleEditDoc = (item) => {
@@ -335,58 +443,145 @@ export default function AdminDashboardPage() {
     setKategoriDoc(item.kategori || 'Selling');
     setLinkDoc(item.link || '');
     
-    // Smooth scroll ke Form Dokumen
     const el = document.getElementById("form-doc");
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
   // --- MODULES & QUIZZES ---
   const handleSaveModule = async (e) => { 
-    e.preventDefault(); setIsSubmittingBab(true); 
+    e.preventDefault(); 
+    setIsSubmittingBab(true); 
     const materiArr = listMateri.split('\n').filter(i => i.trim() !== ''); 
     const videoArr = listVideo.split('\n').filter(i => i.trim() !== ''); 
-    const payload = { sesi: parseInt(sesiBab) || 1, urutan: parseInt(urutanBab) || 1, level: parseInt(sesiBab) || 1, judul: judulBab, deskripsi: deskripsiBab, materi: materiArr, video: videoArr };
+    const payload = { 
+      sesi: parseInt(sesiBab, 10) || 1, 
+      urutan: parseInt(urutanBab, 10) || 1, 
+      level: parseInt(sesiBab, 10) || 1, 
+      judul: judulBab, 
+      deskripsi: deskripsiBab, 
+      materi: materiArr, 
+      video: videoArr 
+    };
 
-    if (editModuleId) {
-      await updateDoc(doc(db, 'academy_modules', editModuleId), { ...payload, updatedAt: new Date().toISOString() });
-      alert("Modul berhasil diperbarui!"); setEditModuleId(null);
-    } else {
-      await addDoc(collection(db, 'academy_modules'), { ...payload, createdAt: new Date().toISOString() });
-      alert("Modul baru berhasil ditambah!");
+    try {
+      if (editModuleId) {
+        await updateDoc(doc(db, 'academy_modules', editModuleId), { ...payload, updatedAt: new Date().toISOString() });
+        alert("Modul berhasil diperbarui!"); 
+        setEditModuleId(null);
+      } else {
+        await addDoc(collection(db, 'academy_modules'), { ...payload, createdAt: new Date().toISOString() });
+        alert("Modul baru berhasil ditambah!");
+      }
+      setJudulBab(''); setDeskripsiBab(''); setListMateri(''); setListVideo(''); setSesiBab(''); setUrutanBab('');
+      fetchModules(); 
+    } catch (err) {
+      alert("Gagal menyimpan modul.");
+    } finally {
+      setIsSubmittingBab(false); 
     }
-    setJudulBab(''); setDeskripsiBab(''); setListMateri(''); setListVideo(''); setSesiBab(''); setUrutanBab('');
-    fetchModules(); setIsSubmittingBab(false); 
   };
 
   const handleEditModule = (modul) => {
     setEditModuleId(modul.id);
     setSesiBab(modul.sesi?.toString() || modul.level?.toString() || '');
     setUrutanBab(modul.urutan?.toString() || '');
-    setJudulBab(modul.judul || ''); setDeskripsiBab(modul.deskripsi || '');
-    setListMateri(modul.materi ? modul.materi.join('\n') : ''); setListVideo(modul.video ? modul.video.join('\n') : '');
-    const el = document.getElementById("form-modul"); if(el) el.scrollIntoView({ behavior: "smooth" });
+    setJudulBab(modul.judul || ''); 
+    setDeskripsiBab(modul.deskripsi || '');
+    setListMateri(modul.materi ? modul.materi.join('\n') : ''); 
+    setListVideo(modul.video ? modul.video.join('\n') : '');
+    const el = document.getElementById("form-modul"); 
+    if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleAddQuiz = async (e) => { 
-    e.preventDefault(); setIsSubmittingKuis(true); 
-    await addDoc(collection(db, 'academy_quizzes'), { 
-      level: parseInt(kuisLevel), 
+  // FITUR ADJUST/EDIT KUIS
+  const handleSaveQuiz = async (e) => { 
+    e.preventDefault(); 
+    setIsSubmittingKuis(true); 
+    const payload = { 
+      level: parseInt(kuisLevel, 10) || 1, 
       pertanyaan: kuisPertanyaan, 
       pilihan: { A: kuisA, B: kuisB, C: kuisC, D: kuisD }, 
-      jawabanBenar: kuisJawabanBenar, 
-      createdAt: new Date().toISOString() 
-    }); 
-    alert(`Soal Kuis ditambah!`); setKuisPertanyaan(''); setKuisA(''); setKuisB(''); setKuisC(''); setKuisD(''); 
-    fetchQuizzes(); setIsSubmittingKuis(false); 
+      jawabanBenar: kuisJawabanBenar 
+    };
+
+    try {
+      if (editQuizId) {
+        await updateDoc(doc(db, 'academy_quizzes', editQuizId), { ...payload, updatedAt: new Date().toISOString() });
+        alert("Soal Kuis berhasil diperbarui!"); 
+      } else {
+        await addDoc(collection(db, 'academy_quizzes'), { ...payload, createdAt: new Date().toISOString() });
+        alert("Soal Kuis baru berhasil ditambah!");
+      }
+      resetQuizForm();
+      fetchQuizzes(); 
+    } catch (err) {
+      alert("Gagal menyimpan kuis.");
+    } finally {
+      setIsSubmittingKuis(false); 
+    }
   };
 
-  const handleDeleteContestOrAchiever = async (id) => { if (window.confirm("Hapus?")) { await deleteDoc(doc(db, 'agency_contests', id)); fetchContestsAndAchievers(); } };
-  const handleDeleteEvent = async (id) => { if (window.confirm("Hapus?")) { await deleteDoc(doc(db, 'events', id)); fetchEvents(); } };
-  const handleDeleteDoc = async (id) => { if (window.confirm("Hapus?")) { await deleteDoc(doc(db, 'library_docs', id)); fetchLibrary(); } };
-  const handleDeleteModule = async (id) => { if (window.confirm("Hapus modul ini?")) { await deleteDoc(doc(db, 'academy_modules', id)); fetchModules(); } };
-  const handleDeleteQuiz = async (id) => { if (window.confirm("Hapus soal?")) { await deleteDoc(doc(db, 'academy_quizzes', id)); fetchQuizzes(); } };
+  const resetQuizForm = () => {
+    setEditQuizId(null);
+    setKuisLevel('');
+    setKuisPertanyaan('');
+    setKuisA(''); setKuisB(''); setKuisC(''); setKuisD('');
+    setKuisJawabanBenar('A');
+  };
 
-  if (loading) return <div className="text-center mt-20 font-bold text-[#083344] animate-pulse">Memuat Pusat Kendali...</div>;
+  const handleEditQuiz = (kuis) => {
+    setEditQuizId(kuis.id);
+    setKuisLevel(kuis.level?.toString() || '');
+    setKuisPertanyaan(kuis.pertanyaan || '');
+    setKuisA(kuis.pilihan?.A || '');
+    setKuisB(kuis.pilihan?.B || '');
+    setKuisC(kuis.pilihan?.C || '');
+    setKuisD(kuis.pilihan?.D || '');
+    setKuisJawabanBenar(kuis.jawabanBenar || 'A');
+
+    const el = document.getElementById("form-kuis");
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleDeleteContestOrAchiever = async (id) => { 
+    if (window.confirm("Hapus item ini?")) { 
+      await deleteDoc(doc(db, 'agency_contests', id)); 
+      fetchContestsAndAchievers(); 
+    } 
+  };
+  
+  const handleDeleteEvent = async (id) => { 
+    if (window.confirm("Hapus kegiatan ini?")) { 
+      await deleteDoc(doc(db, 'events', id)); 
+      fetchEvents(); 
+    } 
+  };
+
+  const handleDeleteDoc = async (id) => { 
+    if (window.confirm("Hapus dokumen ini?")) { 
+      await deleteDoc(doc(db, 'library_docs', id)); 
+      fetchLibrary(); 
+    } 
+  };
+
+  const handleDeleteModule = async (id) => { 
+    if (window.confirm("Hapus modul ini?")) { 
+      await deleteDoc(doc(db, 'academy_modules', id)); 
+      fetchModules(); 
+    } 
+  };
+
+  const handleDeleteQuiz = async (id) => { 
+    if (window.confirm("Hapus soal kuis ini?")) { 
+      await deleteDoc(doc(db, 'academy_quizzes', id)); 
+      fetchQuizzes(); 
+    } 
+  };
+
+  if (loading) {
+    return <div className="text-center mt-20 font-bold text-[#083344] animate-pulse">Memuat Pusat Kendali Admin...</div>;
+  }
+
   if (!isAdmin) return null;
 
   return (
@@ -409,7 +604,7 @@ export default function AdminDashboardPage() {
                   <td className="p-4"><p className="font-bold text-[#083344]">{usr.name}</p><p className="text-xs text-gray-500">{usr.email}</p></td>
                   <td className="p-4"><span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold uppercase">{usr.role}</span></td>
                   <td className="p-4"><span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${usr.status === 'approved' ? 'bg-[#A8C338]/20 text-[#083344]' : 'bg-red-100 text-red-600'}`}>{usr.status}</span></td>
-                  <td className="p-4 text-center">{usr.status === 'pending' ? (<button onClick={() => handleApprove(usr.id, usr.name)} className="bg-[#083344] text-white text-xs font-bold px-4 py-2 rounded-lg">Setujui</button>) : (<span className="text-xs text-gray-400 font-bold italic">Selesai</span>)}</td>
+                  <td className="p-4 text-center">{usr.status === 'pending' ? (<button onClick={() => handleApprove(usr.id, usr.name)} className="bg-[#083344] text-white text-xs font-bold px-4 py-2 rounded-lg hover:opacity-90">Setujui</button>) : (<span className="text-xs text-gray-400 font-bold italic">Selesai</span>)}</td>
                 </tr>
               ))}
             </tbody>
@@ -424,12 +619,12 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
-      {/* 2. AGENCY CONTEST (DENGAN EDIT SMOOTH SCROLL & AUTO EXPIRE) */}
+      {/* 2. AGENCY CONTEST */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-contest" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
           <div className="flex justify-between items-center mb-5">
             <h2 className="font-bold text-lg text-[#083344]">🎫 {editContestId ? 'Edit Contest' : 'Input Agency Contest'}</h2>
-            {editContestId && <button onClick={() => { setEditContestId(null); setJudulContest(''); setDeskripsiContest(''); setPosterContest(''); setTanggalSelesaiContest(getDefaultOneMonthLater()); }} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
+            {editContestId && <button onClick={resetContestForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
           </div>
           <form onSubmit={handleSaveContest} className="space-y-4">
             <div>
@@ -480,12 +675,12 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 3. TOP ACHIEVER (DENGAN EDIT SMOOTH SCROLL & DURASI 1 BULAN) */}
+      {/* 3. TOP ACHIEVER WITH ADJUSTMENT SLIDERS & LIVE PREVIEW */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-achiever" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
           <div className="flex justify-between items-center mb-5">
             <h2 className="font-bold text-lg text-[#083344]">🏆 {editAchieverId ? 'Edit Top Achiever' : 'Input Top Achiever'}</h2>
-            {editAchieverId && <button onClick={() => { setEditAchieverId(null); setPeriodeAchiever(''); setTanggalSelesaiAchiever(getDefaultOneMonthLater()); setFoto1(''); setNama1(''); setFoto2(''); setNama2(''); setFoto3(''); setNama3(''); }} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
+            {editAchieverId && <button onClick={resetAchieverForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
           </div>
           <form onSubmit={handleSaveAchiever} className="space-y-4">
             <div>
@@ -505,21 +700,100 @@ export default function AdminDashboardPage() {
             </div>
             
             <div className="space-y-3 pt-2 border-t border-gray-100">
-              <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100">
+              
+              {/* JUARA 1 */}
+              <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 space-y-2">
                 <label className="block text-xs font-bold text-yellow-700">🥇 Juara 1 (Tengah)</label>
-                <input type="text" required placeholder="Nama Lengkap Pemenang" value={nama1} onChange={(e) => setNama1(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
-                <input type="url" required placeholder="Link URL Foto Pemenang" value={foto1} onChange={(e) => setFoto1(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+                <input type="text" required placeholder="Nama Lengkap Pemenang" value={nama1} onChange={(e) => setNama1(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white" />
+                <input type="url" required placeholder="Link URL Foto Pemenang" value={foto1} onChange={(e) => setFoto1(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white" />
+                
+                {foto1 && (
+                  <div className="p-2 bg-white rounded-lg border text-center mt-2">
+                    <p className="text-[10px] font-bold text-gray-500 mb-1">Preview Adjustment J1:</p>
+                    <div className="w-20 h-20 mx-auto rounded-full overflow-hidden border-2 border-yellow-500 relative bg-gray-100">
+                      <img 
+                        src={foto1} 
+                        alt="Preview Juara 1" 
+                        className="w-full h-full object-cover transition-transform duration-75"
+                        style={{ transform: `scale(${scale1}) translateY(${offsetY1}px)` }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2 text-left">
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600">Zoom ({scale1}x)</label>
+                        <input type="range" min="0.8" max="2.5" step="0.05" value={scale1} onChange={(e) => setScale1(parseFloat(e.target.value))} className="w-full h-1 bg-gray-200 rounded appearance-none cursor-pointer" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600">Geser Y ({offsetY1}px)</label>
+                        <input type="range" min="-50" max="50" step="1" value={offsetY1} onChange={(e) => setOffsetY1(parseInt(e.target.value, 10))} className="w-full h-1 bg-gray-200 rounded appearance-none cursor-pointer" />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+
+              {/* JUARA 2 */}
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 space-y-2">
                 <label className="block text-xs font-bold text-gray-600">🥈 Juara 2 (Kiri)</label>
-                <input type="text" placeholder="Nama Lengkap Pemenang (Opsional)" value={nama2} onChange={(e) => setNama2(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
-                <input type="url" placeholder="Link URL Foto Pemenang (Opsional)" value={foto2} onChange={(e) => setFoto2(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+                <input type="text" placeholder="Nama Lengkap Pemenang (Opsional)" value={nama2} onChange={(e) => setNama2(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white" />
+                <input type="url" placeholder="Link URL Foto Pemenang (Opsional)" value={foto2} onChange={(e) => setFoto2(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white" />
+                
+                {foto2 && (
+                  <div className="p-2 bg-white rounded-lg border text-center mt-2">
+                    <p className="text-[10px] font-bold text-gray-500 mb-1">Preview Adjustment J2:</p>
+                    <div className="w-16 h-16 mx-auto rounded-full overflow-hidden border-2 border-gray-400 relative bg-gray-100">
+                      <img 
+                        src={foto2} 
+                        alt="Preview Juara 2" 
+                        className="w-full h-full object-cover transition-transform duration-75"
+                        style={{ transform: `scale(${scale2}) translateY(${offsetY2}px)` }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2 text-left">
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600">Zoom ({scale2}x)</label>
+                        <input type="range" min="0.8" max="2.5" step="0.05" value={scale2} onChange={(e) => setScale2(parseFloat(e.target.value))} className="w-full h-1 bg-gray-200 rounded appearance-none cursor-pointer" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600">Geser Y ({offsetY2}px)</label>
+                        <input type="range" min="-50" max="50" step="1" value={offsetY2} onChange={(e) => setOffsetY2(parseInt(e.target.value, 10))} className="w-full h-1 bg-gray-200 rounded appearance-none cursor-pointer" />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
+
+              {/* JUARA 3 */}
+              <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 space-y-2">
                 <label className="block text-xs font-bold text-orange-700">🥉 Juara 3 (Kanan)</label>
-                <input type="text" placeholder="Nama Lengkap Pemenang (Opsional)" value={nama3} onChange={(e) => setNama3(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
-                <input type="url" placeholder="Link URL Foto Pemenang (Opsional)" value={foto3} onChange={(e) => setFoto3(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white mt-2" />
+                <input type="text" placeholder="Nama Lengkap Pemenang (Opsional)" value={nama3} onChange={(e) => setNama3(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white" />
+                <input type="url" placeholder="Link URL Foto Pemenang (Opsional)" value={foto3} onChange={(e) => setFoto3(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-xs bg-white" />
+                
+                {foto3 && (
+                  <div className="p-2 bg-white rounded-lg border text-center mt-2">
+                    <p className="text-[10px] font-bold text-gray-500 mb-1">Preview Adjustment J3:</p>
+                    <div className="w-16 h-16 mx-auto rounded-full overflow-hidden border-2 border-amber-600 relative bg-gray-100">
+                      <img 
+                        src={foto3} 
+                        alt="Preview Juara 3" 
+                        className="w-full h-full object-cover transition-transform duration-75"
+                        style={{ transform: `scale(${scale3}) translateY(${offsetY3}px)` }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2 text-left">
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600">Zoom ({scale3}x)</label>
+                        <input type="range" min="0.8" max="2.5" step="0.05" value={scale3} onChange={(e) => setScale3(parseFloat(e.target.value))} className="w-full h-1 bg-gray-200 rounded appearance-none cursor-pointer" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600">Geser Y ({offsetY3}px)</label>
+                        <input type="range" min="-50" max="50" step="1" value={offsetY3} onChange={(e) => setOffsetY3(parseInt(e.target.value, 10))} className="w-full h-1 bg-gray-200 rounded appearance-none cursor-pointer" />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
+
             </div>
             <button type="submit" disabled={isSubmittingAchiever} className={`w-full font-bold py-2.5 rounded-lg text-sm mt-4 transition ${editAchieverId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'}`}>{isSubmittingAchiever ? 'Menyimpan...' : (editAchieverId ? 'Simpan Perubahan Podium' : 'Publish Podium')}</button>
           </form>
@@ -546,52 +820,112 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 4. EVENT / TRAINING (DENGAN EDIT SMOOTH SCROLL & TANGGAL SELESAI) */}
+      {/* 4. EVENT / TRAINING */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-event" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden h-fit">
-          <div className="flex justify-between items-center mb-5">
-            <h2 className="font-bold text-lg text-[#083344]">➕ {editEventId ? 'Edit Event' : 'Tambah Event / Training'}</h2>
-            {editEventId && <button onClick={() => { setEditEventId(null); setJudulEvent(''); setTanggalEvent(''); setTanggalSelesaiEvent(getDefaultOneMonthLater()); setWaktuEvent(''); setLokasiEvent(''); setLinkZoomEvent(''); setPosterEvent(''); }} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-bold text-lg text-[#083344]">➕ {editEventId ? 'Edit Kegiatan' : 'Tambah Kegiatan'}</h2>
+            {editEventId && <button onClick={resetEventForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
           </div>
+
+          <div className="flex bg-gray-100 p-1 rounded-xl mb-5">
+            <button
+              type="button"
+              onClick={() => setModeKegiatan('event')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${modeKegiatan === 'event' ? 'bg-[#083344] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              🎉 Mode Event
+            </button>
+            <button
+              type="button"
+              onClick={() => setModeKegiatan('training')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${modeKegiatan === 'training' ? 'bg-[#083344] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              📚 Mode Training
+            </button>
+          </div>
+
           <form onSubmit={handleSaveEvent} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold mb-1">Judul Kegiatan</label>
-              <input type="text" value={judulEvent} onChange={(e) => setJudulEvent(e.target.value)} required placeholder="Contoh: Training Basic Selling Skill" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+              <label className="block text-xs font-bold mb-1">Judul Kegiatan ({modeKegiatan === 'event' ? 'Event' : 'Training'})</label>
+              <input type="text" value={judulEvent} onChange={(e) => setJudulEvent(e.target.value)} required placeholder={modeKegiatan === 'event' ? "Contoh: Agency Annual Gathering" : "Contoh: Training Basic Selling Skill"} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
             </div>
+
             <div className="grid grid-cols-2 gap-2">
-              <div><label className="block text-xs font-bold mb-1">Kategori</label><select value={kategoriEvent} onChange={(e) => setKategoriEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50"><option value="Agency">Agency</option><option value="Prudential">Prudential</option></select></div>
-              <div><label className="block text-xs font-bold mb-1">Target Peserta</label><select value={targetEvent} onChange={(e) => setTargetEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50"><option value="Semua">Semua</option><option value="Agent">Agent</option><option value="Leader">Leader</option></select></div>
+              <div>
+                <label className="block text-xs font-bold mb-1">Kategori</label>
+                <select value={kategoriEvent} onChange={(e) => setKategoriEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50">
+                  <option value="Agency">Agency</option>
+                  <option value="Prudential">Prudential</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1">Target Peserta</label>
+                <select value={targetEvent} onChange={(e) => setTargetEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50">
+                  <option value="Semua">Semua</option>
+                  <option value="Agent">Agent</option>
+                  <option value="Leader">Leader</option>
+                </select>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="block text-xs font-bold mb-1">Tanggal Pelaksanaan</label><input type="date" value={tanggalEvent} onChange={(e) => setTanggalEvent(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
-              <div><label className="block text-xs font-bold mb-1">Waktu</label><input type="time" value={waktuEvent} onChange={(e) => setWaktuEvent(e.target.value)} required className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" /></div>
-            </div>
+
+            {modeKegiatan === 'training' && (
+              <div className="grid grid-cols-2 gap-3 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                <div>
+                  <label className="block text-xs font-bold text-blue-900 mb-1">Tanggal Hari</label>
+                  <input type="date" value={tanggalEvent} onChange={(e) => setTanggalEvent(e.target.value)} required className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-blue-900 mb-1">Jam / Waktu</label>
+                  <input type="time" value={waktuEvent} onChange={(e) => setWaktuEvent(e.target.value)} required className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white" />
+                </div>
+              </div>
+            )}
+
             <div>
-              <label className="block text-xs font-bold mb-1">Tanggal Selesai Penayangan (Auto-Hapus)</label>
+              <label className="block text-xs font-bold mb-1">
+                {modeKegiatan === 'event' ? 'Tanggal Selesai Event / Penayangan' : 'Tanggal Selesai Penayangan (Auto-Hapus)'}
+              </label>
               <input type="date" required value={tanggalSelesaiEvent} onChange={(e) => setTanggalSelesaiEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold" />
             </div>
+
+            {modeKegiatan === 'training' && (
+              <div>
+                <label className="block text-xs font-bold mb-1">Lokasi Fisik / Link Zoom</label>
+                <input type="text" value={linkZoomEvent} onChange={(e) => setLinkZoomEvent(e.target.value)} placeholder="Contoh: Kantor SBY / https://zoom.us/j/1234..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+              </div>
+            )}
+
             <div>
-              <label className="block text-xs font-bold mb-1">Lokasi / Link Zoom</label>
-              <input type="text" value={linkZoomEvent} onChange={(e) => setLinkZoomEvent(e.target.value)} placeholder="Contoh: Kantor SBY / https://zoom.us/..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+              <label className="block text-xs font-bold mb-1">Poster Flyer URL (Opsional)</label>
+              <input type="url" value={posterEvent} onChange={(e) => setPosterEvent(e.target.value)} placeholder="Contoh: https://link-gambar.com/flyer.jpg" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
             </div>
-            <div>
-              <label className="block text-xs font-bold mb-1">Poster URL (Opsional)</label>
-              <input type="url" value={posterEvent} onChange={(e) => setPosterEvent(e.target.value)} placeholder="Contoh: https://link-gambar.com/event.jpg" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
-            </div>
-            <button type="submit" disabled={isSubmittingEvent} className={`w-full font-bold py-2.5 rounded-lg text-sm ${editEventId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'}`}>{isSubmittingEvent ? 'Menyimpan...' : (editEventId ? 'Simpan Perubahan Event' : 'Publish Event')}</button>
+
+            <button type="submit" disabled={isSubmittingEvent} className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${editEventId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'}`}>
+              {isSubmittingEvent ? 'Menyimpan...' : (editEventId ? `Simpan Perubahan ${modeKegiatan === 'training' ? 'Training' : 'Event'}` : `Publish ${modeKegiatan === 'training' ? 'Training' : 'Event'}`)}
+            </button>
           </form>
         </div>
+
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
-          <h2 className="font-bold text-lg text-[#083344] mb-5">📅 Jadwal Event</h2>
+          <h2 className="font-bold text-lg text-[#083344] mb-5">📅 Jadwal Event & Training</h2>
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-sm border-collapse min-w-[500px]">
-               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">INFO EVENT</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
+               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">INFO KEGIATAN</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
                <tbody>
                  {eventsList.map((event) => (
                    <tr key={event.id} className="border-b hover:bg-gray-50">
                      <td className="py-4 px-4">
-                       <p className="font-bold text-[#083344]">{event.judul}</p>
-                       <p className="text-xs text-gray-500">{event.tanggal} | {event.waktu} (Selesai: {event.tanggalSelesai || '-'})</p>
+                       <div className="flex items-center gap-2 mb-1">
+                         <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${event.jenisKegiatan === 'training' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                           {event.jenisKegiatan || 'Event'}
+                         </span>
+                         <p className="font-bold text-[#083344]">{event.judul}</p>
+                       </div>
+                       <p className="text-xs text-gray-500">
+                         {event.tanggal ? `${event.tanggal} ${event.waktu ? '| ' + event.waktu : ''}` : 'Kegiatan Berdurasi'} (Selesai: {event.tanggalSelesai || '-'})
+                       </p>
+                       {event.linkZoom && <p className="text-xs text-blue-600 truncate max-w-xs mt-0.5">📍 {event.linkZoom}</p>}
                        <div className="text-[10px] font-normal text-gray-500 mt-1 flex flex-wrap gap-2">
                          <span className="bg-gray-100 px-2 py-0.5 rounded">Kat: {event.kategori || 'Agency'}</span>
                          <span className="bg-gray-100 px-2 py-0.5 rounded">Trg: {event.target || 'Semua'}</span>
@@ -609,7 +943,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 5. TAMBAH DOKUMEN / LIBRARY (DENGAN EDIT SMOOTH SCROLL) */}
+      {/* 5. TAMBAH DOKUMEN / LIBRARY */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-doc" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden h-fit">
           <div className="flex justify-between items-center mb-5">
@@ -693,7 +1027,7 @@ export default function AdminDashboardPage() {
               <label className="text-xs font-bold text-gray-700">Link Video (Format: Judul|Link)</label>
               <textarea value={listVideo} onChange={(e) => setListVideo(e.target.value)} placeholder="Judul Video 1|https://youtube.com/watch...&#10;Judul Video 2|https://drive.google.com/..." className="w-full mt-1 px-3 py-2 border rounded-lg text-sm bg-gray-50 h-16 font-mono"></textarea>
             </div>
-            <button type="submit" disabled={isSubmittingBab} className={`w-full text-white font-bold py-3 rounded-xl text-sm transition-all ${editModuleId ? 'bg-blue-600 hover:bg-blue-700 shadow-md' : 'bg-[#A8C338] text-[#083344] hover:bg-[#96af31]'}`}>
+            <button type="submit" disabled={isSubmittingBab} className={`w-full font-bold py-3 rounded-xl text-sm transition-all ${editModuleId ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md' : 'bg-[#A8C338] text-[#083344] hover:bg-[#96af31]'}`}>
               {isSubmittingBab ? 'Menyimpan...' : (editModuleId ? 'Simpan Perubahan Modul' : 'Publish Modul Baru')}
             </button>
           </div>
@@ -734,36 +1068,54 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 7. BANK SOAL (KUIS) */}
-      <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 w-full overflow-hidden">
-        <h2 className="font-bold text-xl text-[#083344] mb-6">📝 Manajemen Bank Soal (Kuis)</h2>
+      {/* 7. BANK SOAL (KUIS) WITH ADJUST/EDIT FEATURE */}
+      <div id="form-kuis" className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 w-full overflow-hidden">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="font-bold text-xl text-[#083344]">📝 Manajemen Bank Soal (Kuis)</h2>
+          {editQuizId && (
+            <button 
+              onClick={resetQuizForm} 
+              className="text-xs bg-gray-200 text-gray-600 px-3 py-1 rounded-md font-bold hover:bg-gray-300 transition"
+            >
+              Batal Edit
+            </button>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 bg-gray-50 p-5 rounded-xl border border-gray-200">
-            <h3 className="font-bold mb-4">Buat Pertanyaan</h3>
-            <form onSubmit={handleAddQuiz} className="space-y-4">
+            <h3 className="font-bold mb-4">{editQuizId ? 'Edit Pertanyaan' : 'Buat Pertanyaan'}</h3>
+            <form onSubmit={handleSaveQuiz} className="space-y-4">
               <div>
                 <label className="text-xs font-bold">Level Kuis</label>
-                <input type="number" min="1" value={kuisLevel} onChange={(e) => setKuisLevel(e.target.value)} placeholder="Contoh: 1" className="w-full px-3 py-2 border rounded-lg text-sm bg-white" />
+                <input type="number" min="1" required value={kuisLevel} onChange={(e) => setKuisLevel(e.target.value)} placeholder="Contoh: 1" className="w-full px-3 py-2 border rounded-lg text-sm bg-white" />
               </div>
               <div>
                 <label className="text-xs font-bold">Pertanyaan</label>
-                <textarea value={kuisPertanyaan} onChange={(e) => setKuisPertanyaan(e.target.value)} placeholder="Tuliskan soal ujian kuis di sini..." className="w-full px-3 py-2 border rounded-lg text-sm bg-white h-20"></textarea>
+                <textarea required value={kuisPertanyaan} onChange={(e) => setKuisPertanyaan(e.target.value)} placeholder="Tuliskan soal ujian kuis di sini..." className="w-full px-3 py-2 border rounded-lg text-sm bg-white h-20"></textarea>
               </div>
               <div className="space-y-2">
-                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">A</span><input type="text" value={kuisA} onChange={(e) => setKuisA(e.target.value)} placeholder="Jawaban A" className="w-full px-2 py-1 border text-xs" /></div>
-                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">B</span><input type="text" value={kuisB} onChange={(e) => setKuisB(e.target.value)} placeholder="Jawaban B" className="w-full px-2 py-2 border text-xs" /></div>
-                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">C</span><input type="text" value={kuisC} onChange={(e) => setKuisC(e.target.value)} placeholder="Jawaban C" className="w-full px-2 py-1 border text-xs" /></div>
-                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1">D</span><input type="text" value={kuisD} onChange={(e) => setKuisD(e.target.value)} placeholder="Jawaban D" className="w-full px-2 py-1 border text-xs" /></div>
+                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1 flex items-center">A</span><input type="text" required value={kuisA} onChange={(e) => setKuisA(e.target.value)} placeholder="Jawaban A" className="w-full px-2 py-1 border text-xs rounded" /></div>
+                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1 flex items-center">B</span><input type="text" required value={kuisB} onChange={(e) => setKuisB(e.target.value)} placeholder="Jawaban B" className="w-full px-2 py-1 border text-xs rounded" /></div>
+                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1 flex items-center">C</span><input type="text" required value={kuisC} onChange={(e) => setKuisC(e.target.value)} placeholder="Jawaban C" className="w-full px-2 py-1 border text-xs rounded" /></div>
+                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1 flex items-center">D</span><input type="text" required value={kuisD} onChange={(e) => setKuisD(e.target.value)} placeholder="Jawaban D" className="w-full px-2 py-1 border text-xs rounded" /></div>
               </div>
               <div>
                 <label className="text-xs font-bold">Jawaban Benar</label>
-                <select value={kuisJawabanBenar} onChange={(e) => setKuisJawabanBenar(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                <select value={kuisJawabanBenar} onChange={(e) => setKuisJawabanBenar(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-white font-bold">
                   <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
                 </select>
               </div>
-              <button type="submit" disabled={isSubmittingKuis} className="w-full bg-[#083344] text-white font-bold py-2.5 rounded-lg text-sm">{isSubmittingKuis ? 'Menyimpan...' : 'Simpan Soal'}</button>
+              <button 
+                type="submit" 
+                disabled={isSubmittingKuis} 
+                className={`w-full text-white font-bold py-2.5 rounded-lg text-sm transition ${editQuizId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#083344] hover:bg-[#0c4a60]'}`}
+              >
+                {isSubmittingKuis ? 'Menyimpan...' : (editQuizId ? 'Simpan Perubahan Soal' : 'Simpan Soal')}
+              </button>
             </form>
           </div>
+
           <div className="lg:col-span-2 w-full overflow-hidden">
             <h3 className="font-bold mb-4">Daftar Soal Tersimpan</h3>
             <div className="overflow-x-auto w-full">
@@ -777,7 +1129,10 @@ export default function AdminDashboardPage() {
                          <p className="font-bold text-[#083344] text-sm mb-1">{kuis.pertanyaan}</p>
                          <p className="text-[10px] text-green-600 font-bold">Benar: {kuis.jawabanBenar}</p>
                        </td>
-                       <td className="py-3 px-3 text-center"><button onClick={() => handleDeleteQuiz(kuis.id)} className="text-red-500 font-bold px-2 py-1 rounded text-xs">Hapus</button></td>
+                       <td className="py-3 px-3 text-center whitespace-nowrap">
+                         <button onClick={() => handleEditQuiz(kuis)} className="text-blue-500 hover:bg-blue-50 font-bold px-2 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                         <button onClick={() => handleDeleteQuiz(kuis.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs border border-red-100">Hapus</button>
+                       </td>
                      </tr>
                    ))}
                  </tbody>

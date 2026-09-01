@@ -13,7 +13,7 @@ export default function EventsPage() {
 
   // States Event & Filtering
   const [eventsList, setEventsList] = useState([]);
-  const [filterKategori, setFilterKategori] = useState('Semua');
+  const [filterKategori, setFilterKategori] = useState('Semua'); // 'Semua' | 'Agency' | 'Prudential'
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -56,17 +56,25 @@ export default function EventsPage() {
   }, [router]);
 
   const fetchEvents = async () => {
-    const snap = await getDocs(collection(db, 'events'));
-    const allEvents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    
-    // ISO Format YYYY-MM-DD
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    
-    const upcoming = allEvents
-      .filter(ev => ev.tanggal >= todayStr)
-      .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
-    setEventsList(upcoming);
+    try {
+      const snap = await getDocs(collection(db, 'events'));
+      const allEvents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      
+      // Filter event kadaluarsa (dukungan tanggal selesai)
+      const upcoming = allEvents
+        .filter(ev => {
+          const expiryDate = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.tanggal;
+          return expiryDate >= todayStr;
+        })
+        .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+
+      setEventsList(upcoming);
+    } catch (err) {
+      console.error("Gagal mengambil data event:", err);
+    }
   };
 
   // LOGIKA FILTER (Semua / Agency / Prudential)
@@ -100,12 +108,20 @@ export default function EventsPage() {
   const checkHasEvent = (day) => {
     if (!day) return false;
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return eventsList.some(ev => ev.tanggal === dateStr);
+    return eventsList.some(ev => {
+      const startDate = ev.tanggal;
+      const endDate = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.tanggal;
+      return dateStr >= startDate && dateStr <= endDate;
+    });
   };
 
   const getEventByDate = (day) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return eventsList.find(ev => ev.tanggal === dateStr);
+    return eventsList.find(ev => {
+      const startDate = ev.tanggal;
+      const endDate = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.tanggal;
+      return dateStr >= startDate && dateStr <= endDate;
+    });
   };
 
   const openModal = (item) => {
@@ -186,11 +202,11 @@ export default function EventsPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans">
       
-      {/* BANNER UTAMA */}
+      {/* BANNER UTAMA (SESUAI GAMBAR) */}
       <div className="max-w-[1400px] mx-auto px-4 pt-8">
         <div className="bg-[#083344] rounded-3xl p-8 md:p-10 text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
           <div className="z-10 flex-1">
-            <h1 className="text-3xl md:text-4xl font-black mb-2 flex items-center gap-3">
+            <h1 className="text-3xl md:text-4xl font-black flex items-center gap-3">
               🗓️ Events
             </h1>
           </div>
@@ -219,24 +235,29 @@ export default function EventsPage() {
             {filteredEvents.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {currentEvents.map(ev => (
-                    <div key={ev.id} onClick={() => openModal(ev)} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all hover:shadow-lg hover:border-[#A8C338] cursor-pointer group pb-4">
-                      <div className="h-48 bg-gray-100 relative overflow-hidden">
-                        {ev.posterUrl ? <img src={ev.posterUrl} alt={ev.judul} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">Tidak ada poster</div>}
-                        <div className="absolute top-3 left-3 bg-[#083344] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase shadow-md">{ev.target || 'SEMUA USER'}</div>
-                        <div className="absolute top-3 right-3 bg-white text-red-600 text-[10px] font-black px-3 py-1 rounded-full shadow-md">{ev.waktu} WIB</div>
-                      </div>
-                      
-                      <div className="p-6 flex flex-col flex-grow">
-                        <h3 className="font-black text-[#083344] text-xl leading-tight mb-3 line-clamp-2">{ev.judul}</h3>
-                        <div className="space-y-1 mb-5">
-                          <p className="text-xs text-gray-500 font-bold flex items-center gap-2">🗓️ Tanggal: <span className="font-normal">{ev.tanggal}</span></p>
-                          <p className="text-xs text-gray-500 font-bold flex items-center gap-2">📍 Lokasi: <span className="font-normal truncate">{ev.lokasi}</span></p>
+                  {currentEvents.map(ev => {
+                    const endDate = ev.tanggalSelesaiEvent || ev.tanggalSelesai;
+                    const isMultiDay = endDate && endDate !== ev.tanggal;
+
+                    return (
+                      <div key={ev.id} onClick={() => openModal(ev)} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all hover:shadow-lg hover:border-[#A8C338] cursor-pointer group pb-4">
+                        <div className="h-48 bg-gray-100 relative overflow-hidden">
+                          {ev.posterUrl ? <img src={ev.posterUrl} alt={ev.judul} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold">Tidak ada poster</div>}
+                          <div className="absolute top-3 left-3 bg-[#083344] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase shadow-md">{ev.target || 'SEMUA USER'}</div>
+                          {ev.waktu && <div className="absolute top-3 right-3 bg-white text-red-600 text-[10px] font-black px-3 py-1 rounded-full shadow-md">{ev.waktu} WIB</div>}
                         </div>
-                        <button className="mt-auto w-full text-center bg-[#A8C338] text-[#083344] font-black text-xs py-3 rounded-xl transition">🔍 Lihat Detail & Zoom Poster</button>
+                        
+                        <div className="p-6 flex flex-col flex-grow">
+                          <h3 className="font-black text-[#083344] text-xl leading-tight mb-3 line-clamp-2">{ev.judul}</h3>
+                          <div className="space-y-1 mb-5">
+                            <p className="text-xs text-gray-500 font-bold flex items-center gap-2">🗓️ Tanggal: <span className="font-normal text-gray-700">{ev.tanggal}{isMultiDay ? ` s/d ${endDate}` : ''}</span></p>
+                            {ev.lokasi && <p className="text-xs text-gray-500 font-bold flex items-center gap-2">📍 Lokasi: <span className="font-normal text-gray-700 truncate">{ev.lokasi}</span></p>}
+                          </div>
+                          <button className="mt-auto w-full text-center bg-[#A8C338] text-[#083344] font-black text-xs py-3 rounded-xl transition hover:opacity-90">🔍 Lihat Detail & Zoom Poster</button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {totalPages > 1 && (
@@ -249,7 +270,7 @@ export default function EventsPage() {
               </>
             ) : (
               <div className="bg-white rounded-3xl p-16 text-center border-2 border-dashed border-gray-200">
-                <p className="text-gray-400 text-sm font-bold">Belum ada jadwal events sesuai filter.</p>
+                <p className="text-gray-400 text-sm font-bold">Belum ada jadwal kegiatan sesuai filter yang dipilih.</p>
               </div>
             )}
           </div>
@@ -284,12 +305,11 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {/* POP-UP MODAL EVENT DENGAN FITUR ZOOM INTERAKSI */}
+      {/* POP-UP MODAL EVENT */}
       {isModalOpen && selectedEvent && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-[#083344]/80 backdrop-blur-md animate-fade-in">
           <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl relative flex flex-col overflow-hidden max-h-[90vh]">
             
-            {/* Tombol Close X */}
             <button
               onClick={closeModal}
               className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white w-10 h-10 rounded-full font-black flex items-center justify-center shadow-2xl z-50 transition-transform hover:scale-110"
@@ -297,7 +317,6 @@ export default function EventsPage() {
               ✕
             </button>
 
-            {/* AREA POSTER DENGAN ZOOM & DRAG */}
             <div
               className="relative w-full h-[50vh] sm:h-[55vh] bg-black overflow-hidden flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
               onMouseDown={handleMouseDown}
@@ -317,7 +336,6 @@ export default function EventsPage() {
                 }}
               />
 
-              {/* CONTROLS (ZOOM IN, OUT, RESET) */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/75 backdrop-blur-md text-white px-4 py-1.5 rounded-full flex items-center gap-3 shadow-xl z-20 border border-white/20">
                 <button onClick={zoomOut} className="text-sm font-bold px-2 py-1 hover:bg-white/20 rounded">🔍-</button>
                 <span className="text-xs font-mono font-bold min-w-[40px] text-center">{Math.round(zoomScale * 100)}%</span>
@@ -328,7 +346,6 @@ export default function EventsPage() {
               </div>
             </div>
 
-            {/* BOX DESKRIPSI DI BAWAH POSTER */}
             <div className="p-6 overflow-y-auto bg-white flex-1 text-center space-y-3">
               <h2 className="text-xl font-black text-[#083344]">"{selectedEvent.judul}"</h2>
               
@@ -336,9 +353,13 @@ export default function EventsPage() {
                 {selectedEvent.deskripsi || 'Saksikan dan ikuti event spektakuler ini bersama Harvest Agency!'}
               </div>
               
-              <div className="bg-gray-50 border border-gray-100 p-3.5 rounded-2xl text-xs font-bold text-gray-700">
-                <p>🗓️ Jadwal: {selectedEvent.tanggal} | {selectedEvent.waktu} WIB</p>
-                {selectedEvent.lokasi && <p className="mt-1">📍 Lokasi: {selectedEvent.lokasi}</p>}
+              <div className="bg-gray-50 border border-gray-100 p-3.5 rounded-2xl text-xs font-bold text-gray-700 space-y-1">
+                <p>
+                  🗓️ Jadwal: {selectedEvent.tanggal} 
+                  {(selectedEvent.tanggalSelesaiEvent || selectedEvent.tanggalSelesai) && (selectedEvent.tanggalSelesaiEvent || selectedEvent.tanggalSelesai) !== selectedEvent.tanggal ? ` s/d ${selectedEvent.tanggalSelesaiEvent || selectedEvent.tanggalSelesai}` : ''}
+                </p>
+                {selectedEvent.waktu && <p>⏰ Waktu: {selectedEvent.waktu} WIB</p>}
+                {selectedEvent.lokasi && <p>📍 Lokasi: {selectedEvent.lokasi}</p>}
               </div>
 
               {selectedEvent.linkZoom && (

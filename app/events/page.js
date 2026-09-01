@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { auth, db } from '../../firebase'; // Sesuaikan path
+import { auth, db } from '../../firebase'; // Sesuaikan path jika berbeda
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -13,8 +13,7 @@ export default function EventsPage() {
 
   // States Event & Filtering
   const [eventsList, setEventsList] = useState([]);
-  const [filterKategori, setFilterKategori] = useState('Semua'); 
-  const [filterTarget, setFilterTarget] = useState('Semua'); 
+  const [filterKategori, setFilterKategori] = useState('Semua');
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -37,13 +36,21 @@ export default function EventsPage() {
   useEffect(() => {
     let isMounted = true;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) { if (isMounted) router.push('/login'); return; }
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists() && isMounted) {
-        setUserData(userDoc.data());
-        fetchEvents();
+      if (!user) { 
+        if (isMounted) router.push('/login'); 
+        return; 
       }
-      if (isMounted) setLoading(false);
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists() && isMounted) {
+          setUserData(userDoc.data());
+          await fetchEvents();
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     });
     return () => { isMounted = false; unsubscribe(); };
   }, [router]);
@@ -51,18 +58,21 @@ export default function EventsPage() {
   const fetchEvents = async () => {
     const snap = await getDocs(collection(db, 'events'));
     const allEvents = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    const todayStr = new Date().toISOString().split('T')[0]; 
+    
+    // ISO Format YYYY-MM-DD
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
     const upcoming = allEvents
       .filter(ev => ev.tanggal >= todayStr)
       .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
     setEventsList(upcoming);
   };
 
-  // LOGIKA FILTER
+  // LOGIKA FILTER (Semua / Agency / Prudential)
   const filteredEvents = eventsList.filter(ev => {
-    const matchKategori = filterKategori === 'Semua' || (ev.kategori || 'Agency').toLowerCase() === filterKategori.toLowerCase();
-    const matchTarget = filterTarget === 'Semua' || (ev.target || 'Semua').toLowerCase() === filterTarget.toLowerCase();
-    return matchKategori && matchTarget;
+    if (filterKategori === 'Semua') return true;
+    return (ev.kategori || 'Agency').toLowerCase() === filterKategori.toLowerCase();
   });
 
   // LOGIKA PAGINATION
@@ -71,7 +81,7 @@ export default function EventsPage() {
   const currentEvents = filteredEvents.slice(indexOfFirstEvent, indexOfLastEvent);
   const totalPages = Math.ceil(filteredEvents.length / eventsPerPage);
 
-  useEffect(() => { setCurrentPage(1); }, [filterKategori, filterTarget]);
+  useEffect(() => { setCurrentPage(1); }, [filterKategori]);
 
   // LOGIKA KALENDER
   const year = currentMonthDate.getFullYear();
@@ -93,6 +103,11 @@ export default function EventsPage() {
     return eventsList.some(ev => ev.tanggal === dateStr);
   };
 
+  const getEventByDate = (day) => {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return eventsList.find(ev => ev.tanggal === dateStr);
+  };
+
   const openModal = (item) => {
     setSelectedEvent(item);
     setZoomScale(1);
@@ -107,7 +122,7 @@ export default function EventsPage() {
     setDragPos({ x: 0, y: 0 });
   };
 
-  // KONTROL ZOOM
+  // KONTROL ZOOM & DRAG
   const zoomIn = () => setZoomScale(prev => Math.min(prev + 0.4, 3.5));
   const zoomOut = () => {
     setZoomScale(prev => {
@@ -165,7 +180,7 @@ export default function EventsPage() {
     }
   };
 
-  if (loading) return <div className="text-center mt-20 font-bold text-[#083344] animate-pulse">Memuat Events...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#083344]"></div></div>;
   if (!userData) return null;
 
   return (
@@ -175,25 +190,22 @@ export default function EventsPage() {
       <div className="max-w-[1400px] mx-auto px-4 pt-8">
         <div className="bg-[#083344] rounded-3xl p-8 md:p-10 text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
           <div className="z-10 flex-1">
-            <h1 className="text-3xl md:text-4xl font-black mb-2 flex items-center gap-3">🗓️ Training</h1>
-            <p className="text-gray-300 text-sm opacity-90">Ikuti seluruh agenda bimbingan, kelas eksklusif, dan sinkronisasi bersama tim.</p>
+            <h1 className="text-3xl md:text-4xl font-black mb-2 flex items-center gap-3">
+              🗓️ Events
+            </h1>
           </div>
           
-          <div className="z-10 flex flex-col items-end gap-3 w-full md:w-auto">
-            <div className="flex bg-white/10 p-1 rounded-full border border-white/20">
-              {['Semua', 'Agent', 'Leader'].map(cat => (
-                <button key={cat} onClick={() => setFilterTarget(cat)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterTarget === cat ? 'bg-[#A8C338] text-[#083344] shadow-md' : 'text-gray-300 hover:text-white'}`}>
-                  {cat}
-                </button>
-              ))}
-            </div>
-            <div className="flex bg-white/10 p-1 rounded-full border border-white/20">
-              {['Semua', 'Agency', 'Prudential'].map(cat => (
-                <button key={cat} onClick={() => setFilterKategori(cat)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterKategori === cat ? 'bg-[#A8C338] text-[#083344] shadow-md' : 'text-gray-300 hover:text-white'}`}>
-                  {cat}
-                </button>
-              ))}
-            </div>
+          {/* FILTER 3 KATEGORI: Semua | Agency | Prudential */}
+          <div className="z-10 flex items-center bg-white/10 p-1.5 rounded-full border border-white/20">
+            {['Semua', 'Agency', 'Prudential'].map(cat => (
+              <button 
+                key={cat} 
+                onClick={() => setFilterKategori(cat)} 
+                className={`px-5 py-2 rounded-full text-xs font-bold transition-all ${filterKategori === cat ? 'bg-[#A8C338] text-[#083344] shadow-md' : 'text-gray-300 hover:text-white'}`}
+              >
+                {cat}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -210,7 +222,7 @@ export default function EventsPage() {
                   {currentEvents.map(ev => (
                     <div key={ev.id} onClick={() => openModal(ev)} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all hover:shadow-lg hover:border-[#A8C338] cursor-pointer group pb-4">
                       <div className="h-48 bg-gray-100 relative overflow-hidden">
-                        {ev.posterUrl ? <img src={ev.posterUrl} alt={ev.judul} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center text-gray-400">Tidak ada poster</div>}
+                        {ev.posterUrl ? <img src={ev.posterUrl} alt={ev.judul} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">Tidak ada poster</div>}
                         <div className="absolute top-3 left-3 bg-[#083344] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase shadow-md">{ev.target || 'SEMUA USER'}</div>
                         <div className="absolute top-3 right-3 bg-white text-red-600 text-[10px] font-black px-3 py-1 rounded-full shadow-md">{ev.waktu} WIB</div>
                       </div>
@@ -236,19 +248,19 @@ export default function EventsPage() {
                 )}
               </>
             ) : (
-              <div className="bg-white rounded-3xl p-10 text-center border-2 border-dashed border-gray-200">
-                <p className="text-gray-400 text-sm font-bold">Belum ada jadwal training sesuai filter.</p>
+              <div className="bg-white rounded-3xl p-16 text-center border-2 border-dashed border-gray-200">
+                <p className="text-gray-400 text-sm font-bold">Belum ada jadwal events sesuai filter.</p>
               </div>
             )}
           </div>
 
           {/* KANAN: KALENDER PINTAR */}
           <div className="lg:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 sticky top-10">
-            <h3 className="font-black text-[#083344] flex items-center gap-2 mb-6 border-b pb-4">📅 Kalender Kegiatan</h3>
+            <h3 className="font-black text-[#083344] flex items-center gap-2 mb-6 border-b border-gray-100 pb-4">🗓️ Kalender Kegiatan</h3>
             <div className="flex justify-between items-center mb-4 px-2">
-              <button onClick={prevMonth} className="text-gray-400 hover:text-[#A8C338] font-black">&lt;</button>
+              <button onClick={prevMonth} className="text-gray-400 hover:text-[#A8C338] font-black p-1">&lt;</button>
               <span className="font-bold text-[#083344] text-sm">{monthNames[month]} {year}</span>
-              <button onClick={nextMonth} className="text-gray-400 hover:text-[#A8C338] font-black">&gt;</button>
+              <button onClick={nextMonth} className="text-gray-400 hover:text-[#A8C338] font-black p-1">&gt;</button>
             </div>
             <div className="grid grid-cols-7 gap-y-3 text-center text-[10px] text-gray-400 font-bold mb-2">
               <div>MIN</div><div>SEN</div><div>SEL</div><div>RAB</div><div>KAM</div><div>JUM</div><div>SAB</div>
@@ -257,7 +269,11 @@ export default function EventsPage() {
               {calendarDays.map((d, idx) => {
                 const isEvt = checkHasEvent(d);
                 return (
-                  <div key={idx} className={`w-8 h-8 flex items-center justify-center rounded-full mx-auto transition-all ${!d ? '' : isEvt ? 'bg-[#A8C338] text-[#083344] font-black shadow-md' : 'text-gray-600'}`}>
+                  <div
+                    key={idx}
+                    onClick={() => { if (isEvt) openModal(getEventByDate(d)); }}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full mx-auto transition-all ${!d ? '' : isEvt ? 'bg-[#A8C338] text-[#083344] font-black shadow-md cursor-pointer hover:scale-110' : 'text-gray-600 hover:bg-gray-100'}`}
+                  >
                     {d || ''}
                   </div>
                 );
@@ -274,15 +290,15 @@ export default function EventsPage() {
           <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl relative flex flex-col overflow-hidden max-h-[90vh]">
             
             {/* Tombol Close X */}
-            <button 
-              onClick={closeModal} 
+            <button
+              onClick={closeModal}
               className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white w-10 h-10 rounded-full font-black flex items-center justify-center shadow-2xl z-50 transition-transform hover:scale-110"
             >
               ✕
             </button>
 
             {/* AREA POSTER DENGAN ZOOM & DRAG */}
-            <div 
+            <div
               className="relative w-full h-[50vh] sm:h-[55vh] bg-black overflow-hidden flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
@@ -292,10 +308,10 @@ export default function EventsPage() {
               onTouchMove={handleTouchMove}
               onTouchEnd={handleMouseUp}
             >
-              <img 
-                src={selectedEvent.posterUrl || 'https://placehold.co/800x600/083344/ffffff?text=Poster'} 
-                alt="Poster Event" 
-                className="max-h-full max-w-full object-contain transition-transform duration-100 ease-out pointer-events-none" 
+              <img
+                src={selectedEvent.posterUrl || 'https://placehold.co/800x600/083344/ffffff?text=Poster'}
+                alt="Poster Event"
+                className="max-h-full max-w-full object-contain transition-transform duration-100 ease-out pointer-events-none"
                 style={{
                   transform: `translate(${dragPos.x}px, ${dragPos.y}px) scale(${zoomScale})`
                 }}
@@ -326,10 +342,10 @@ export default function EventsPage() {
               </div>
 
               {selectedEvent.linkZoom && (
-                <a 
-                  href={selectedEvent.linkZoom} 
-                  target="_blank" 
-                  rel="noreferrer" 
+                <a
+                  href={selectedEvent.linkZoom}
+                  target="_blank"
+                  rel="noreferrer"
                   className="inline-block mt-2 bg-[#A8C338] text-[#083344] font-black px-8 py-3 rounded-full text-sm hover:shadow-lg transition-all hover:-translate-y-0.5"
                 >
                   🔗 Gabung Sekarang (Link Zoom / Meeting)

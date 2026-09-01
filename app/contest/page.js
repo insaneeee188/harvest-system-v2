@@ -179,7 +179,6 @@ export default function ContestPage() {
         <div className="bg-[#083344] rounded-3xl p-8 md:p-10 text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
           <div className="z-10 flex-1">
             <h1 className="text-3xl md:text-5xl font-black mb-2 flex items-center gap-3">🏆CONTEST</h1>
-            <p className="text-gray-300 text-sm opacity-90">Ikuti seluruh agenda bimbingan, kelas eksklusif, dan sinkronisasi bersama tim.</p>
           </div>
           
           <div className="z-10 flex flex-col items-end gap-3 w-full md:w-auto">

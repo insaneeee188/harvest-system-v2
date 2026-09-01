@@ -19,9 +19,8 @@ export default function HomePage() {
 
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
 
-  // States Untuk Achievers Slider
+  // State Data Top Achievers (Menampung semua kategori)
   const [achieversList, setAchieversList] = useState([]);
-  const [currentAchieverIndex, setCurrentAchieverIndex] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -40,6 +39,7 @@ export default function HomePage() {
   }, []);
 
   const fetchEventsAndAchievers = async () => {
+    // Fetch Events
     const snapEvent = await getDocs(collection(db, 'events'));
     const allEvents = snapEvent.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     const today = new Date();
@@ -47,10 +47,36 @@ export default function HomePage() {
     const upcoming = allEvents.filter(ev => ev.tanggal >= todayStr).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
     setEventsList(upcoming);
 
+    // Fetch Top Achievers & Sorting Urutan Kategori
     const snapContest = await getDocs(collection(db, 'agency_contests'));
     const allContests = snapContest.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     const achieversData = allContests.filter(i => i.type === 'achiever');
-    setAchieversList(achieversData);
+
+    // Bobot Urutan Kategori
+    const categoryOrder = {
+      'TOP AGENCY BUILDER': 1,
+      'TOP ASSOCIATE AGENCY BUILDER': 2,
+      'TOP PRODUCER': 3
+    };
+
+    const sortedAchievers = achieversData.sort((a, b) => {
+      const titleA = (a.judul || '').trim().toUpperCase();
+      const titleB = (b.judul || '').trim().toUpperCase();
+      const orderA = categoryOrder[titleA] || 99;
+      const orderB = categoryOrder[titleB] || 99;
+      return orderA - orderB;
+    });
+
+    setAchieversList(sortedAchievers);
+  };
+
+  // FUNGSI SMOOTH SCROLL KE TOP ACHIEVER
+  const scrollToAchievers = (e) => {
+    e.preventDefault();
+    const element = document.getElementById('top-achievers');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   const indexOfLastEvent = currentPage * eventsPerPage;
@@ -76,21 +102,16 @@ export default function HomePage() {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     return eventsList.some(ev => ev.tanggal === dateStr);
   };
+
   const getEventByDate = (day) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     return eventsList.find(ev => ev.tanggal === dateStr);
   };
+
   const todayDate = new Date();
   const isToday = (day) => { return day === todayDate.getDate() && month === todayDate.getMonth() && year === todayDate.getFullYear(); };
 
   const openModal = (item) => { setSelectedItem(item); setIsModalOpen(true); };
-
-  const nextAchiever = () => {
-    setCurrentAchieverIndex((prev) => (prev + 1) % achieversList.length);
-  };
-  const prevAchiever = () => {
-    setCurrentAchieverIndex((prev) => (prev - 1 + achieversList.length) % achieversList.length);
-  };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#083344]"></div></div>;
 
@@ -147,41 +168,80 @@ export default function HomePage() {
 
   // ================= TAMPILAN USER LOGIN =================
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 font-sans">
+    <div className="min-h-screen bg-gray-50/50 pb-20 font-sans">
       
+      {/* BANNER UTAMA */}
       <div className="max-w-[1400px] mx-auto px-4 pt-8">
-        <div className="bg-[#083344] rounded-3xl p-8 md:p-12 text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
-          <div className="z-10">
-            <h1 className="text-4xl md:text-5xl font-black mb-3">Semangat Pagi, <span className="text-[#A8C338] capitalize">{userData?.name?.split(' ')[0] || 'Agen'}!</span></h1>
-            <p className="text-gray-300 text-sm opacity-90">Siap untuk mencapai target baru hari ini? Pantau aktivitas dan jadwal Anda di sini.</p>
+        <div className="bg-[#083344] rounded-3xl p-8 md:p-10 text-white shadow-xl relative overflow-hidden">
+          <div className="relative z-10">
+            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">
+              Semangat Pagi, <span className="text-[#A8C338]">{userData?.name?.split(' ')[0] || userData?.nama || 'User'}!</span>
+            </h1>
+            
+            {/* BADGE ROLE */}
+            <div className="mt-4 inline-block bg-[#A8C338]/20 border border-[#A8C338]/40 px-5 py-1.5 rounded-full">
+              <span className="text-[#A8C338] font-black tracking-wider text-sm uppercase">
+                {userData?.role || 'ADMIN'}
+              </span>
+            </div>
           </div>
-          <div className="z-10 bg-white/10 px-6 py-2.5 rounded-full border border-white/20 backdrop-blur-sm shadow-inner"><p className="text-sm font-black uppercase tracking-widest text-[#A8C338]">ROLE: {userData?.role || 'AGENT'}</p></div>
         </div>
       </div>
 
-      {/* QUICK MENU (4 ITEM) */}
+      {/* QUICK MENU */}
       <div className="max-w-[1400px] mx-auto px-4 mt-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {[
-            {url: '/daily-activity', icon: '📝', title: 'Activity', desc: 'Isi form harian'}, 
-            {url: '/academy', icon: '🎓', title: 'Academy', desc: 'Modul belajar & Bank File'}, 
-            {url: '/events', icon: '🗓️', title: 'Events', desc: 'Jadwal Training & Events'}, 
-            {url: '/contest', icon: '🏆', title: 'Contest', desc: 'Lihat kontes'}
-          ].map(menu => (
-            <Link key={menu.url} href={menu.url} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 text-center hover:-translate-y-1 hover:shadow-md hover:border-[#A8C338] transition-all duration-300 group">
-              <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">{menu.icon}</div>
-              <h3 className="font-bold text-[#083344] text-sm md:text-base">{menu.title}</h3>
-              <p className="text-[10px] text-gray-400 mt-1">{menu.desc}</p>
-            </Link>
-          ))}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          
+          {/* Menu 1: Top Achiever */}
+          <a 
+            href="#top-achievers" 
+            onClick={scrollToAchievers}
+            className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:shadow-lg hover:-translate-y-1 group cursor-pointer"
+          >
+            <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">🏆</div>
+            <h3 className="font-bold text-[#083344] text-sm">Top Achiever</h3>
+            <p className="text-[11px] text-gray-400 mt-1">Peringkat Terbaik</p>
+          </a>
+
+          {/* Menu 2: Activity */}
+          <Link href="/daily-activity" className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:shadow-lg hover:-translate-y-1 group">
+            <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">📝</div>
+            <h3 className="font-bold text-[#083344] text-sm">Activity</h3>
+            <p className="text-[11px] text-gray-400 mt-1">Isi Form Harian</p>
+          </Link>
+
+          {/* Menu 3: Academy */}
+          <Link href="/academy" className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:shadow-lg hover:-translate-y-1 group">
+            <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">🎓</div>
+            <h3 className="font-bold text-[#083344] text-sm">Academy</h3>
+            <p className="text-[11px] text-gray-400 mt-1">Modul Belajar & Bank File</p>
+          </Link>
+
+          {/* Menu 4: Events */}
+          <Link href="/events" className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:shadow-lg hover:-translate-y-1 group">
+            <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">🗓️</div>
+            <h3 className="font-bold text-[#083344] text-sm">Events</h3>
+            <p className="text-[11px] text-gray-400 mt-1">Jadwal Training & Events</p>
+          </Link>
+
+          {/* Menu 5: Contest */}
+          <Link href="/contest" className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:shadow-lg hover:-translate-y-1 group">
+            <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">🏆</div>
+            <h3 className="font-bold text-[#083344] text-sm">Contest</h3>
+            <p className="text-[11px] text-gray-400 mt-1">Lihat Kontes</p>
+          </Link>
+
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-4 mt-12">
+      {/* EVENTS & KALENDER */}
+      <div className="max-w-[1400px] mx-auto px-4 mt-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          
           <div className="lg:col-span-2 bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3 mb-6">
-              <span className="text-2xl">🚀</span><h2 className="text-xl md:text-2xl font-black text-[#083344]">Training & Kegiatan Mendatang</h2>
+              <span className="text-2xl">🚀</span>
+              <h2 className="text-xl md:text-2xl font-black text-[#083344]">Training & Kegiatan Mendatang</h2>
             </div>
             
             {eventsList.length > 0 ? (
@@ -242,73 +302,98 @@ export default function HomePage() {
               })}
             </div>
           </div>
+
         </div>
       </div>
 
-      {achieversList.length > 0 && (
-        <div className="max-w-[1400px] mx-auto px-4 mt-20 mb-10">
-          <div className="flex items-center justify-between relative bg-white/50 py-12 px-4 rounded-[3rem] shadow-sm border border-white/60 backdrop-blur-sm">
-            
-            <button onClick={prevAchiever} className="z-20 w-12 h-12 flex items-center justify-center bg-white border-2 border-[#083344] text-[#083344] rounded-full shadow-md hover:bg-[#083344] hover:text-white transition-all transform hover:-translate-x-1 font-black text-xl">
-              &lt;
-            </button>
+      {/* SECTION TOP ACHIEVER - TAMPIL MENURUT KATAGORI & SEMUA DALAM 1 HALAMAN */}
+      <div id="top-achievers" className="max-w-[1400px] mx-auto px-4 mt-16 space-y-8 scroll-mt-6">
+        {achieversList.length > 0 ? (
+          achieversList.map((item, idx) => (
+            <div key={item.id || idx} className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-gray-100 text-center relative overflow-hidden">
+              
+              {/* JUDUL HEADLINE */}
+              <h2 className="text-3xl md:text-4xl font-serif font-black text-[#083344] tracking-wider uppercase">
+                TOP ACHIEVER
+              </h2>
+              <p className="text-xl md:text-2xl font-serif font-black text-[#083344] tracking-widest mt-1 uppercase">
+                {item.periode || 'JULY'}
+              </p>
+              <p className="text-xs md:text-sm font-black text-[#083344] tracking-widest uppercase mt-2 mb-8">
+                {item.judul || 'TOP PRODUCER'}
+              </p>
 
-            <div className="flex flex-col items-center flex-1 mx-4 animate-fade-in text-center">
-              <h4 className="text-gray-500 tracking-[0.3em] text-sm md:text-base font-bold mb-1">TOP ACHIEVER</h4>
-              <h2 className="font-serif text-4xl md:text-6xl font-black text-black uppercase leading-none">BEST OF THE BEST</h2>
-              <h3 className="font-serif text-3xl md:text-5xl font-black text-black uppercase mb-3 leading-none">{achieversList[currentAchieverIndex].periode}</h3>
-              <p className="text-xl md:text-2xl font-black text-black uppercase tracking-wide mb-12">{achieversList[currentAchieverIndex].judul}</p>
-
-              <div className="flex items-end justify-center gap-4 md:gap-10">
+              {/* PODIUM TOP 3 */}
+              <div className="flex justify-center items-end gap-2 sm:gap-6 max-w-2xl mx-auto pt-4 pb-2">
                 
-                {/* --- JUARA 2 (KIRI) --- */}
-                {(achieversList[currentAchieverIndex].foto2 || achieversList[currentAchieverIndex].nama2) && (
-                  <div className="flex flex-col items-center pb-4 md:pb-8">
-                    <div className="relative w-24 h-24 md:w-40 md:h-40 rounded-full border-[5px] border-[#93c5fd] shadow-lg mb-4 bg-gray-100">
-                      <img src={achieversList[currentAchieverIndex].foto2 || 'https://via.placeholder.com/150'} alt="Juara 2" className="w-full h-full object-cover rounded-full" />
-                      <div className="absolute -bottom-2 -right-2 bg-red-500 text-white font-black w-8 h-8 md:w-10 md:h-10 flex items-center justify-center border-[3px] border-white shadow-md rounded-sm" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%)' }}>2</div>
+                {/* RANK 2 */}
+                {(item.foto2 || item.nama2) && (
+                  <div className="flex flex-col items-center flex-1">
+                    <div className="relative">
+                      <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full p-1 bg-gradient-to-tr from-sky-400 via-sky-200 to-sky-500 shadow-md">
+                        <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-gray-100">
+                          <img src={item.foto2 || 'https://via.placeholder.com/150'} alt={item.nama2} className="w-full h-full object-cover" />
+                        </div>
+                      </div>
+                      <span className="absolute bottom-1 right-1 bg-red-600 text-white font-black text-[10px] sm:text-xs w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center border-2 border-white shadow">
+                        2
+                      </span>
                     </div>
-                    <div className="min-h-[3rem] md:min-h-[4rem] flex items-start justify-center">
-                      <p className="font-black text-xs md:text-lg text-center uppercase leading-tight w-24 md:w-40 break-words text-[#083344]">{achieversList[currentAchieverIndex].nama2}</p>
-                    </div>
+                    <p className="mt-3 text-[11px] sm:text-xs font-black text-[#083344] leading-tight uppercase max-w-[120px]">
+                      {item.nama2}
+                    </p>
                   </div>
                 )}
 
-                {/* --- JUARA 1 (TENGAH) --- */}
-                <div className="flex flex-col items-center">
-                  <div className="relative w-32 h-32 md:w-56 md:h-56 rounded-full border-[6px] border-[#bfdbfe] shadow-2xl mb-4 z-10 bg-gray-100">
-                    <img src={achieversList[currentAchieverIndex].foto1 || 'https://via.placeholder.com/200'} alt="Juara 1" className="w-full h-full object-cover rounded-full" />
-                    <div className="absolute -bottom-3 -right-2 bg-red-500 text-yellow-300 font-black text-lg md:text-xl w-10 h-10 md:w-14 md:h-14 flex items-center justify-center border-[4px] border-white shadow-md rounded-sm" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%)' }}>1</div>
-                  </div>
-                  <div className="min-h-[3rem] md:min-h-[4rem] flex items-start justify-center">
-                    <p className="font-black text-sm md:text-2xl text-center uppercase leading-tight w-32 md:w-56 break-words text-[#083344]">{achieversList[currentAchieverIndex].nama1}</p>
-                  </div>
-                </div>
-
-                {/* --- JUARA 3 (KANAN) --- */}
-                {(achieversList[currentAchieverIndex].foto3 || achieversList[currentAchieverIndex].nama3) && (
-                  <div className="flex flex-col items-center pb-4 md:pb-8">
-                    <div className="relative w-24 h-24 md:w-40 md:h-40 rounded-full border-[5px] border-[#93c5fd] shadow-lg mb-4 bg-gray-100">
-                      <img src={achieversList[currentAchieverIndex].foto3 || 'https://via.placeholder.com/150'} alt="Juara 3" className="w-full h-full object-cover rounded-full" />
-                      <div className="absolute -bottom-2 -right-2 bg-red-500 text-white font-black w-8 h-8 md:w-10 md:h-10 flex items-center justify-center border-[3px] border-white shadow-md rounded-sm" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%)' }}>3</div>
+                {/* RANK 1 (LEBIH BESAR & TINGGI) */}
+                {(item.foto1 || item.nama1) && (
+                  <div className="flex flex-col items-center flex-1 -translate-y-3 sm:-translate-y-4">
+                    <div className="relative">
+                      <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full p-1.5 bg-gradient-to-tr from-amber-500 via-yellow-200 to-amber-600 shadow-xl">
+                        <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-gray-100">
+                          <img src={item.foto1 || 'https://via.placeholder.com/150'} alt={item.nama1} className="w-full h-full object-cover" />
+                        </div>
+                      </div>
+                      <span className="absolute bottom-1 right-1 bg-red-600 text-white font-black text-xs sm:text-sm w-6 h-6 sm:w-7 sm:h-7 rounded-md flex items-center justify-center border-2 border-white shadow">
+                        1
+                      </span>
                     </div>
-                    <div className="min-h-[3rem] md:min-h-[4rem] flex items-start justify-center">
-                      <p className="font-black text-xs md:text-lg text-center uppercase leading-tight w-24 md:w-40 break-words text-[#083344]">{achieversList[currentAchieverIndex].nama3}</p>
-                    </div>
+                    <p className="mt-3 text-xs sm:text-sm font-black text-[#083344] leading-tight uppercase max-w-[140px]">
+                      {item.nama1}
+                    </p>
                   </div>
                 )}
-                
+
+                {/* RANK 3 */}
+                {(item.foto3 || item.nama3) && (
+                  <div className="flex flex-col items-center flex-1">
+                    <div className="relative">
+                      <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full p-1 bg-gradient-to-tr from-sky-400 via-sky-200 to-sky-500 shadow-md">
+                        <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-gray-100">
+                          <img src={item.foto3 || 'https://via.placeholder.com/150'} alt={item.nama3} className="w-full h-full object-cover" />
+                        </div>
+                      </div>
+                      <span className="absolute bottom-1 right-1 bg-red-600 text-white font-black text-[10px] sm:text-xs w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center border-2 border-white shadow">
+                        3
+                      </span>
+                    </div>
+                    <p className="mt-3 text-[11px] sm:text-xs font-black text-[#083344] leading-tight uppercase max-w-[120px]">
+                      {item.nama3}
+                    </p>
+                  </div>
+                )}
+
               </div>
             </div>
-
-            <button onClick={nextAchiever} className="z-20 w-12 h-12 flex items-center justify-center bg-white border-2 border-[#083344] text-[#083344] rounded-full shadow-md hover:bg-[#083344] hover:text-white transition-all transform hover:translate-x-1 font-black text-xl">
-              &gt;
-            </button>
-
+          ))
+        ) : (
+          <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 text-center text-gray-400">
+            Belum ada data Top Achiever.
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
+      {/* MODAL EVENT POP-UP */}
       {isModalOpen && selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#083344]/80 backdrop-blur-sm animate-fade-in">
           <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh]">

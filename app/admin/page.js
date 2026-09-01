@@ -11,7 +11,6 @@ export default function AdminDashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Helper untuk mendapatkan tanggal 1 bulan dari hari ini (Format YYYY-MM-DD)
   const getDefaultOneMonthLater = () => {
     const date = new Date();
     date.setMonth(date.getMonth() + 1);
@@ -46,19 +45,16 @@ export default function AdminDashboardPage() {
   const [periodeAchiever, setPeriodeAchiever] = useState('');
   const [tanggalSelesaiAchiever, setTanggalSelesaiAchiever] = useState(getDefaultOneMonthLater());
   
-  // Juara 1 (dengan Adjustment)
   const [foto1, setFoto1] = useState('');
   const [nama1, setNama1] = useState('');
   const [scale1, setScale1] = useState(1);
   const [offsetY1, setOffsetY1] = useState(0);
 
-  // Juara 2 (dengan Adjustment)
   const [foto2, setFoto2] = useState('');
   const [nama2, setNama2] = useState('');
   const [scale2, setScale2] = useState(1);
   const [offsetY2, setOffsetY2] = useState(0);
 
-  // Juara 3 (dengan Adjustment)
   const [foto3, setFoto3] = useState('');
   const [nama3, setNama3] = useState('');
   const [scale3, setScale3] = useState(1);
@@ -71,6 +67,7 @@ export default function AdminDashboardPage() {
   const [editEventId, setEditEventId] = useState(null);
   const [modeKegiatan, setModeKegiatan] = useState('event'); // 'event' | 'training'
   const [judulEvent, setJudulEvent] = useState('');
+  const [deskripsiEvent, setDeskripsiEvent] = useState(''); // State Baru
   const [targetEvent, setTargetEvent] = useState('Semua'); 
   const [kategoriEvent, setKategoriEvent] = useState('Agency');
   const [tanggalEvent, setTanggalEvent] = useState('');
@@ -223,7 +220,7 @@ export default function AdminDashboardPage() {
   const handleApprove = async (userId, userName) => { 
     if (!window.confirm(`Setujui ${userName}?`)) return; 
     try {
-      await updateDoc(doc(db, 'users', userId), { status: 'approved' }); 
+      await updateDoc(doc(doc(db, 'users', userId)), { status: 'approved' }); 
       alert(`${userName} disetujui!`); 
       fetchUsers(); 
     } catch (e) {
@@ -356,6 +353,7 @@ export default function AdminDashboardPage() {
     const payload = { 
       jenisKegiatan: modeKegiatan, 
       judul: judulEvent, 
+      deskripsi: modeKegiatan === 'event' ? deskripsiEvent : '', // Menyimpan Deskripsi Singkat
       target: targetEvent, 
       kategori: kategoriEvent, 
       tanggal: tanggalEvent, 
@@ -386,6 +384,7 @@ export default function AdminDashboardPage() {
   const resetEventForm = () => {
     setEditEventId(null);
     setJudulEvent(''); 
+    setDeskripsiEvent(''); // Reset deskripsi
     setTanggalEvent(''); 
     setTanggalSelesaiEvent(getDefaultOneMonthLater()); 
     setWaktuEvent(''); 
@@ -400,6 +399,7 @@ export default function AdminDashboardPage() {
     setEditEventId(item.id);
     setModeKegiatan(item.jenisKegiatan || 'event');
     setJudulEvent(item.judul || '');
+    setDeskripsiEvent(item.deskripsi || ''); // Load deskripsi saat edit
     setTargetEvent(item.target || 'Semua');
     setKategoriEvent(item.kategori || 'Agency');
     setTanggalEvent(item.tanggal || '');
@@ -493,7 +493,6 @@ export default function AdminDashboardPage() {
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
-  // FITUR ADJUST/EDIT KUIS
   const handleSaveQuiz = async (e) => { 
     e.preventDefault(); 
     setIsSubmittingKuis(true); 
@@ -675,7 +674,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 3. TOP ACHIEVER WITH ADJUSTMENT SLIDERS & LIVE PREVIEW */}
+      {/* 3. TOP ACHIEVER */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-achiever" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
           <div className="flex justify-between items-center mb-5">
@@ -851,6 +850,19 @@ export default function AdminDashboardPage() {
               <input type="text" value={judulEvent} onChange={(e) => setJudulEvent(e.target.value)} required placeholder={modeKegiatan === 'event' ? "Contoh: Agency Annual Gathering" : "Contoh: Training Basic Selling Skill"} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
             </div>
 
+            {/* FIELD DESKRIPSI SINGKAT KHUSUS MODE EVENT */}
+            {modeKegiatan === 'event' && (
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Deskripsi Singkat</label>
+                <textarea 
+                  value={deskripsiEvent} 
+                  onChange={(e) => setDeskripsiEvent(e.target.value)} 
+                  placeholder="Saksikan dan ikuti event spektakuler ini bersama Harvest Agency!" 
+                  className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 h-20"
+                ></textarea>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-bold mb-1">Kategori</label>
@@ -922,6 +934,8 @@ export default function AdminDashboardPage() {
                          </span>
                          <p className="font-bold text-[#083344]">{event.judul}</p>
                        </div>
+                       {/* Menampilkan deskripsi jika tersedia */}
+                       {event.deskripsi && <p className="text-xs text-gray-600 mb-1 italic">"{event.deskripsi}"</p>}
                        <p className="text-xs text-gray-500">
                          {event.tanggal ? `${event.tanggal} ${event.waktu ? '| ' + event.waktu : ''}` : 'Kegiatan Berdurasi'} (Selesai: {event.tanggalSelesai || '-'})
                        </p>
@@ -1068,7 +1082,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 7. BANK SOAL (KUIS) WITH ADJUST/EDIT FEATURE */}
+      {/* 7. BANK SOAL (KUIS) */}
       <div id="form-kuis" className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 w-full overflow-hidden">
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-bold text-xl text-[#083344]">📝 Manajemen Bank Soal (Kuis)</h2>
@@ -1096,7 +1110,7 @@ export default function AdminDashboardPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1 flex items-center">A</span><input type="text" required value={kuisA} onChange={(e) => setKuisA(e.target.value)} placeholder="Jawaban A" className="w-full px-2 py-1 border text-xs rounded" /></div>
-                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1 flex items-center">B</span><input type="text" required value={kuisB} onChange={(e) => setKuisB(e.target.value)} placeholder="Jawaban B" className="w-full px-2 py-1 border text-xs rounded" /></div>
+                <div className="flex gap-2"><span className="text-xs font-bold bg-[#A8C338] text-[#083344] px-2 py-1 flex items-center">B</span><input type="text" required value={kuisB} onChange={(e) => setKuisB(e.target.value)} placeholder="Jawaban B" className="w-full px-2 py-1 border text-xs rounded" /></div>
                 <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1 flex items-center">C</span><input type="text" required value={kuisC} onChange={(e) => setKuisC(e.target.value)} placeholder="Jawaban C" className="w-full px-2 py-1 border text-xs rounded" /></div>
                 <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1 flex items-center">D</span><input type="text" required value={kuisD} onChange={(e) => setKuisD(e.target.value)} placeholder="Jawaban D" className="w-full px-2 py-1 border text-xs rounded" /></div>
               </div>

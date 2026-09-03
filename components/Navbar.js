@@ -57,7 +57,7 @@ export default function Navbar() {
   const handleLogout = async () => {
     await signOut(auth);
     closeAll();
-    router.push('/login');
+    router.push('/');
   };
 
   const closeAll = () => {
@@ -84,7 +84,7 @@ export default function Navbar() {
               <Link href="/" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Home</Link>
               <Link href="/daily-activity" className="text-white hover:text-[#A8C338] text-sm font-bold transition">My Activity</Link>
               <Link href="/academy" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Harvest Academy</Link>
-              <Link href="/events" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Events</Link>
+              <Link href="/events" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Event</Link>
               <Link href="/contest" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Contest</Link>
               
               <div className="flex items-center gap-4 ml-4 border-l border-white/20 pl-6">
@@ -139,7 +139,7 @@ export default function Navbar() {
           ) : (
             /* USER BELUM LOGIN (HANYA TOMBOL MASUK/DAFTAR) */
             <div>
-              <Link href="/login" className="border border-white/40 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-[#A8C338] hover:text-[#083344] transition-all">
+              <Link href="/" className="border border-white/40 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-[#A8C338] hover:text-[#083344] transition-all">
                 Masuk / Daftar
               </Link>
             </div>

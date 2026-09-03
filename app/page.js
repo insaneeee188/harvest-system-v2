@@ -1,9 +1,10 @@
 'use client';
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, collection, onSnapshot } from 'firebase/firestore';
 
 export default function HomePage() {
   const [user, setUser] = useState(null);
@@ -11,66 +12,151 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   const [eventsList, setEventsList] = useState([]);
+  const [contestsList, setContestsList] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const eventsPerPage = 4;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [zoomScale, setZoomScale] = useState(1);
 
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
-
-  // State Data Top Achievers (Menampung semua kategori)
   const [achieversList, setAchieversList] = useState([]);
 
-  useEffect(() => {
-    let isMounted = true;
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        if (userDoc.exists() && isMounted) setUserData(userDoc.data());
-        fetchEventsAndAchievers();
-      } else {
-        if (isMounted) { setUser(null); setUserData(null); }
-      }
-      if (isMounted) setLoading(false);
-    });
-    return () => { isMounted = false; unsubscribe(); };
+  // ================= FUNGSI UTILS PARSING TANGGAL =================
+  const parseDateOnly = useCallback((dateStr) => {
+    if (!dateStr) return null;
+    if (typeof dateStr !== 'string') {
+      if (typeof dateStr?.toDate === 'function') dateStr = dateStr.toDate().toISOString();
+      else if (dateStr instanceof Date) dateStr = dateStr.toISOString();
+      else return null;
+    }
+
+    const cleanStr = dateStr.split('T')[0];
+    const parts = cleanStr.split('-');
+    if (parts.length !== 3) return null;
+
+    const y = Number(parts[0]);
+    const m = Number(parts[1]) - 1;
+    const d = Number(parts[2]);
+
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+    return new Date(y, m, d);
   }, []);
 
-  const fetchEventsAndAchievers = async () => {
-    // Fetch Events
-    const snapEvent = await getDocs(collection(db, 'events'));
-    const allEvents = snapEvent.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const upcoming = allEvents.filter(ev => ev.tanggal >= todayStr).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
-    setEventsList(upcoming);
+  const formatDateDDMMYYYY = useCallback((dateStr) => {
+    if (!dateStr) return '-';
+    const d = parseDateOnly(dateStr);
+    if (!d) return dateStr;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  }, [parseDateOnly]);
 
-    // Fetch Top Achievers & Sorting Urutan Kategori
-    const snapContest = await getDocs(collection(db, 'agency_contests'));
-    const allContests = snapContest.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    const achieversData = allContests.filter(i => i.type === 'achiever');
+  useEffect(() => {
+    let unsubscribeUserDoc = () => {};
+    let unsubscribeEvents = () => {};
+    let unsubscribeAchievers = () => {};
 
-    // Bobot Urutan Kategori
-    const categoryOrder = {
-      'TOP AGENCY BUILDER': 1,
-      'TOP ASSOCIATE AGENCY BUILDER': 2,
-      'TOP PRODUCER': 3
-    };
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
 
-    const sortedAchievers = achieversData.sort((a, b) => {
-      const titleA = (a.judul || '').trim().toUpperCase();
-      const titleB = (b.judul || '').trim().toUpperCase();
-      const orderA = categoryOrder[titleA] || 99;
-      const orderB = categoryOrder[titleB] || 99;
-      return orderA - orderB;
+        // 1. USER DATA
+        const userRef = doc(db, 'users', currentUser.uid);
+        unsubscribeUserDoc = onSnapshot(
+          userRef,
+          (userSnap) => {
+            if (userSnap.exists()) {
+              setUserData(userSnap.data());
+            }
+          },
+          (err) => console.error('Error User Data:', err)
+        );
+
+        // 2. REAL-TIME LISTENER: EVENTS
+        const eventsRef = collection(db, 'events');
+        unsubscribeEvents = onSnapshot(
+          eventsRef,
+          (snapEvent) => {
+            const allEvents = snapEvent.docs.map((docSnap) => ({
+              id: docSnap.id,
+              ...docSnap.data(),
+            }));
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const upcoming = allEvents
+              .filter((ev) => {
+                const endDateStr = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.endDate || ev.tanggal || ev.startDate || ev.date;
+                const expiryDate = parseDateOnly(endDateStr);
+                return expiryDate && expiryDate >= today;
+              })
+              .sort((a, b) => {
+                const startAStr = a.tanggal || a.startDate || a.date || a.tanggalSelesaiEvent || a.tanggalSelesai;
+                const startBStr = b.tanggal || b.startDate || b.date || b.tanggalSelesaiEvent || b.tanggalSelesai;
+                const startA = parseDateOnly(startAStr) || new Date(0);
+                const startB = parseDateOnly(startBStr) || new Date(0);
+                return startA - startB;
+              });
+
+            setEventsList(upcoming);
+          },
+          (err) => console.error('Error Events:', err)
+        );
+
+        // 3. CONTESTS & ACHIEVERS
+        const contestRef = collection(db, 'agency_contests');
+        unsubscribeAchievers = onSnapshot(
+          contestRef,
+          (snapContest) => {
+            const allContests = snapContest.docs.map((docSnap) => ({
+              id: docSnap.id,
+              ...docSnap.data(),
+            }));
+
+            const rawContests = allContests.filter((i) => i.type !== 'achiever');
+            setContestsList(rawContests);
+
+            const achieversData = allContests.filter((i) => i.type === 'achiever');
+            const categoryOrder = {
+              'TOP AGENCY BUILDER': 1,
+              'TOP ASSOCIATE AGENCY BUILDER': 2,
+              'TOP PRODUCER': 3,
+            };
+
+            const sortedAchievers = achieversData.sort((a, b) => {
+              const titleA = (a.judul || '').trim().toUpperCase();
+              const titleB = (b.judul || '').trim().toUpperCase();
+              const orderA = categoryOrder[titleA] || 99;
+              const orderB = categoryOrder[titleB] || 99;
+              return orderA - orderB;
+            });
+
+            setAchieversList(sortedAchievers);
+          },
+          (err) => console.error('Error Achievers:', err)
+        );
+      } else {
+        setUser(null);
+        setUserData(null);
+        setEventsList([]);
+        setAchieversList([]);
+        setContestsList([]);
+      }
+      setLoading(false);
     });
 
-    setAchieversList(sortedAchievers);
-  };
+    return () => {
+      unsubscribeAuth();
+      unsubscribeUserDoc();
+      unsubscribeEvents();
+      unsubscribeAchievers();
+    };
+  }, [parseDateOnly]);
 
-  // FUNGSI SMOOTH SCROLL KE TOP ACHIEVER
   const scrollToAchievers = (e) => {
     e.preventDefault();
     const element = document.getElementById('top-achievers');
@@ -82,13 +168,16 @@ export default function HomePage() {
   const indexOfLastEvent = currentPage * eventsPerPage;
   const indexOfFirstEvent = indexOfLastEvent - eventsPerPage;
   const currentEvents = eventsList.slice(indexOfFirstEvent, indexOfLastEvent);
-  const totalPages = Math.ceil(eventsList.length / eventsPerPage);
+  const totalPages = Math.ceil(eventsList.length / eventsPerPage) || 1;
 
   const year = currentMonthDate.getFullYear();
   const month = currentMonthDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const startDay = new Date(year, month, 1).getDay();
-  const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  ];
 
   const prevMonth = () => setCurrentMonthDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentMonthDate(new Date(year, month + 1, 1));
@@ -97,36 +186,83 @@ export default function HomePage() {
   for (let i = 0; i < startDay; i++) calendarDays.push(null);
   for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
 
-  const checkHasEvent = (day) => {
-    if (!day) return false;
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return eventsList.some(ev => ev.tanggal === dateStr);
-  };
+  // ================= LOGIKA KALENDER PERBAIKAN =================
+  const getItemByDate = (day) => {
+    if (!day) return null;
+    const targetDate = new Date(year, month, day);
+    targetDate.setHours(0, 0, 0, 0);
 
-  const getEventByDate = (day) => {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return eventsList.find(ev => ev.tanggal === dateStr);
+    const eventMatch = eventsList.find((ev) => {
+      // Mengambil tanggal mulai, jika tidak ada fallback ke tanggal selesai
+      const startStr = ev.tanggal || ev.startDate || ev.date || ev.tanggalSelesaiEvent || ev.tanggalSelesai;
+      const endStr = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.endDate || startStr;
+      
+      const startDate = parseDateOnly(startStr);
+      const endDate = parseDateOnly(endStr);
+
+      if (!startDate || !endDate) return false;
+      return targetDate >= startDate && targetDate <= endDate;
+    });
+
+    if (eventMatch) return { ...eventMatch, categoryType: 'Event' };
+
+    const contestMatch = contestsList.find((ct) => {
+      // Mengambil tanggal mulai contest, jika tidak ada fallback ke tanggal selesai
+      const startStr = ct.startDate || ct.periodeAwal || ct.tanggal || ct.endDate || ct.periodeAkhir;
+      const endStr = ct.endDate || ct.periodeAkhir || startStr;
+      
+      const startDate = parseDateOnly(startStr);
+      const endDate = parseDateOnly(endStr);
+
+      if (!startDate || !endDate) return false;
+      return targetDate >= startDate && targetDate <= endDate;
+    });
+
+    if (contestMatch) return { ...contestMatch, categoryType: 'Contest' };
+
+    return null;
   };
 
   const todayDate = new Date();
-  const isToday = (day) => { return day === todayDate.getDate() && month === todayDate.getMonth() && year === todayDate.getFullYear(); };
+  const isToday = (day) =>
+    day === todayDate.getDate() &&
+    month === todayDate.getMonth() &&
+    year === todayDate.getFullYear();
 
-  const openModal = (item) => { setSelectedItem(item); setIsModalOpen(true); };
+  const openModal = (item) => {
+    setSelectedItem(item);
+    setZoomScale(1);
+    setIsModalOpen(true);
+  };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#083344]"></div></div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-[#083344]"></div>
+      </div>
+    );
+  }
 
-  // ================= TAMPILAN GUEST (BELUM LOGIN) =================
+  // ================= GUEST VIEW =================
   if (!user) {
     return (
       <div className="min-h-screen bg-white font-sans">
         <div className="bg-[#083344] text-white py-20 px-4 rounded-b-[3rem] shadow-xl text-center">
           <div className="max-w-4xl mx-auto flex flex-col items-center">
-            <img src="/harvest-logo.png" alt="Harvest Agency Logo" className="h-30 md:h-40 object-contain mb-8" onError={(e) => { e.target.style.display = 'none'; }} />
+            <img
+              src="/harvest-logo.png"
+              alt="Harvest Agency Logo"
+              className="h-30 md:h-40 object-contain mb-8"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
             <h1 className="text-4xl md:text-6xl font-black mb-6">Welcome To Harvest Agency</h1>
             <p className="text-gray-300 text-sm md:text-base mb-10 max-w-2xl mx-auto leading-relaxed border-t border-white/20 pt-6">
               Sistem terintegrasi untuk mencetak agen asuransi profesional dan sukses bersama Harvest.
             </p>
-            <Link href="/login" className="inline-block bg-[#A8C338] text-[#083344] font-bold px-8 py-3.5 rounded-full hover:bg-white transition-all shadow-lg">
+            <Link
+              href="/login"
+              className="inline-block bg-[#A8C338] text-[#083344] font-bold px-8 py-3.5 rounded-full hover:bg-white transition-all shadow-lg"
+            >
               Masuk/Daftar
             </Link>
           </div>
@@ -166,10 +302,9 @@ export default function HomePage() {
     );
   }
 
-  // ================= TAMPILAN USER LOGIN =================
+  // ================= LOGGED IN USER VIEW =================
   return (
     <div className="min-h-screen bg-gray-50/50 pb-20 font-sans">
-      
       {/* BANNER UTAMA */}
       <div className="max-w-[1400px] mx-auto px-4 pt-8">
         <div className="bg-[#083344] rounded-3xl p-8 md:p-10 text-white shadow-xl relative overflow-hidden">
@@ -177,11 +312,9 @@ export default function HomePage() {
             <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">
               Semangat Pagi, <span className="text-[#A8C338]">{userData?.name?.split(' ')[0] || userData?.nama || 'User'}!</span>
             </h1>
-            
-            {/* BADGE ROLE */}
             <div className="mt-4 inline-block bg-[#A8C338]/20 border border-[#A8C338]/40 px-5 py-1.5 rounded-full">
               <span className="text-[#A8C338] font-black tracking-wider text-sm uppercase">
-                {userData?.role || 'ADMIN'}
+                {userData?.role || 'USER'}
               </span>
             </div>
           </div>
@@ -191,10 +324,8 @@ export default function HomePage() {
       {/* QUICK MENU */}
       <div className="max-w-[1400px] mx-auto px-4 mt-8">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          
-          {/* Menu 1: Top Achiever */}
-          <a 
-            href="#top-achievers" 
+          <a
+            href="#top-achievers"
             onClick={scrollToAchievers}
             className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:shadow-lg hover:-translate-y-1 group cursor-pointer"
           >
@@ -203,73 +334,104 @@ export default function HomePage() {
             <p className="text-[11px] text-gray-400 mt-1">Peringkat Terbaik</p>
           </a>
 
-          {/* Menu 2: Activity */}
           <Link href="/daily-activity" className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:shadow-lg hover:-translate-y-1 group">
             <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">📝</div>
             <h3 className="font-bold text-[#083344] text-sm">Activity</h3>
             <p className="text-[11px] text-gray-400 mt-1">Isi Form Harian</p>
           </Link>
 
-          {/* Menu 3: Academy */}
           <Link href="/academy" className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:shadow-lg hover:-translate-y-1 group">
             <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">🎓</div>
             <h3 className="font-bold text-[#083344] text-sm">Academy</h3>
             <p className="text-[11px] text-gray-400 mt-1">Modul Belajar & Bank File</p>
           </Link>
 
-          {/* Menu 4: Events */}
           <Link href="/events" className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:shadow-lg hover:-translate-y-1 group">
             <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">🗓️</div>
             <h3 className="font-bold text-[#083344] text-sm">Events</h3>
             <p className="text-[11px] text-gray-400 mt-1">Jadwal Training & Events</p>
           </Link>
 
-          {/* Menu 5: Contest */}
           <Link href="/contest" className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:shadow-lg hover:-translate-y-1 group">
-            <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">🏆</div>
+            <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">🥊</div>
             <h3 className="font-bold text-[#083344] text-sm">Contest</h3>
             <p className="text-[11px] text-gray-400 mt-1">Lihat Kontes</p>
           </Link>
-
         </div>
       </div>
 
-      {/* EVENTS & KALENDER */}
+      {/* EVENTS & KALENDER SECTION */}
       <div className="max-w-[1400px] mx-auto px-4 mt-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          
           <div className="lg:col-span-2 bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3 mb-6">
               <span className="text-2xl">🚀</span>
               <h2 className="text-xl md:text-2xl font-black text-[#083344]">Training & Kegiatan Mendatang</h2>
             </div>
-            
+
             {eventsList.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {currentEvents.map(ev => (
-                    <div key={ev.id} onClick={() => openModal(ev)} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col transition-all hover:shadow-md hover:border-[#A8C338] cursor-pointer group">
-                      <div className="h-40 bg-gray-100 relative overflow-hidden">
-                        {ev.posterUrl ? <img src={ev.posterUrl} alt={ev.judul} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center text-gray-400">Tidak ada gambar</div>}
-                        <div className="absolute top-3 left-3 bg-[#083344] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase">{ev.target || 'SEMUA USER'}</div>
-                        <div className="absolute top-3 right-3 bg-white text-red-600 text-[10px] font-black px-3 py-1 rounded-full shadow-sm">{ev.waktu} WIB</div>
-                      </div>
-                      <div className="p-5 flex flex-col flex-grow">
-                        <h3 className="font-bold text-[#083344] text-lg leading-tight mb-3 line-clamp-2">{ev.judul}</h3>
-                        <div className="space-y-1 mt-auto">
-                          <p className="text-xs text-gray-500 font-medium flex items-center gap-2">🗓️ <span className="font-mono">{ev.tanggal}</span></p>
-                          <p className="text-xs text-gray-500 font-medium flex items-center gap-2">📍 <span className="truncate">{ev.lokasi}</span></p>
+                  {currentEvents.map((ev) => {
+                    const startDateStr = ev.tanggal || ev.startDate || ev.date || ev.tanggalSelesaiEvent || ev.tanggalSelesai;
+                    const endDateStr = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.endDate || startDateStr;
+                    const isMultiDay = endDateStr && endDateStr !== startDateStr;
+
+                    return (
+                      <div
+                        key={ev.id}
+                        onClick={() => openModal(ev)}
+                        className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col transition-all hover:shadow-md hover:border-[#A8C338] cursor-pointer group pb-4"
+                      >
+                        <div className="h-40 bg-gray-100 relative overflow-hidden">
+                          {ev.posterUrl || ev.imageUrl || ev.flyerUrl || ev.poster ? (
+                            <img src={ev.posterUrl || ev.imageUrl || ev.flyerUrl || ev.poster} alt={ev.judul || 'Event Poster'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">Tidak ada gambar</div>
+                          )}
+                          <div className="absolute top-3 left-3 bg-[#083344] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase">
+                            {ev.target || 'SEMUA USER'}
+                          </div>
+                          <div className="absolute top-3 right-3 bg-white text-red-600 text-[10px] font-black px-3 py-1 rounded-full shadow-sm">
+                            {ev.waktu || ev.jam || 'TBA'} WIB
+                          </div>
                         </div>
-                        <button className="mt-4 block w-full text-center bg-[#A8C338] text-[#083344] font-bold text-xs py-2.5 rounded-xl transition">Lihat Detail Event</button>
+                        <div className="p-5 flex flex-col flex-grow">
+                          <h3 className="font-bold text-[#083344] text-lg leading-tight mb-3 line-clamp-2">{ev.judul || ev.title || ev.namaEvent}</h3>
+                          <div className="space-y-1 mt-auto">
+                            <p className="text-xs text-gray-500 font-medium flex items-center gap-2">
+                              🗓️ <span className="font-semibold text-gray-700">
+                                {formatDateDDMMYYYY(startDateStr)}
+                                {isMultiDay ? ` s/d ${formatDateDDMMYYYY(endDateStr)}` : ''}
+                              </span>
+                            </p>
+                            <p className="text-xs text-gray-500 font-medium flex items-center gap-2">
+                              📍 <span className="truncate">{ev.lokasi || (ev.linkZoom ? 'Online (Zoom Meeting)' : 'Kantor / Hybrid')}</span>
+                            </p>
+                          </div>
+                          <button className="mt-4 block w-full text-center bg-[#A8C338] text-[#083344] font-bold text-xs py-2.5 rounded-xl transition hover:opacity-90">Lihat Detail Event</button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 {totalPages > 1 && (
                   <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-100">
-                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="text-xs font-bold px-4 py-2 bg-gray-100 text-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-200">← Sebelumnya</button>
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="text-xs font-bold px-4 py-2 bg-gray-100 text-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-200"
+                    >
+                      ← Sebelumnya
+                    </button>
                     <span className="text-xs font-bold text-gray-400">Hal {currentPage} dari {totalPages}</span>
-                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="text-xs font-bold px-4 py-2 bg-gray-100 text-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-200">Selanjutnya →</button>
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="text-xs font-bold px-4 py-2 bg-gray-100 text-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-200"
+                    >
+                      Selanjutnya →
+                    </button>
                   </div>
                 )}
               </>
@@ -278,6 +440,7 @@ export default function HomePage() {
             )}
           </div>
 
+          {/* KALENDER */}
           <div className="lg:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
               <h3 className="font-black text-[#083344] flex items-center gap-2">📅 Kalender Kegiatan</h3>
@@ -292,27 +455,37 @@ export default function HomePage() {
             </div>
             <div className="grid grid-cols-7 gap-y-2 text-center text-xs font-medium">
               {calendarDays.map((d, idx) => {
-                const isEvt = checkHasEvent(d);
+                const item = getItemByDate(d);
+                const isEvt = item !== null;
                 const isTdy = isToday(d);
                 return (
-                  <div key={idx} onClick={() => { if(isEvt) openModal(getEventByDate(d)); }} className={`w-8 h-8 flex items-center justify-center rounded-full mx-auto transition-all ${!d ? '' : isEvt ? 'bg-[#A8C338] text-[#083344] font-black shadow-md cursor-pointer hover:scale-110' : isTdy ? 'bg-[#083344] text-white font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>
+                  <div
+                    key={idx}
+                    onClick={() => { if (isEvt) openModal(item); }}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full mx-auto transition-all ${
+                      !d
+                        ? ''
+                        : isEvt
+                        ? 'bg-[#A8C338] text-[#083344] font-black shadow-md cursor-pointer hover:scale-110'
+                        : isTdy
+                        ? 'bg-[#083344] text-white font-bold'
+                        : 'text-[#083344] hover:bg-gray-100'
+                    }`}
+                  >
                     {d || ''}
                   </div>
                 );
               })}
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* SECTION TOP ACHIEVER - TAMPIL MENURUT KATAGORI & SEMUA DALAM 1 HALAMAN */}
+      {/* TOP ACHIEVER SECTION */}
       <div id="top-achievers" className="max-w-[1400px] mx-auto px-4 mt-16 space-y-8 scroll-mt-6">
         {achieversList.length > 0 ? (
           achieversList.map((item, idx) => (
             <div key={item.id || idx} className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-gray-100 text-center relative overflow-hidden">
-              
-              {/* JUDUL HEADLINE */}
               <h2 className="text-3xl md:text-4xl font-serif font-black text-[#083344] tracking-wider uppercase">
                 TOP ACHIEVER
               </h2>
@@ -323,16 +496,13 @@ export default function HomePage() {
                 {item.judul || 'TOP PRODUCER'}
               </p>
 
-              {/* PODIUM TOP 3 */}
               <div className="flex justify-center items-end gap-2 sm:gap-6 max-w-2xl mx-auto pt-4 pb-2">
-                
-                {/* RANK 2 */}
                 {(item.foto2 || item.nama2) && (
                   <div className="flex flex-col items-center flex-1">
                     <div className="relative">
                       <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full p-1 bg-gradient-to-tr from-sky-400 via-sky-200 to-sky-500 shadow-md">
                         <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-gray-100">
-                          <img src={item.foto2 || 'https://via.placeholder.com/150'} alt={item.nama2} className="w-full h-full object-cover" />
+                          <img src={item.foto2 || 'https://via.placeholder.com/150'} alt={item.nama2 || 'Juara 2'} className="w-full h-full object-cover" />
                         </div>
                       </div>
                       <span className="absolute bottom-1 right-1 bg-red-600 text-white font-black text-[10px] sm:text-xs w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center border-2 border-white shadow">
@@ -345,13 +515,12 @@ export default function HomePage() {
                   </div>
                 )}
 
-                {/* RANK 1 (LEBIH BESAR & TINGGI) */}
                 {(item.foto1 || item.nama1) && (
                   <div className="flex flex-col items-center flex-1 -translate-y-3 sm:-translate-y-4">
                     <div className="relative">
                       <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full p-1.5 bg-gradient-to-tr from-amber-500 via-yellow-200 to-amber-600 shadow-xl">
                         <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-gray-100">
-                          <img src={item.foto1 || 'https://via.placeholder.com/150'} alt={item.nama1} className="w-full h-full object-cover" />
+                          <img src={item.foto1 || 'https://via.placeholder.com/150'} alt={item.nama1 || 'Juara 1'} className="w-full h-full object-cover" />
                         </div>
                       </div>
                       <span className="absolute bottom-1 right-1 bg-red-600 text-white font-black text-xs sm:text-sm w-6 h-6 sm:w-7 sm:h-7 rounded-md flex items-center justify-center border-2 border-white shadow">
@@ -364,13 +533,12 @@ export default function HomePage() {
                   </div>
                 )}
 
-                {/* RANK 3 */}
                 {(item.foto3 || item.nama3) && (
                   <div className="flex flex-col items-center flex-1">
                     <div className="relative">
                       <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full p-1 bg-gradient-to-tr from-sky-400 via-sky-200 to-sky-500 shadow-md">
                         <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-gray-100">
-                          <img src={item.foto3 || 'https://via.placeholder.com/150'} alt={item.nama3} className="w-full h-full object-cover" />
+                          <img src={item.foto3 || 'https://via.placeholder.com/150'} alt={item.nama3 || 'Juara 3'} className="w-full h-full object-cover" />
                         </div>
                       </div>
                       <span className="absolute bottom-1 right-1 bg-red-600 text-white font-black text-[10px] sm:text-xs w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center border-2 border-white shadow">
@@ -382,7 +550,6 @@ export default function HomePage() {
                     </p>
                   </div>
                 )}
-
               </div>
             </div>
           ))
@@ -393,32 +560,120 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* MODAL EVENT POP-UP */}
+      {/* MODAL POPUP DETAIL EVENT / CONTEST */}
       {isModalOpen && selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#083344]/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh]">
-            <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white w-10 h-10 rounded-full font-black flex items-center justify-center shadow-lg z-10 transition-transform transform hover:scale-110">X</button>
-            <div className="w-full bg-gray-100 flex-shrink-0 relative">
-               <img src={selectedItem.posterUrl || 'https://via.placeholder.com/800x400?text=Event+Harvest'} alt="Poster" className="w-full h-auto object-cover max-h-[40vh]" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-xl rounded-3xl overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh]">
+            
+            {/* TOMBOL CLOSE */}
+            <button
+              onClick={() => {
+                setIsModalOpen(false);
+                setZoomScale(1);
+              }}
+              className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white w-9 h-9 rounded-full font-black flex items-center justify-center shadow-lg z-20 transition-transform transform hover:scale-110"
+            >
+              ✕
+            </button>
+
+            {/* CONTAINER GAMBAR POSTER + ZOOM CONTROLS */}
+            <div className="w-full bg-black relative flex items-center justify-center min-h-[300px] max-h-[50vh] overflow-hidden group">
+              <img
+                src={
+                  selectedItem.posterUrl ||
+                  selectedItem.imageUrl ||
+                  selectedItem.flyerUrl ||
+                  selectedItem.poster ||
+                  'https://via.placeholder.com/800x600?text=Harvest+Event'
+                }
+                alt={selectedItem.judul || selectedItem.title || 'Poster Event'}
+                style={{ transform: `scale(${zoomScale})` }}
+                className="max-h-[50vh] w-auto object-contain transition-transform duration-200 ease-out"
+              />
+
+              {/* FITUR CONTROLLER ZOOM IN / ZOOM OUT */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full flex items-center gap-4 text-white text-xs z-10 border border-white/20">
+                <button
+                  onClick={() => setZoomScale((prev) => Math.max(0.8, prev - 0.2))}
+                  className="hover:text-[#A8C338] font-black text-sm px-1"
+                  title="Zoom Out"
+                >
+                  ➖
+                </button>
+                <span className="font-mono text-[11px] min-w-[40px] text-center">
+                  {Math.round(zoomScale * 100)}%
+                </span>
+                <button
+                  onClick={() => setZoomScale((prev) => Math.min(2.5, prev + 0.2))}
+                  className="hover:text-[#A8C338] font-black text-sm px-1"
+                  title="Zoom In"
+                >
+                  ➕
+                </button>
+                <button
+                  onClick={() => setZoomScale(1)}
+                  className="text-[10px] bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-gray-200"
+                >
+                  Reset
+                </button>
+              </div>
             </div>
-            <div className="p-6 overflow-y-auto no-scrollbar">
-               <h2 className="text-2xl font-black text-[#083344] text-center mb-4">{selectedItem.judul}</h2>
-               <p className="text-gray-600 text-sm leading-relaxed text-justify whitespace-pre-wrap">{selectedItem.deskripsi || 'Deskripsi tidak tersedia.'}</p>
-               <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col gap-3">
-                 <p className="text-sm font-bold text-gray-700">📅 {selectedItem.tanggal} | {selectedItem.waktu} WIB</p>
-                 <p className="text-sm font-bold text-gray-700">📍 {selectedItem.lokasi}</p>
-                 <p className="text-sm font-bold text-gray-700">🎯 Target: {selectedItem.target}</p>
-                 {selectedItem.linkZoom && (
-                    <a href={selectedItem.linkZoom} target="_blank" rel="noreferrer" className="bg-[#A8C338] text-center py-3.5 rounded-xl font-black text-[#083344] mt-4 block hover:bg-[#96af31] shadow-lg transition-transform hover:-translate-y-1">
-                      🔗 Gabung Link Zoom / Meeting
-                    </a>
-                 )}
-               </div>
+
+            {/* DETAIL & DESKRIPSI */}
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div className="text-center">
+                <span className="text-[10px] bg-[#083344] text-[#A8C338] font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                  {selectedItem.categoryType || selectedItem.kategori || 'EVENT'}
+                </span>
+                <h2 className="text-2xl font-black text-[#083344] mt-2 leading-snug">
+                  "{selectedItem.judul || selectedItem.title || selectedItem.namaEvent}"
+                </h2>
+              </div>
+
+              {/* DESKRIPSI (FIELD FALLBACK DARI FIRESTORE) */}
+              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                <p className="text-gray-600 text-xs md:text-sm leading-relaxed whitespace-pre-line">
+                  {selectedItem.deskripsi ||
+                    selectedItem.deskripsiEvent ||
+                    selectedItem.keterangan ||
+                    selectedItem.detail ||
+                    'Buruan Ikuti Event Selagi Tersedia!'}
+                </p>
+              </div>
+
+              {/* INFORMASI WAKTU & LOKASI */}
+              <div className="space-y-2 text-xs font-semibold text-gray-600 pt-2 border-t border-gray-100">
+                <p className="flex items-center gap-2">
+                  🗓️ <span>Jadwal: {formatDateDDMMYYYY(selectedItem.tanggal || selectedItem.startDate || selectedItem.tanggalSelesaiEvent || selectedItem.tanggalSelesai)} {selectedItem.tanggalSelesaiEvent || selectedItem.endDate ? `s/d ${formatDateDDMMYYYY(selectedItem.tanggalSelesaiEvent || selectedItem.endDate)}` : ''}</span>
+                </p>
+                {(selectedItem.waktu || selectedItem.jam) && (
+                  <p className="flex items-center gap-2">
+                    ⏰ <span>Waktu: {selectedItem.waktu || selectedItem.jam} WIB</span>
+                  </p>
+                )}
+                <p className="flex items-center gap-2">
+                  📍 <span>Lokasi: {selectedItem.lokasi || (selectedItem.linkZoom ? 'Online (Zoom Meeting)' : 'Kantor / Hybrid')}</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  🎯 <span>Target: {selectedItem.target || 'Semua User'}</span>
+                </p>
+              </div>
+
+              {/* LINK MEETING / ZOOM */}
+              {(selectedItem.linkZoom || selectedItem.link) && (
+                <a
+                  href={selectedItem.linkZoom || selectedItem.link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full bg-[#A8C338] text-[#083344] text-center font-black py-3 rounded-xl block hover:bg-[#96af31] transition shadow-md text-xs uppercase tracking-wider mt-2"
+                >
+                  🔗 Buka Link Zoom / Meeting
+                </a>
+              )}
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
-}
+}0

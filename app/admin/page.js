@@ -1,9 +1,18 @@
 'use client';
+
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, getDocs, doc, updateDoc, getDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { 
+  collection, 
+  getDocs, 
+  doc, 
+  updateDoc, 
+  getDoc, 
+  addDoc, 
+  deleteDoc 
+} from 'firebase/firestore';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -17,7 +26,11 @@ export default function AdminDashboardPage() {
     return date.toISOString().split('T')[0];
   };
 
-  // States Users
+  const getTodayDate = () => {
+    return new Date().toISOString().split('T')[0];
+  };
+
+  // --- USERS STATES ---
   const [usersList, setUsersList] = useState([]);
   const [currentPageUsers, setCurrentPageUsers] = useState(1);
   const usersPerPage = 5; 
@@ -26,7 +39,7 @@ export default function AdminDashboardPage() {
   const currentUsers = usersList.slice(indexOfFirstUser, indexOfLastUser);
   const totalPagesUsers = Math.ceil(usersList.length / usersPerPage) || 1;
 
-  // --- CONTEST STATES & EDIT ---
+  // --- CONTEST STATES ---
   const [contestsList, setContestsList] = useState([]);
   const [editContestId, setEditContestId] = useState(null);
   const [judulContest, setJudulContest] = useState('');
@@ -38,7 +51,7 @@ export default function AdminDashboardPage() {
   const [tanggalSelesaiContest, setTanggalSelesaiContest] = useState(getDefaultOneMonthLater());
   const [isSubmittingContest, setIsSubmittingContest] = useState(false);
 
-  // --- ACHIEVER STATES & EDIT ---
+  // --- ACHIEVER STATES ---
   const [achieversList, setAchieversList] = useState([]);
   const [editAchieverId, setEditAchieverId] = useState(null);
   const [judulAchiever, setJudulAchiever] = useState('TOP LEADER');
@@ -67,10 +80,10 @@ export default function AdminDashboardPage() {
   const [editEventId, setEditEventId] = useState(null);
   const [modeKegiatan, setModeKegiatan] = useState('event'); // 'event' | 'training'
   const [judulEvent, setJudulEvent] = useState('');
-  const [deskripsiEvent, setDeskripsiEvent] = useState(''); // State Baru
+  const [deskripsiEvent, setDeskripsiEvent] = useState(''); 
   const [targetEvent, setTargetEvent] = useState('Semua'); 
   const [kategoriEvent, setKategoriEvent] = useState('Agency');
-  const [tanggalEvent, setTanggalEvent] = useState('');
+  const [tanggalEvent, setTanggalEvent] = useState(getTodayDate());
   const [tanggalSelesaiEvent, setTanggalSelesaiEvent] = useState(getDefaultOneMonthLater());
   const [waktuEvent, setWaktuEvent] = useState('');
   const [lokasiEvent, setLokasiEvent] = useState('');
@@ -78,7 +91,7 @@ export default function AdminDashboardPage() {
   const [posterEvent, setPosterEvent] = useState(''); 
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
 
-  // --- DOCUMENT STATES & EDIT ---
+  // --- DOCUMENT STATES ---
   const [libraryList, setLibraryList] = useState([]);
   const [editDocId, setEditDocId] = useState(null);
   const [judulDoc, setJudulDoc] = useState('');
@@ -86,7 +99,7 @@ export default function AdminDashboardPage() {
   const [linkDoc, setLinkDoc] = useState('');
   const [isSubmittingDoc, setIsSubmittingDoc] = useState(false);
 
-  // --- ACADEMY MODULES & QUIZZES STATES & EDIT ---
+  // --- ACADEMY MODULES STATES ---
   const [modulesList, setModulesList] = useState([]); 
   const [currentPageMods, setCurrentPageMods] = useState(1);
   const modsPerPage = 5; 
@@ -104,7 +117,7 @@ export default function AdminDashboardPage() {
   const [listVideo, setListVideo] = useState('');
   const [isSubmittingBab, setIsSubmittingBab] = useState(false);
 
-  // Quiz States & Edit Feature
+  // --- QUIZZES STATES ---
   const [quizzesList, setQuizzesList] = useState([]);
   const [editQuizId, setEditQuizId] = useState(null);
   const [kuisLevel, setKuisLevel] = useState('');
@@ -118,69 +131,98 @@ export default function AdminDashboardPage() {
 
   // --- DATA FETCHING METHODS ---
   const fetchUsers = useCallback(async () => { 
-    const snap = await getDocs(collection(db, 'users')); 
-    setUsersList(snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))); 
+    try {
+      const snap = await getDocs(collection(db, 'users')); 
+      setUsersList(snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))); 
+    } catch (e) {
+      console.error("Gagal mengambil data user:", e);
+    }
   }, []);
   
   const fetchContestsAndAchievers = useCallback(async () => { 
-    const snap = await getDocs(collection(db, 'agency_contests')); 
-    const today = new Date().toISOString().split('T')[0];
-    const data = [];
-    const expiredDeletes = [];
+    try {
+      const snap = await getDocs(collection(db, 'agency_contests')); 
+      const today = new Date().toISOString().split('T')[0];
+      const data = [];
+      const expiredDeletes = [];
 
-    snap.docs.forEach(docSnap => {
-      const item = { id: docSnap.id, ...docSnap.data() };
-      if (item.tanggalSelesai && item.tanggalSelesai < today) {
-        expiredDeletes.push(deleteDoc(doc(db, 'agency_contests', docSnap.id)));
-      } else {
-        data.push(item);
-      }
-    });
+      snap.docs.forEach(docSnap => {
+        const item = { id: docSnap.id, ...docSnap.data() };
+        if (item.tanggalSelesai && item.tanggalSelesai < today) {
+          expiredDeletes.push(deleteDoc(doc(db, 'agency_contests', docSnap.id)));
+        } else {
+          data.push(item);
+        }
+      });
 
-    if (expiredDeletes.length > 0) await Promise.all(expiredDeletes);
+      if (expiredDeletes.length > 0) await Promise.all(expiredDeletes);
 
-    setContestsList(data.filter(i => i.type === 'contest'));
-    setAchieversList(data.filter(i => i.type === 'achiever'));
+      setContestsList(data.filter(i => i.type === 'contest'));
+      setAchieversList(data.filter(i => i.type === 'achiever'));
+    } catch (e) {
+      console.error("Gagal mengambil data kontes:", e);
+    }
   }, []);
 
   const fetchEvents = useCallback(async () => { 
-    const snap = await getDocs(collection(db, 'events')); 
-    const today = new Date().toISOString().split('T')[0];
-    const activeEvents = [];
-    const expiredDeletes = [];
+    try {
+      const snap = await getDocs(collection(db, 'events')); 
+      const today = new Date().toISOString().split('T')[0];
+      const activeEvents = [];
+      const expiredDeletes = [];
 
-    snap.docs.forEach(docSnap => {
-      const eventData = docSnap.data();
-      const expDate = eventData.tanggalSelesai || eventData.tanggal;
-      if (expDate && expDate < today) {
-        expiredDeletes.push(deleteDoc(doc(db, 'events', docSnap.id)));
-      } else {
-        activeEvents.push({ id: docSnap.id, ...eventData });
-      }
-    });
+      snap.docs.forEach(docSnap => {
+        const eventData = docSnap.data();
+        const expDate = eventData.tanggalSelesai || eventData.tanggal;
+        if (expDate && expDate < today) {
+          expiredDeletes.push(deleteDoc(doc(db, 'events', docSnap.id)));
+        } else {
+          activeEvents.push({ id: docSnap.id, ...eventData });
+        }
+      });
 
-    if (expiredDeletes.length > 0) await Promise.all(expiredDeletes);
+      if (expiredDeletes.length > 0) await Promise.all(expiredDeletes);
 
-    setEventsList(activeEvents); 
+      setEventsList(activeEvents); 
+    } catch (e) {
+      console.error("Gagal mengambil data event:", e);
+    }
   }, []);
 
   const fetchLibrary = useCallback(async () => { 
-    const snap = await getDocs(collection(db, 'library_docs')); 
-    setLibraryList(snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))); 
+    try {
+      const snap = await getDocs(collection(db, 'library_docs')); 
+      setLibraryList(snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))); 
+    } catch (e) {
+      console.error("Gagal mengambil data dokumen:", e);
+    }
   }, []);
   
   const fetchModules = useCallback(async () => { 
-    const snap = await getDocs(collection(db, 'academy_modules')); 
-    let data = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-    data = data.map(m => ({ ...m, sesi: parseInt(m.sesi ?? m.level ?? 1, 10), urutan: parseInt(m.urutan ?? 1, 10) }));
-    setModulesList(data.sort((a,b) => (a.sesi - b.sesi) || (a.urutan - b.urutan))); 
+    try {
+      const snap = await getDocs(collection(db, 'academy_modules')); 
+      let data = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      data = data.map(m => ({ 
+        ...m, 
+        sesi: parseInt(m.sesi ?? m.level ?? 1, 10), 
+        urutan: parseInt(m.urutan ?? 1, 10) 
+      }));
+      setModulesList(data.sort((a, b) => (a.sesi - b.sesi) || (a.urutan - b.urutan))); 
+    } catch (e) {
+      console.error("Gagal mengambil data modul:", e);
+    }
   }, []);
   
   const fetchQuizzes = useCallback(async () => { 
-    const snap = await getDocs(collection(db, 'academy_quizzes')); 
-    setQuizzesList(snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })).sort((a, b) => (a.level || 0) - (b.level || 0))); 
+    try {
+      const snap = await getDocs(collection(db, 'academy_quizzes')); 
+      setQuizzesList(snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })).sort((a, b) => (a.level || 0) - (b.level || 0))); 
+    } catch (e) {
+      console.error("Gagal mengambil data kuis:", e);
+    }
   }, []);
 
+  // --- AUTH CHECK & INITIAL FETCH ---
   useEffect(() => {
     let isMounted = true;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -204,12 +246,12 @@ export default function AdminDashboardPage() {
               fetchQuizzes()
             ]);
           } else {
-            alert('Akses Ditolak!'); 
+            alert('Akses Ditolak! Anda bukan Admin.'); 
             router.push('/');
           }
         }
       } catch (err) {
-        console.error("Auth check failed:", err);
+        console.error("Pemeriksaan Auth Gagal:", err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -217,10 +259,11 @@ export default function AdminDashboardPage() {
     return () => { isMounted = false; unsubscribe(); };
   }, [router, fetchUsers, fetchContestsAndAchievers, fetchEvents, fetchLibrary, fetchModules, fetchQuizzes]);
 
+  // --- HANDLERS USER ---
   const handleApprove = async (userId, userName) => { 
     if (!window.confirm(`Setujui ${userName}?`)) return; 
     try {
-      await updateDoc(doc(doc(db, 'users', userId)), { status: 'approved' }); 
+      await updateDoc(doc(db, 'users', userId), { status: 'approved' }); 
       alert(`${userName} disetujui!`); 
       fetchUsers(); 
     } catch (e) {
@@ -228,7 +271,18 @@ export default function AdminDashboardPage() {
     }
   };
   
-  // --- SUBMIT & EDIT CONTEST ---
+  // --- HANDLERS CONTEST ---
+  const resetContestForm = () => {
+    setEditContestId(null);
+    setJudulContest(''); 
+    setDeskripsiContest(''); 
+    setPosterContest(''); 
+    setKategoriContest('Agency'); 
+    setTargetContest('Semua'); 
+    setPeriodeContest(''); 
+    setTanggalSelesaiContest(getDefaultOneMonthLater());
+  };
+
   const handleSaveContest = async (e) => { 
     e.preventDefault(); 
     setIsSubmittingContest(true); 
@@ -247,10 +301,9 @@ export default function AdminDashboardPage() {
       if (editContestId) {
         await updateDoc(doc(db, 'agency_contests', editContestId), { ...payload, updatedAt: new Date().toISOString() });
         alert("Kontes berhasil diperbarui!"); 
-        setEditContestId(null);
       } else {
         await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
-        alert("Kontes ditambahkan!"); 
+        alert("Kontes berhasil ditambahkan!"); 
       }
       resetContestForm();
       fetchContestsAndAchievers(); 
@@ -259,17 +312,6 @@ export default function AdminDashboardPage() {
     } finally {
       setIsSubmittingContest(false); 
     }
-  };
-
-  const resetContestForm = () => {
-    setEditContestId(null);
-    setJudulContest(''); 
-    setDeskripsiContest(''); 
-    setPosterContest(''); 
-    setKategoriContest('Agency'); 
-    setTargetContest('Semua'); 
-    setPeriodeContest(''); 
-    setTanggalSelesaiContest(getDefaultOneMonthLater());
   };
 
   const handleEditContest = (item) => {
@@ -286,7 +328,17 @@ export default function AdminDashboardPage() {
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
-  // --- SUBMIT & EDIT ACHIEVER ---
+  // --- HANDLERS ACHIEVER ---
+  const resetAchieverForm = () => {
+    setEditAchieverId(null);
+    setJudulAchiever('TOP LEADER'); 
+    setPeriodeAchiever(''); 
+    setTanggalSelesaiAchiever(getDefaultOneMonthLater()); 
+    setFoto1(''); setNama1(''); setScale1(1); setOffsetY1(0);
+    setFoto2(''); setNama2(''); setScale2(1); setOffsetY2(0);
+    setFoto3(''); setNama3(''); setScale3(1); setOffsetY3(0);
+  };
+
   const handleSaveAchiever = async (e) => { 
     e.preventDefault(); 
     setIsSubmittingAchiever(true); 
@@ -306,7 +358,7 @@ export default function AdminDashboardPage() {
         alert("Top Achiever berhasil diperbarui!"); 
       } else {
         await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
-        alert("Top Achiever ditambahkan!"); 
+        alert("Top Achiever berhasil ditambahkan!"); 
       }
       resetAchieverForm();
       fetchContestsAndAchievers(); 
@@ -315,16 +367,6 @@ export default function AdminDashboardPage() {
     } finally {
       setIsSubmittingAchiever(false); 
     }
-  };
-
-  const resetAchieverForm = () => {
-    setEditAchieverId(null);
-    setJudulAchiever('TOP LEADER'); 
-    setPeriodeAchiever(''); 
-    setTanggalSelesaiAchiever(getDefaultOneMonthLater()); 
-    setFoto1(''); setNama1(''); setScale1(1); setOffsetY1(0);
-    setFoto2(''); setNama2(''); setScale2(1); setOffsetY2(0);
-    setFoto3(''); setNama3(''); setScale3(1); setOffsetY3(0);
   };
 
   const handleEditAchiever = (item) => {
@@ -346,21 +388,35 @@ export default function AdminDashboardPage() {
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
   
-  // --- SUBMIT & EDIT EVENT / TRAINING ---
+  // --- HANDLERS EVENT / TRAINING ---
+  const resetEventForm = () => {
+    setEditEventId(null);
+    setJudulEvent(''); 
+    setDeskripsiEvent(''); 
+    setTanggalEvent(getTodayDate()); 
+    setTanggalSelesaiEvent(getDefaultOneMonthLater()); 
+    setWaktuEvent(''); 
+    setLokasiEvent(''); 
+    setLinkZoomEvent(''); 
+    setPosterEvent(''); 
+    setKategoriEvent('Agency'); 
+    setTargetEvent('Semua');
+  };
+
   const handleSaveEvent = async (e) => { 
     e.preventDefault(); 
     setIsSubmittingEvent(true); 
     const payload = { 
       jenisKegiatan: modeKegiatan, 
       judul: judulEvent, 
-      deskripsi: modeKegiatan === 'event' ? deskripsiEvent : '', // Menyimpan Deskripsi Singkat
+      deskripsi: deskripsiEvent, 
       target: targetEvent, 
       kategori: kategoriEvent, 
-      tanggal: tanggalEvent, 
+      tanggal: tanggalEvent || getTodayDate(),
       tanggalSelesai: tanggalSelesaiEvent,
-      waktu: modeKegiatan === 'training' ? waktuEvent : '', 
-      lokasi: modeKegiatan === 'training' ? lokasiEvent : '', 
-      linkZoom: modeKegiatan === 'training' ? linkZoomEvent : '', 
+      waktu: waktuEvent, 
+      lokasi: lokasiEvent, 
+      linkZoom: linkZoomEvent, 
       posterUrl: posterEvent 
     };
 
@@ -381,28 +437,14 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const resetEventForm = () => {
-    setEditEventId(null);
-    setJudulEvent(''); 
-    setDeskripsiEvent(''); // Reset deskripsi
-    setTanggalEvent(''); 
-    setTanggalSelesaiEvent(getDefaultOneMonthLater()); 
-    setWaktuEvent(''); 
-    setLokasiEvent(''); 
-    setLinkZoomEvent(''); 
-    setPosterEvent(''); 
-    setKategoriEvent('Agency'); 
-    setTargetEvent('Semua');
-  };
-
   const handleEditEvent = (item) => {
     setEditEventId(item.id);
     setModeKegiatan(item.jenisKegiatan || 'event');
     setJudulEvent(item.judul || '');
-    setDeskripsiEvent(item.deskripsi || ''); // Load deskripsi saat edit
+    setDeskripsiEvent(item.deskripsi || '');
     setTargetEvent(item.target || 'Semua');
     setKategoriEvent(item.kategori || 'Agency');
-    setTanggalEvent(item.tanggal || '');
+    setTanggalEvent(item.tanggal || getTodayDate());
     setTanggalSelesaiEvent(item.tanggalSelesai || getDefaultOneMonthLater());
     setWaktuEvent(item.waktu || '');
     setLokasiEvent(item.lokasi || '');
@@ -413,7 +455,14 @@ export default function AdminDashboardPage() {
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
-  // --- SUBMIT & EDIT DOKUMEN ---
+  // --- HANDLERS DOKUMEN ---
+  const resetDocForm = () => {
+    setEditDocId(null);
+    setJudulDoc(''); 
+    setLinkDoc(''); 
+    setKategoriDoc('Selling');
+  };
+
   const handleSaveDoc = async (e) => { 
     e.preventDefault(); 
     setIsSubmittingDoc(true); 
@@ -423,12 +472,11 @@ export default function AdminDashboardPage() {
       if (editDocId) {
         await updateDoc(doc(db, 'library_docs', editDocId), { ...payload, updatedAt: new Date().toISOString() });
         alert("Dokumen berhasil diperbarui!"); 
-        setEditDocId(null);
       } else {
         await addDoc(collection(db, 'library_docs'), { ...payload, createdAt: new Date().toISOString() });
-        alert("Dokumen ditambah!"); 
+        alert("Dokumen berhasil ditambah!"); 
       }
-      setJudulDoc(''); setLinkDoc(''); setKategoriDoc('Selling');
+      resetDocForm();
       fetchLibrary(); 
     } catch (err) {
       alert("Gagal menyimpan dokumen.");
@@ -447,7 +495,17 @@ export default function AdminDashboardPage() {
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
-  // --- MODULES & QUIZZES ---
+  // --- HANDLERS MODULES & QUIZZES ---
+  const resetModuleForm = () => {
+    setEditModuleId(null);
+    setJudulBab(''); 
+    setDeskripsiBab(''); 
+    setListMateri(''); 
+    setListVideo(''); 
+    setSesiBab(''); 
+    setUrutanBab('');
+  };
+
   const handleSaveModule = async (e) => { 
     e.preventDefault(); 
     setIsSubmittingBab(true); 
@@ -467,12 +525,11 @@ export default function AdminDashboardPage() {
       if (editModuleId) {
         await updateDoc(doc(db, 'academy_modules', editModuleId), { ...payload, updatedAt: new Date().toISOString() });
         alert("Modul berhasil diperbarui!"); 
-        setEditModuleId(null);
       } else {
         await addDoc(collection(db, 'academy_modules'), { ...payload, createdAt: new Date().toISOString() });
         alert("Modul baru berhasil ditambah!");
       }
-      setJudulBab(''); setDeskripsiBab(''); setListMateri(''); setListVideo(''); setSesiBab(''); setUrutanBab('');
+      resetModuleForm();
       fetchModules(); 
     } catch (err) {
       alert("Gagal menyimpan modul.");
@@ -489,8 +546,17 @@ export default function AdminDashboardPage() {
     setDeskripsiBab(modul.deskripsi || '');
     setListMateri(modul.materi ? modul.materi.join('\n') : ''); 
     setListVideo(modul.video ? modul.video.join('\n') : '');
+
     const el = document.getElementById("form-modul"); 
     if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const resetQuizForm = () => {
+    setEditQuizId(null);
+    setKuisLevel('');
+    setKuisPertanyaan('');
+    setKuisA(''); setKuisB(''); setKuisC(''); setKuisD('');
+    setKuisJawabanBenar('A');
   };
 
   const handleSaveQuiz = async (e) => { 
@@ -520,14 +586,6 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const resetQuizForm = () => {
-    setEditQuizId(null);
-    setKuisLevel('');
-    setKuisPertanyaan('');
-    setKuisA(''); setKuisB(''); setKuisC(''); setKuisD('');
-    setKuisJawabanBenar('A');
-  };
-
   const handleEditQuiz = (kuis) => {
     setEditQuizId(kuis.id);
     setKuisLevel(kuis.level?.toString() || '');
@@ -542,6 +600,7 @@ export default function AdminDashboardPage() {
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
+  // --- DELETE HANDLERS ---
   const handleDeleteContestOrAchiever = async (id) => { 
     if (window.confirm("Hapus item ini?")) { 
       await deleteDoc(doc(db, 'agency_contests', id)); 
@@ -586,6 +645,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 py-8 space-y-10 bg-gray-50 min-h-screen overflow-x-hidden">
       
+      {/* HEADER DASHBOARD */}
       <div className="bg-[#083344] p-6 rounded-2xl shadow-sm flex flex-col items-start gap-4">
         <h1 className="text-2xl sm:text-3xl font-black text-white">🛡️ Pusat Kendali Admin (FULL)</h1>
         <p className="text-gray-300 text-sm mt-1">Kelola Seluruh Sistem Harvest: Contest, Event, Library, Academy, & Kuis.</p>
@@ -593,17 +653,39 @@ export default function AdminDashboardPage() {
 
       {/* 1. APPROVAL USER */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm w-full overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-gray-200"><h2 className="text-lg font-bold text-[#083344]">🔐 Persetujuan Agen Baru</h2></div>
+        <div className="p-4 sm:p-6 border-b border-gray-200">
+          <h2 className="text-lg font-bold text-[#083344]">🔐 Persetujuan Agen Baru</h2>
+        </div>
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse min-w-[600px]">
-            <thead><tr className="bg-gray-50 text-sm text-gray-600 border-b border-gray-200"><th className="p-4 font-bold">Nama & Email</th><th className="p-4 font-bold">Role</th><th className="p-4 font-bold">Status</th><th className="p-4 font-bold text-center">Aksi Approval</th></tr></thead>
+            <thead>
+              <tr className="bg-gray-50 text-sm text-gray-600 border-b border-gray-200">
+                <th className="p-4 font-bold">Nama & Email</th>
+                <th className="p-4 font-bold">Role</th>
+                <th className="p-4 font-bold">Status</th>
+                <th className="p-4 font-bold text-center">Aksi Approval</th>
+              </tr>
+            </thead>
             <tbody>
               {currentUsers.map((usr) => (
                 <tr key={usr.id} className="border-b hover:bg-gray-50">
-                  <td className="p-4"><p className="font-bold text-[#083344]">{usr.name}</p><p className="text-xs text-gray-500">{usr.email}</p></td>
-                  <td className="p-4"><span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold uppercase">{usr.role}</span></td>
-                  <td className="p-4"><span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${usr.status === 'approved' ? 'bg-[#A8C338]/20 text-[#083344]' : 'bg-red-100 text-red-600'}`}>{usr.status}</span></td>
-                  <td className="p-4 text-center">{usr.status === 'pending' ? (<button onClick={() => handleApprove(usr.id, usr.name)} className="bg-[#083344] text-white text-xs font-bold px-4 py-2 rounded-lg hover:opacity-90">Setujui</button>) : (<span className="text-xs text-gray-400 font-bold italic">Selesai</span>)}</td>
+                  <td className="p-4">
+                    <p className="font-bold text-[#083344]">{usr.name}</p>
+                    <p className="text-xs text-gray-500">{usr.email}</p>
+                  </td>
+                  <td className="p-4">
+                    <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold uppercase">{usr.role}</span>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${usr.status === 'approved' ? 'bg-[#A8C338]/20 text-[#083344]' : 'bg-red-100 text-red-600'}`}>{usr.status}</span>
+                  </td>
+                  <td className="p-4 text-center">
+                    {usr.status === 'pending' ? (
+                      <button onClick={() => handleApprove(usr.id, usr.name)} className="bg-[#083344] text-white text-xs font-bold px-4 py-2 rounded-lg hover:opacity-90">Setujui</button>
+                    ) : (
+                      <span className="text-xs text-gray-400 font-bold italic">Selesai</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -635,8 +717,21 @@ export default function AdminDashboardPage() {
               <textarea required value={deskripsiContest} onChange={(e) => setDeskripsiContest(e.target.value)} placeholder="Masukkan deskripsi atau rincian kontes di sini..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 h-24"></textarea>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div><label className="block text-xs font-bold text-gray-700 mb-1">Kategori</label><select value={kategoriContest} onChange={(e) => setKategoriContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50"><option value="Agency">Agency</option><option value="Prudential">Prudential</option></select></div>
-              <div><label className="block text-xs font-bold text-gray-700 mb-1">Target</label><select value={targetContest} onChange={(e) => setTargetContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50"><option value="Semua">Semua</option><option value="Agent">Agent</option><option value="Leader">Leader</option></select></div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Kategori</label>
+                <select value={kategoriContest} onChange={(e) => setKategoriContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50">
+                  <option value="Agency">Agency</option>
+                  <option value="Prudential">Prudential</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Target</label>
+                <select value={targetContest} onChange={(e) => setTargetContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50">
+                  <option value="Semua">Semua</option>
+                  <option value="Agent">Agent</option>
+                  <option value="Leader">Leader</option>
+                </select>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">Periode (Teks Tampilan)</label>
@@ -650,18 +745,33 @@ export default function AdminDashboardPage() {
               <label className="block text-xs font-bold text-gray-700 mb-1">Link Gambar Poster</label>
               <input type="url" required value={posterContest} onChange={(e) => setPosterContest(e.target.value)} placeholder="Contoh: https://link-gambar.com/poster.jpg" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
             </div>
-            <button type="submit" disabled={isSubmittingContest} className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${editContestId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'}`}>{isSubmittingContest ? 'Menyimpan...' : (editContestId ? 'Simpan Perubahan Contest' : 'Publish Contest')}</button>
+            <button type="submit" disabled={isSubmittingContest} className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${editContestId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'}`}>
+              {isSubmittingContest ? 'Menyimpan...' : (editContestId ? 'Simpan Perubahan Contest' : 'Publish Contest')}
+            </button>
           </form>
         </div>
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
           <h2 className="font-bold text-lg text-[#083344] mb-5">📋 Daftar Agency Contest</h2>
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-sm border-collapse min-w-[400px]">
-               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">NAMA CONTEST</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
+               <thead>
+                 <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                   <th className="py-3 px-4 font-bold">NAMA CONTEST</th>
+                   <th className="py-3 px-4 font-bold text-center">AKSI</th>
+                 </tr>
+               </thead>
                <tbody>
                  {contestsList.map(item => (
                    <tr key={item.id} className="border-b hover:bg-gray-50">
-                     <td className="py-4 px-4 font-bold text-[#083344]">{item.judul}<div className="text-[10px] font-normal text-gray-500 mt-1 flex flex-wrap gap-2"><span className="bg-gray-100 px-2 py-0.5 rounded">Kat: {item.kategori || 'Agency'}</span><span className="bg-gray-100 px-2 py-0.5 rounded">Trg: {item.target || 'Semua'}</span><span className="bg-gray-100 px-2 py-0.5 rounded">Per: {item.periode || '-'}</span><span className="bg-gray-100 px-2 py-0.5 rounded">Selesai: {item.tanggalSelesai || '-'}</span></div></td>
+                     <td className="py-4 px-4 font-bold text-[#083344]">
+                       {item.judul}
+                       <div className="text-[10px] font-normal text-gray-500 mt-1 flex flex-wrap gap-2">
+                         <span className="bg-gray-100 px-2 py-0.5 rounded">Kat: {item.kategori || 'Agency'}</span>
+                         <span className="bg-gray-100 px-2 py-0.5 rounded">Trg: {item.target || 'Semua'}</span>
+                         <span className="bg-gray-100 px-2 py-0.5 rounded">Per: {item.periode || '-'}</span>
+                         <span className="bg-gray-100 px-2 py-0.5 rounded">Selesai: {item.tanggalSelesai || '-'}</span>
+                       </div>
+                     </td>
                      <td className="py-4 px-4 text-center whitespace-nowrap">
                        <button onClick={() => handleEditContest(item)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
                        <button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
@@ -685,8 +795,11 @@ export default function AdminDashboardPage() {
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">Kategori Achiever</label>
               <select value={judulAchiever} onChange={(e) => setJudulAchiever(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold">
-                <option value="TOP LEADER">TOP LEADER</option><option value="TOP PRODUCER">TOP PRODUCER</option><option value="TOP RECRUITER">TOP RECRUITER</option>
-                <option value="TOP AGENCY BUILDER">TOP AGENCY BUILDER</option><option value="TOP ASSOCIATE AGENCY BUILDER">TOP ASSOCIATE AGENCY BUILDER</option>
+                <option value="TOP LEADER">TOP LEADER</option>
+                <option value="TOP PRODUCER">TOP PRODUCER</option>
+                <option value="TOP RECRUITER">TOP RECRUITER</option>
+                <option value="TOP AGENCY BUILDER">TOP AGENCY BUILDER</option>
+                <option value="TOP ASSOCIATE AGENCY BUILDER">TOP ASSOCIATE AGENCY BUILDER</option>
               </select>
             </div>
             <div>
@@ -699,7 +812,6 @@ export default function AdminDashboardPage() {
             </div>
             
             <div className="space-y-3 pt-2 border-t border-gray-100">
-              
               {/* JUARA 1 */}
               <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 space-y-2">
                 <label className="block text-xs font-bold text-yellow-700">🥇 Juara 1 (Tengah)</label>
@@ -792,20 +904,31 @@ export default function AdminDashboardPage() {
                   </div>
                 )}
               </div>
-
             </div>
-            <button type="submit" disabled={isSubmittingAchiever} className={`w-full font-bold py-2.5 rounded-lg text-sm mt-4 transition ${editAchieverId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'}`}>{isSubmittingAchiever ? 'Menyimpan...' : (editAchieverId ? 'Simpan Perubahan Podium' : 'Publish Podium')}</button>
+
+            <button type="submit" disabled={isSubmittingAchiever} className={`w-full font-bold py-2.5 rounded-lg text-sm mt-4 transition ${editAchieverId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'}`}>
+              {isSubmittingAchiever ? 'Menyimpan...' : (editAchieverId ? 'Simpan Perubahan Podium' : 'Publish Podium')}
+            </button>
           </form>
         </div>
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
           <h2 className="font-bold text-lg text-[#083344] mb-5">🏅 Daftar Top Achiever</h2>
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-sm border-collapse min-w-[400px]">
-               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">KATEGORI & PERIODE</th><th className="py-3 px-4 font-bold">PEMENANG (J1)</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
+               <thead>
+                 <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                   <th className="py-3 px-4 font-bold">KATEGORI & PERIODE</th>
+                   <th className="py-3 px-4 font-bold">PEMENANG (J1)</th>
+                   <th className="py-3 px-4 font-bold text-center">AKSI</th>
+                 </tr>
+               </thead>
                <tbody>
                  {achieversList.map(item => (
                    <tr key={item.id} className="border-b hover:bg-gray-50">
-                     <td className="py-4 px-4"><p className="font-black text-[#083344]">{item.judul}</p><p className="text-xs text-gray-600">{item.periode} (Selesai: {item.tanggalSelesai || '-'})</p></td>
+                     <td className="py-4 px-4">
+                       <p className="font-black text-[#083344]">{item.judul}</p>
+                       <p className="text-xs text-gray-600">{item.periode} (Selesai: {item.tanggalSelesai || '-'})</p>
+                     </td>
                      <td className="py-4 px-4 text-sm font-bold text-gray-700">{item.nama1 || 'Tanpa Nama'}</td>
                      <td className="py-4 px-4 text-center whitespace-nowrap">
                        <button onClick={() => handleEditAchiever(item)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
@@ -850,18 +973,15 @@ export default function AdminDashboardPage() {
               <input type="text" value={judulEvent} onChange={(e) => setJudulEvent(e.target.value)} required placeholder={modeKegiatan === 'event' ? "Contoh: Agency Annual Gathering" : "Contoh: Training Basic Selling Skill"} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
             </div>
 
-            {/* FIELD DESKRIPSI SINGKAT KHUSUS MODE EVENT */}
-            {modeKegiatan === 'event' && (
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Deskripsi Singkat</label>
-                <textarea 
-                  value={deskripsiEvent} 
-                  onChange={(e) => setDeskripsiEvent(e.target.value)} 
-                  placeholder="Saksikan dan ikuti event spektakuler ini bersama Harvest Agency!" 
-                  className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 h-20"
-                ></textarea>
-              </div>
-            )}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Deskripsi Singkat</label>
+              <textarea 
+                value={deskripsiEvent} 
+                onChange={(e) => setDeskripsiEvent(e.target.value)} 
+                placeholder="Saksikan dan ikuti event spektakuler ini bersama Harvest Agency!" 
+                className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 h-20"
+              ></textarea>
+            </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -881,18 +1001,16 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {modeKegiatan === 'training' && (
-              <div className="grid grid-cols-2 gap-3 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                <div>
-                  <label className="block text-xs font-bold text-blue-900 mb-1">Tanggal Hari</label>
-                  <input type="date" value={tanggalEvent} onChange={(e) => setTanggalEvent(e.target.value)} required className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-blue-900 mb-1">Jam / Waktu</label>
-                  <input type="time" value={waktuEvent} onChange={(e) => setWaktuEvent(e.target.value)} required className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white" />
-                </div>
+            <div className="grid grid-cols-2 gap-3 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+              <div>
+                <label className="block text-xs font-bold text-blue-900 mb-1">Tanggal Hari</label>
+                <input type="date" value={tanggalEvent} onChange={(e) => setTanggalEvent(e.target.value)} required className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white" />
               </div>
-            )}
+              <div>
+                <label className="block text-xs font-bold text-blue-900 mb-1">Jam / Waktu</label>
+                <input type="time" value={waktuEvent} onChange={(e) => setWaktuEvent(e.target.value)} className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white" />
+              </div>
+            </div>
 
             <div>
               <label className="block text-xs font-bold mb-1">
@@ -901,12 +1019,16 @@ export default function AdminDashboardPage() {
               <input type="date" required value={tanggalSelesaiEvent} onChange={(e) => setTanggalSelesaiEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold" />
             </div>
 
-            {modeKegiatan === 'training' && (
+            <div className="grid grid-cols-1 gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
               <div>
-                <label className="block text-xs font-bold mb-1">Lokasi Fisik / Link Zoom</label>
-                <input type="text" value={linkZoomEvent} onChange={(e) => setLinkZoomEvent(e.target.value)} placeholder="Contoh: Kantor SBY / https://zoom.us/j/1234..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+                <label className="block text-xs font-bold text-gray-700 mb-1">Lokasi Fisik (Offline)</label>
+                <input type="text" value={lokasiEvent} onChange={(e) => setLokasiEvent(e.target.value)} placeholder="Contoh: Kantor Surabaya R.302" className="w-full px-3 py-2 border rounded-lg text-sm bg-white" />
               </div>
-            )}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Link Zoom / Meeting (Online)</label>
+                <input type="url" value={linkZoomEvent} onChange={(e) => setLinkZoomEvent(e.target.value)} placeholder="Contoh: https://zoom.us/j/123456789" className="w-full px-3 py-2 border rounded-lg text-sm bg-white" />
+              </div>
+            </div>
 
             <div>
               <label className="block text-xs font-bold mb-1">Poster Flyer URL (Opsional)</label>
@@ -923,7 +1045,12 @@ export default function AdminDashboardPage() {
           <h2 className="font-bold text-lg text-[#083344] mb-5">📅 Jadwal Event & Training</h2>
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-sm border-collapse min-w-[500px]">
-               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">INFO KEGIATAN</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
+               <thead>
+                 <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                   <th className="py-3 px-4 font-bold">INFO KEGIATAN</th>
+                   <th className="py-3 px-4 font-bold text-center">AKSI</th>
+                 </tr>
+               </thead>
                <tbody>
                  {eventsList.map((event) => (
                    <tr key={event.id} className="border-b hover:bg-gray-50">
@@ -934,12 +1061,12 @@ export default function AdminDashboardPage() {
                          </span>
                          <p className="font-bold text-[#083344]">{event.judul}</p>
                        </div>
-                       {/* Menampilkan deskripsi jika tersedia */}
                        {event.deskripsi && <p className="text-xs text-gray-600 mb-1 italic">"{event.deskripsi}"</p>}
                        <p className="text-xs text-gray-500">
                          {event.tanggal ? `${event.tanggal} ${event.waktu ? '| ' + event.waktu : ''}` : 'Kegiatan Berdurasi'} (Selesai: {event.tanggalSelesai || '-'})
                        </p>
-                       {event.linkZoom && <p className="text-xs text-blue-600 truncate max-w-xs mt-0.5">📍 {event.linkZoom}</p>}
+                       {event.lokasi && <p className="text-xs text-gray-600 truncate max-w-xs mt-0.5">🏢 {event.lokasi}</p>}
+                       {event.linkZoom && <p className="text-xs text-blue-600 truncate max-w-xs mt-0.5">🔗 {event.linkZoom}</p>}
                        <div className="text-[10px] font-normal text-gray-500 mt-1 flex flex-wrap gap-2">
                          <span className="bg-gray-100 px-2 py-0.5 rounded">Kat: {event.kategori || 'Agency'}</span>
                          <span className="bg-gray-100 px-2 py-0.5 rounded">Trg: {event.target || 'Semua'}</span>
@@ -962,7 +1089,7 @@ export default function AdminDashboardPage() {
         <div id="form-doc" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden h-fit">
           <div className="flex justify-between items-center mb-5">
             <h2 className="font-bold text-lg text-[#083344]">📁 {editDocId ? 'Edit Dokumen' : 'Tambah Dokumen'}</h2>
-            {editDocId && <button onClick={() => { setEditDocId(null); setJudulDoc(''); setLinkDoc(''); }} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
+            {editDocId && <button onClick={resetDocForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
           </div>
           <form onSubmit={handleSaveDoc} className="space-y-4">
             <div>
@@ -972,26 +1099,39 @@ export default function AdminDashboardPage() {
             <div>
               <label className="block text-xs font-bold mb-1">Kategori</label>
               <select value={kategoriDoc} onChange={(e) => setKategoriDoc(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50">
-                <option value="Selling">Selling</option><option value="Product Knowledge">Product Knowledge</option><option value="Recruiting Skill">Recruiting Skill</option><option value="Soft Skill">Soft Skill</option>
+                <option value="Selling">Selling</option>
+                <option value="Product Knowledge">Product Knowledge</option>
+                <option value="Recruiting Skill">Recruiting Skill</option>
+                <option value="Soft Skill">Soft Skill</option>
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold mb-1">Link Akses</label>
               <input type="url" value={linkDoc} onChange={(e) => setLinkDoc(e.target.value)} required placeholder="Contoh: https://drive.google.com/..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
             </div>
-            <button type="submit" disabled={isSubmittingDoc} className={`w-full font-bold py-2.5 rounded-lg text-sm ${editDocId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'}`}>{isSubmittingDoc ? 'Menyimpan...' : (editDocId ? 'Simpan Perubahan Dokumen' : 'Publish Dokumen')}</button>
+            <button type="submit" disabled={isSubmittingDoc} className={`w-full font-bold py-2.5 rounded-lg text-sm ${editDocId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'}`}>
+              {isSubmittingDoc ? 'Menyimpan...' : (editDocId ? 'Simpan Perubahan Dokumen' : 'Publish Dokumen')}
+            </button>
           </form>
         </div>
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
           <h2 className="font-bold text-lg text-[#083344] mb-5">📂 Daftar Dokumen</h2>
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-sm border-collapse min-w-[400px]">
-               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold">JUDUL</th><th className="py-3 px-4 font-bold">KATEGORI</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
+               <thead>
+                 <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                   <th className="py-3 px-4 font-bold">JUDUL</th>
+                   <th className="py-3 px-4 font-bold">KATEGORI</th>
+                   <th className="py-3 px-4 font-bold text-center">AKSI</th>
+                 </tr>
+               </thead>
                <tbody>
                  {libraryList.map((docItem) => (
                    <tr key={docItem.id} className="border-b hover:bg-gray-50">
                      <td className="py-4 px-4 font-bold text-[#083344]">{docItem.judul}</td>
-                     <td className="py-4 px-4"><span className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs font-bold uppercase">{docItem.kategori}</span></td>
+                     <td className="py-4 px-4">
+                       <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs font-bold uppercase">{docItem.kategori}</span>
+                     </td>
                      <td className="py-4 px-4 text-center whitespace-nowrap">
                        <button onClick={() => handleEditDoc(docItem)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
                        <button onClick={() => handleDeleteDoc(docItem.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
@@ -1008,7 +1148,7 @@ export default function AdminDashboardPage() {
       <div id="form-modul" className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 w-full overflow-hidden">
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-bold text-xl text-[#083344]">🎓 {editModuleId ? 'Edit Modul Pembelajaran' : 'Manajemen Learning Path'}</h2>
-          {editModuleId && <button onClick={() => { setEditModuleId(null); setJudulBab(''); setDeskripsiBab(''); setListMateri(''); setListVideo(''); setSesiBab(''); setUrutanBab(''); }} className="text-xs bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full font-bold hover:bg-gray-300 transition">Batal Edit</button>}
+          {editModuleId && <button onClick={resetModuleForm} className="text-xs bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full font-bold hover:bg-gray-300 transition">Batal Edit</button>}
         </div>
         
         <form onSubmit={handleSaveModule} className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1051,7 +1191,13 @@ export default function AdminDashboardPage() {
           <h2 className="font-bold text-lg text-[#083344] mb-5">📂 Daftar Modul Pembelajaran (Berurutan)</h2>
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-sm border-collapse min-w-[700px]">
-               <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-3 px-4 font-bold w-2/5">KETERANGAN MODUL</th><th className="py-3 px-4 font-bold">DESKRIPSI</th><th className="py-3 px-4 font-bold text-center">AKSI</th></tr></thead>
+               <thead>
+                 <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                   <th className="py-3 px-4 font-bold w-2/5">KETERANGAN MODUL</th>
+                   <th className="py-3 px-4 font-bold">DESKRIPSI</th>
+                   <th className="py-3 px-4 font-bold text-center">AKSI</th>
+                 </tr>
+               </thead>
                <tbody>
                  {currentMods.map((modul) => (
                    <tr key={modul.id} className="border-b hover:bg-gray-50">
@@ -1087,10 +1233,7 @@ export default function AdminDashboardPage() {
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-bold text-xl text-[#083344]">📝 Manajemen Bank Soal (Kuis)</h2>
           {editQuizId && (
-            <button 
-              onClick={resetQuizForm} 
-              className="text-xs bg-gray-200 text-gray-600 px-3 py-1 rounded-md font-bold hover:bg-gray-300 transition"
-            >
+            <button onClick={resetQuizForm} className="text-xs bg-gray-200 text-gray-600 px-3 py-1 rounded-md font-bold hover:bg-gray-300 transition">
               Batal Edit
             </button>
           )}
@@ -1117,7 +1260,10 @@ export default function AdminDashboardPage() {
               <div>
                 <label className="text-xs font-bold">Jawaban Benar</label>
                 <select value={kuisJawabanBenar} onChange={(e) => setKuisJawabanBenar(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-white font-bold">
-                  <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
                 </select>
               </div>
               <button 
@@ -1134,7 +1280,13 @@ export default function AdminDashboardPage() {
             <h3 className="font-bold mb-4">Daftar Soal Tersimpan</h3>
             <div className="overflow-x-auto w-full">
               <table className="w-full text-left text-sm border-collapse min-w-[500px]">
-                 <thead><tr className="bg-gray-50 border-y border-gray-200 text-gray-500"><th className="py-2 px-3 font-bold w-16 text-center">LVL</th><th className="py-2 px-3 font-bold">PERTANYAAN & JAWABAN</th><th className="py-2 px-3 font-bold text-center">AKSI</th></tr></thead>
+                 <thead>
+                   <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                     <th className="py-2 px-3 font-bold w-16 text-center">LVL</th>
+                     <th className="py-2 px-3 font-bold">PERTANYAAN & JAWABAN</th>
+                     <th className="py-2 px-3 font-bold text-center">AKSI</th>
+                   </tr>
+                 </thead>
                  <tbody>
                    {quizzesList.map((kuis) => (
                      <tr key={kuis.id} className="border-b hover:bg-gray-50">

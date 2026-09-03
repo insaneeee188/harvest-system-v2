@@ -184,23 +184,17 @@ export default function AcademyPage() {
               return (
                 <div key={modul.id} id={`modul-${modul.globalLevel}`} className={`rounded-3xl border transition-all duration-300 scroll-mt-28 overflow-hidden ${isUnlocked ? 'bg-white border-gray-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-70 grayscale'}`}>
                   
-                  {/* ====== JARAK ANTARA PILL DAN DESKRIPSI DIPERLUAS (gap-5 / mt-2) ====== */}
-                  <div className="p-6 md:p-8 flex justify-between items-start gap-5 pb-2">
+                  <div className="p-6 md:p-8 flex justify-between items-center gap-5 pb-4">
                     <div className="flex flex-col gap-4">
                       <div className="inline-block">
                         <span className={`px-6 py-2.5 rounded-full text-xl md:text-2xl font-black uppercase tracking-wide shadow-sm ${isUnlocked ? 'bg-[#A8C338] text-[#083344]' : 'bg-gray-300 text-gray-600'}`}>
                           {displayTitle}
                         </span>
                       </div>
-                      {modul.deskripsi && (
-                        <div className={`text-base md:text-lg font-semibold whitespace-pre-line mt-1 ${isUnlocked ? 'text-gray-900' : 'text-gray-500'}`}>
-                          {modul.deskripsi}
-                        </div>
-                      )}
                     </div>
                     
                     {/* Ikon Check / Gembok */}
-                    <div className="flex items-center mt-2">
+                    <div className="flex items-center">
                       {!isUnlocked && <span className="text-3xl flex-shrink-0">🔒</span>}
                       {isCompleted && (
                         <div className="bg-[#5cdb5c] text-white w-8 h-8 rounded-md flex items-center justify-center font-bold text-xl shadow-sm">
@@ -317,11 +311,7 @@ export default function AcademyPage() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -translate-y-20 translate-x-20 blur-3xl"></div>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 relative z-10 gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-black mb-2">Menuju Top Agent</h1>
-            <p className="text-gray-300 text-sm md:text-base opacity-90">Akses modul pembelajaran, tingkatkan level, dan asah skill Anda di sini.</p>
-          </div>
-          <div className="bg-[#A8C338] text-[#083344] font-black px-6 py-2 rounded-full text-sm shadow-md flex items-center gap-2 border-2 border-[#A8C338]/20 backdrop-blur-sm">
-            <span>LVL {userData.academyLevel}</span>
+            <h1 className="text-3xl md:text-4xl font-black">Harvest Academy</h1>
           </div>
         </div>
         <div className="flex overflow-x-auto no-scrollbar gap-2 relative z-10">

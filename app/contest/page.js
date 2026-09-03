@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { auth, db } from '../../firebase'; // Sesuaikan path
+import { auth, db } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -15,7 +15,11 @@ export default function ContestPage() {
   const [contestsList, setContestsList] = useState([]);
   const [filterKategori, setFilterKategori] = useState('Semua'); 
   const [filterTarget, setFilterTarget] = useState('Semua'); 
-  
+
+  // Kategori Dinamis dari Data Firestore
+  const [availableTargets, setAvailableTargets] = useState(['Semua']);
+  const [availableKategori, setAvailableKategori] = useState(['Semua']);
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const contestsPerPage = 4;
@@ -31,42 +35,99 @@ export default function ContestPage() {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const touchStartDist = useRef(null);
 
-  // Kalender Pintar (Ambil Event)
-  const [eventsList, setEventsList] = useState([]);
-  const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
-
   useEffect(() => {
     let isMounted = true;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) { if (isMounted) router.push('/login'); return; }
+      if (!user) { 
+        if (isMounted) router.push('/login'); 
+        return; 
+      }
+      
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists() && isMounted) {
         setUserData(userDoc.data());
-        fetchContests();
-        fetchEventsForCalendar();
+
+        // Fetch Data Contest dari Firestore
+        const snapContests = await getDocs(collection(db, 'agency_contests'));
+
+        if (isMounted) {
+          const rawContests = snapContests.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(i => i.type === 'contest');
+
+          // LOGIKA PENGURUTAN PRIORITAS KONTES
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const sortedContests = rawContests.sort((a, b) => {
+            const startA = a.startDate ? new Date(`${a.startDate}T00:00:00`) : new Date(0);
+            const endA = a.endDate ? new Date(`${a.endDate}T23:59:59`) : new Date(8640000000000000);
+            
+            const startB = b.startDate ? new Date(`${b.startDate}T00:00:00`) : new Date(0);
+            const endB = b.endDate ? new Date(`${b.endDate}T23:59:59`) : new Date(8640000000000000);
+
+            const isRunningA = today >= startA && today <= endA;
+            const isRunningB = today >= startB && today <= endB;
+
+            const isUpcomingA = today < startA;
+            const isUpcomingB = today < startB;
+
+            // 1. Prioritas Kontes Berlangsung
+            if (isRunningA && isRunningB) {
+              const diff = endA - endB;
+              if (diff !== 0) return diff;
+              return (a.judul || '').localeCompare(b.judul || ''); 
+            }
+            if (isRunningA) return -1;
+            if (isRunningB) return 1;
+
+            // 2. Prioritas Kontes Akan Datang (Upcoming)
+            if (isUpcomingA && isUpcomingB) {
+              const diff = startA - startB;
+              if (diff !== 0) return diff; 
+              
+              const endDiff = endA - endB;
+              if (endDiff !== 0) return endDiff;
+
+              return (a.judul || '').localeCompare(b.judul || '');
+            }
+            if (isUpcomingA) return -1;
+            if (isUpcomingB) return 1;
+
+            // 3. Prioritas Kontes Sudah Berakhir
+            const endDiff = endB - endA;
+            if (endDiff !== 0) return endDiff;
+            return (a.judul || '').localeCompare(b.judul || '');
+          });
+
+          setContestsList(sortedContests);
+
+          const uniqueTargets = Array.from(
+            new Set(['Semua', ...sortedContests.map(c => c.target).filter(Boolean)])
+          );
+          const uniqueKategoris = Array.from(
+            new Set(['Semua', ...sortedContests.map(c => c.kategori).filter(Boolean)])
+          );
+
+          setAvailableTargets(uniqueTargets);
+          setAvailableKategori(uniqueKategoris);
+        }
       }
       if (isMounted) setLoading(false);
     });
+
     return () => { isMounted = false; unsubscribe(); };
   }, [router]);
 
-  const fetchContests = async () => {
-    const snap = await getDocs(collection(db, 'agency_contests'));
-    const allData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setContestsList(allData.filter(i => i.type === 'contest'));
-  };
-
-  const fetchEventsForCalendar = async () => {
-    const snap = await getDocs(collection(db, 'events'));
-    setEventsList(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-  };
-
   // LOGIKA FILTER
   const filteredContests = contestsList.filter(con => {
-    const matchKategori = filterKategori === 'Semua' || (con.kategori || 'Agency').toLowerCase() === filterKategori.toLowerCase();
-    const matchTarget = filterTarget === 'Semua' || (con.target || 'Semua').toLowerCase() === filterTarget.toLowerCase();
+    const matchKategori = filterKategori === 'Semua' || (con.kategori || '').toLowerCase() === filterKategori.toLowerCase();
+    const matchTarget = filterTarget === 'Semua' || (con.target || '').toLowerCase() === filterTarget.toLowerCase();
     return matchKategori && matchTarget;
   });
+
+  // Top 3 Kontes Paling Prioritas untuk Card Atas Kanan
+  const topPriorityContests = filteredContests.slice(0, 3);
 
   // LOGIKA PAGINATION
   const indexOfLastContest = currentPage * contestsPerPage;
@@ -75,26 +136,6 @@ export default function ContestPage() {
   const totalPages = Math.ceil(filteredContests.length / contestsPerPage);
 
   useEffect(() => { setCurrentPage(1); }, [filterKategori, filterTarget]);
-
-  // LOGIKA KALENDER PINTAR
-  const year = currentMonthDate.getFullYear();
-  const month = currentMonthDate.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const startDay = new Date(year, month, 1).getDay();
-  const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-
-  const prevMonth = () => setCurrentMonthDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentMonthDate(new Date(year, month + 1, 1));
-
-  const calendarDays = [];
-  for (let i = 0; i < startDay; i++) calendarDays.push(null);
-  for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
-
-  const checkHasEvent = (day) => {
-    if (!day) return false;
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return eventsList.some(ev => ev.tanggal === dateStr);
-  };
 
   const openModal = (contest) => {
     setSelectedContest(contest);
@@ -168,6 +209,20 @@ export default function ContestPage() {
     }
   };
 
+  const getContestBadge = (contest) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = contest.startDate ? new Date(`${contest.startDate}T00:00:00`) : null;
+    const end = contest.endDate ? new Date(`${contest.endDate}T23:59:59`) : null;
+
+    if (start && end && today >= start && today <= end) {
+      return <span className="text-[10px] bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full ml-auto">Segera Berakhir</span>;
+    } else if (start && today < start) {
+      return <span className="text-[10px] bg-blue-100 text-blue-600 font-bold px-2 py-0.5 rounded-full ml-auto">Akan Datang</span>;
+    }
+    return null;
+  };
+
   if (loading) return <div className="text-center mt-20 font-bold text-[#083344] animate-pulse">Memuat Contest...</div>;
   if (!userData) return null;
 
@@ -178,24 +233,39 @@ export default function ContestPage() {
       <div className="max-w-[1400px] mx-auto px-4 pt-8">
         <div className="bg-[#083344] rounded-3xl p-8 md:p-10 text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
           <div className="z-10 flex-1">
-            <h1 className="text-3xl md:text-5xl font-black mb-2 flex items-center gap-3">🏆CONTEST</h1>
+            <h1 className="text-3xl md:text-5xl font-black mb-2 flex items-center gap-3">🏆 CONTEST</h1>
           </div>
           
           <div className="z-10 flex flex-col items-end gap-3 w-full md:w-auto">
-            <div className="flex bg-white/10 p-1 rounded-full border border-white/20">
-              {['Semua', 'Agent', 'Leader'].map(cat => (
-                <button key={cat} onClick={() => setFilterTarget(cat)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterTarget === cat ? 'bg-[#A8C338] text-[#083344] shadow-md' : 'text-gray-300 hover:text-white'}`}>
-                  {cat}
-                </button>
-              ))}
-            </div>
-            <div className="flex bg-white/10 p-1 rounded-full border border-white/20">
-              {['Semua', 'Agency', 'Prudential'].map(cat => (
-                <button key={cat} onClick={() => setFilterKategori(cat)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterKategori === cat ? 'bg-[#A8C338] text-[#083344] shadow-md' : 'text-gray-300 hover:text-white'}`}>
-                  {cat}
-                </button>
-              ))}
-            </div>
+            {/* Filter Target */}
+            {availableTargets.length > 1 && (
+              <div className="flex bg-white/10 p-1 rounded-full border border-white/20">
+                {availableTargets.map((cat, idx) => (
+                  <button 
+                    key={`target-${cat}-${idx}`} 
+                    onClick={() => setFilterTarget(cat)} 
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterTarget === cat ? 'bg-[#A8C338] text-[#083344] shadow-md' : 'text-gray-300 hover:text-white'}`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Filter Kategori */}
+            {availableKategori.length > 1 && (
+              <div className="flex bg-white/10 p-1 rounded-full border border-white/20">
+                {availableKategori.map((cat, idx) => (
+                  <button 
+                    key={`kategori-${cat}-${idx}`} 
+                    onClick={() => setFilterKategori(cat)} 
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterKategori === cat ? 'bg-[#A8C338] text-[#083344] shadow-md' : 'text-gray-300 hover:text-white'}`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -205,11 +275,10 @@ export default function ContestPage() {
           
           {/* KIRI: GRID CONTEST */}
           <div className="lg:col-span-2 space-y-6">
-            
             {filteredContests.length > 0 ? (
               <>
                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex items-center justify-between mb-2">
-                   <h2 className="text-xl font-black text-[#083344] flex items-center gap-3">🏆 Agency Contest</h2>
+                   <h2 className="text-xl font-black text-[#083344] flex items-center gap-3">🏆 Contest Yang Berlangsung</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -240,44 +309,58 @@ export default function ContestPage() {
                 )}
               </>
             ) : (
-              <div className="bg-white rounded-3xl p-10 text-center border-2 border-dashed border-gray-200">
+              <div className="bg-[#ffffff] rounded-3xl p-10 text-center border-2 border-dashed border-gray-200">
                 <p className="text-gray-400 text-sm font-bold">Belum ada kontes sesuai filter yang dipilih.</p>
               </div>
             )}
           </div>
 
-          {/* KANAN: KALENDER PINTAR */}
-          <div className="lg:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 sticky top-10">
-            <h3 className="font-black text-[#083344] flex items-center gap-2 mb-6 border-b pb-4">📅 Kalender Kegiatan</h3>
-            <div className="flex justify-between items-center mb-4 px-2">
-              <button onClick={prevMonth} className="text-gray-400 hover:text-[#A8C338] font-black">&lt;</button>
-              <span className="font-bold text-[#083344] text-sm">{monthNames[month]} {year}</span>
-              <button onClick={nextMonth} className="text-gray-400 hover:text-[#A8C338] font-black">&gt;</button>
+          {/* KANAN: CARD DAFTAR PRIORITAS KONTES */}
+          <div className="lg:col-span-1 space-y-6 sticky top-10">
+            
+            {/* WIDGET TOP 3 CONTEST PRIORITAS */}
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+              <h3 className="font-black text-[#083344] text-lg mb-4 pb-3 border-b flex items-center justify-between">
+                📌 Highlight Contest
+              </h3>
+              <div className="space-y-3">
+                {[0, 1, 2].map((num) => {
+                  const item = topPriorityContests[num];
+                  return (
+                    <div 
+                      key={num} 
+                      onClick={() => item && openModal(item)}
+                      className={`p-3 rounded-2xl border transition-all flex items-center gap-3 ${
+                        item ? 'bg-gray-50 hover:bg-white hover:border-[#A8C338] cursor-pointer hover:shadow-sm' : 'bg-gray-50/50 border-dashed border-gray-200'
+                      }`}
+                    >
+                      <span className="w-7 h-7 rounded-full bg-[#083344] text-white font-black text-xs flex items-center justify-center flex-shrink-0">
+                        {num + 1}
+                      </span>
+                      {item ? (
+                        <div className="flex-1 min-w-0 flex items-center justify-between">
+                          <p className="font-bold text-xs text-[#083344] truncate">{item.judul}</p>
+                          {getContestBadge(item)}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400 font-medium italic">Belum ada kontes</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="grid grid-cols-7 gap-y-3 text-center text-[10px] text-gray-400 font-bold mb-2">
-              <div>MIN</div><div>SEN</div><div>SEL</div><div>RAB</div><div>KAM</div><div>JUM</div><div>SAB</div>
-            </div>
-            <div className="grid grid-cols-7 gap-y-2 text-center text-xs font-medium">
-              {calendarDays.map((d, idx) => {
-                const isEvt = checkHasEvent(d);
-                return (
-                  <div key={idx} className={`w-8 h-8 flex items-center justify-center rounded-full mx-auto transition-all ${!d ? '' : isEvt ? 'bg-[#A8C338] text-[#083344] font-black shadow-md' : 'text-gray-600'}`}>
-                    {d || ''}
-                  </div>
-                );
-              })}
-            </div>
+
           </div>
 
         </div>
       </div>
 
-      {/* POP-UP MODAL CONTEST DENGAN INTERAKSI ZOOM & PAN */}
+      {/* POP-UP MODAL CONTEST */}
       {isModalOpen && selectedContest && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-[#083344]/80 backdrop-blur-md animate-fade-in">
           <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl relative flex flex-col overflow-hidden max-h-[90vh]">
             
-            {/* Tombol Close X */}
             <button 
               onClick={closeModal} 
               className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white w-10 h-10 rounded-full font-black flex items-center justify-center shadow-2xl z-50 transition-transform hover:scale-110"
@@ -285,7 +368,6 @@ export default function ContestPage() {
               ✕
             </button>
 
-            {/* AREA GAMBAR POSTER BISA ZOOM & DRAG */}
             <div 
               className="relative w-full h-[50vh] sm:h-[55vh] bg-black overflow-hidden flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
               onMouseDown={handleMouseDown}
@@ -305,7 +387,6 @@ export default function ContestPage() {
                 }}
               />
 
-              {/* CONTROLS BUTTONS (ZOOM + / - / RESET) */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/75 backdrop-blur-md text-white px-4 py-1.5 rounded-full flex items-center gap-3 shadow-xl z-20 border border-white/20">
                 <button onClick={zoomOut} className="text-sm font-bold px-2 py-1 hover:bg-white/20 rounded">🔍-</button>
                 <span className="text-xs font-mono font-bold min-w-[40px] text-center">{Math.round(zoomScale * 100)}%</span>
@@ -316,7 +397,6 @@ export default function ContestPage() {
               </div>
             </div>
 
-            {/* BOX DESKRIPSI DI BAWAH POSTER */}
             <div className="p-6 overflow-y-auto bg-white flex-1 space-y-3">
               <div className="flex justify-between items-start">
                 <h2 className="text-xl font-black text-[#083344]">"{selectedContest.judul}"</h2>

@@ -363,9 +363,6 @@ export default function HomePage() {
                 <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight whitespace-nowrap">
                   Welcome to Harvest Agency
                 </h1>
-                <p className="text-gray-300 text-xs sm:text-sm lg:text-base font-normal whitespace-nowrap leading-relaxed">
-                  Sistem terintegrasi untuk mencetak agen asuransi profesional dan sukses bersama Harvest.
-                </p>
               </div>
             </div>
 

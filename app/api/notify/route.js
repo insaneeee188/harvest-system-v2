@@ -1,13 +1,42 @@
-// app/api/notify/route.js
+import { sendTelegramNotification } from '@/lib/telegram';
 import { NextResponse } from 'next/server';
-import { sendTelegramNotification } from '../../../lib/telegram';
 
 export async function POST(req) {
   try {
-    const { type, data } = await req.json();
-    await sendTelegramNotification(type, data);
-    return NextResponse.json({ success: true });
+    const body = await req.json();
+
+    // 1. Ambil tipe notifikasi
+    const notificationType = body.type || 'event';
+
+    // 2. Ekstrak objek data (apakah dibungkus 'data' atau dikirim langsung)
+    const rawData = body.data || body;
+
+    // 3. Pastikan image/poster URL terekstrak dengan benar
+    const payloadData = {
+      ...rawData,
+      // Memastikan field gambar dari frontend (imageUrl / posterUrl / poster / image) terbaca
+      imageUrl: rawData.imageUrl || rawData.posterUrl || rawData.poster || rawData.image || rawData.gambar || null
+    };
+
+    if (!payloadData || Object.keys(payloadData).length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'Data notifikasi tidak ditemukan.' },
+        { status: 400 }
+      );
+    }
+
+    // 4. Kirim notifikasi ke Telegram
+    await sendTelegramNotification(notificationType, payloadData);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Notifikasi Telegram berhasil dikirim.'
+    });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Error pada API /api/notify:', error);
+    return NextResponse.json(
+      { success: false, message: 'Gagal mengirim notifikasi.', error: error.message },
+      { status: 500 }
+    );
   }
 }

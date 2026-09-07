@@ -1,6 +1,6 @@
 // app/api/notify/route.js
 import { NextResponse } from 'next/server';
-import { sendTelegramNotification } from '@/lib/telegram';
+import { sendTelegramNotification } from '../../../lib/telegram';
 
 export async function POST(req) {
   try {

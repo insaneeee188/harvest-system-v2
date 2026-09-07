@@ -252,7 +252,7 @@ export default function AdminDashboardPage() {
         }
       } catch (err) {
         console.error("Pemeriksaan Auth Gagal:", err);
-      } font-bold {
+      } finally {
         if (isMounted) setLoading(false);
       }
     });

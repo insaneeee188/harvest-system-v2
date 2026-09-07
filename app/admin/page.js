@@ -252,7 +252,7 @@ export default function AdminDashboardPage() {
         }
       } catch (err) {
         console.error("Pemeriksaan Auth Gagal:", err);
-      } finally {
+      } font-bold {
         if (isMounted) setLoading(false);
       }
     });
@@ -302,8 +302,29 @@ export default function AdminDashboardPage() {
         await updateDoc(doc(db, 'agency_contests', editContestId), { ...payload, updatedAt: new Date().toISOString() });
         alert("Kontes berhasil diperbarui!"); 
       } else {
+        // 1. Simpan ke Firestore
         await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
-        alert("Kontes berhasil ditambahkan!"); 
+
+        // 2. Kirim Notifikasi ke Telegram via API Route
+        try {
+          await fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'contest',
+              data: {
+                title: judulContest,
+                period: periodeContest,
+                link: 'https://harvest-system-v2.vercel.app/contests',
+                target: targetContest // 'Leader', 'Agent', atau 'Semua'
+              }
+            })
+          });
+        } catch (notifyErr) {
+          console.error("Gagal mengirim notifikasi Telegram:", notifyErr);
+        }
+
+        alert("Kontes berhasil ditambahkan dan notifikasi terkirim!"); 
       }
       resetContestForm();
       fetchContestsAndAchievers(); 
@@ -425,8 +446,30 @@ export default function AdminDashboardPage() {
         await updateDoc(doc(db, 'events', editEventId), { ...payload, updatedAt: new Date().toISOString() });
         alert(`${modeKegiatan === 'training' ? 'Training' : 'Event'} berhasil diperbarui!`); 
       } else {
+        // 1. Simpan ke Firestore
         await addDoc(collection(db, 'events'), { ...payload, createdAt: new Date().toISOString() });
-        alert(`${modeKegiatan === 'training' ? 'Training' : 'Event'} berhasil ditambahkan!`); 
+
+        // 2. Kirim Notifikasi ke Telegram via API Route
+        try {
+          await fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: modeKegiatan, // 'event' atau 'training'
+              data: {
+                title: judulEvent,
+                date: tanggalEvent,
+                location: lokasiEvent || linkZoomEvent || 'Online',
+                link: 'https://harvest-system-v2.vercel.app/events',
+                target: targetEvent // 'Leader', 'Agent', atau 'Semua'
+              }
+            })
+          });
+        } catch (notifyErr) {
+          console.error("Gagal mengirim notifikasi Telegram:", notifyErr);
+        }
+
+        alert(`${modeKegiatan === 'training' ? 'Training' : 'Event'} berhasil ditambahkan dan notifikasi terkirim!`);
       }
       resetEventForm();
       fetchEvents(); 

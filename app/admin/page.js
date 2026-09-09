@@ -305,7 +305,7 @@ export default function AdminDashboardPage() {
         // 1. Simpan ke Firestore
         await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
 
-        // 2. Kirim Notifikasi ke Telegram via API Route
+        // 2. Kirim Notifikasi ke Telegram via API Route (DIPERBAIKI)
         try {
           await fetch('/api/notify', {
             method: 'POST',
@@ -315,8 +315,10 @@ export default function AdminDashboardPage() {
               data: {
                 title: judulContest,
                 period: periodeContest,
+                posterUrl: posterContest,    // <-- Menambahkan Gambar Poster Contest
+                deskripsi: deskripsiContest, // <-- Menambahkan Deskripsi
                 link: 'https://harvest-system-v2.vercel.app/contests',
-                target: targetContest // 'Leader', 'Agent', atau 'Semua'
+                target: targetContest
               }
             })
           });
@@ -449,7 +451,7 @@ export default function AdminDashboardPage() {
         // 1. Simpan ke Firestore
         await addDoc(collection(db, 'events'), { ...payload, createdAt: new Date().toISOString() });
 
-        // 2. Kirim Notifikasi ke Telegram via API Route
+        // 2. Kirim Notifikasi ke Telegram via API Route (DIPERBAIKI)
         try {
           await fetch('/api/notify', {
             method: 'POST',
@@ -459,9 +461,13 @@ export default function AdminDashboardPage() {
               data: {
                 title: judulEvent,
                 date: tanggalEvent,
-                location: lokasiEvent || linkZoomEvent || 'Online',
+                waktu: waktuEvent,             // <-- Menambahkan Jam / Waktu
+                lokasi: lokasiEvent,           // <-- Menambahkan Lokasi Fisik
+                linkZoom: linkZoomEvent,       // <-- Menambahkan Link Zoom
+                posterUrl: posterEvent,        // <-- Menambahkan Poster Flyer URL
+                deskripsi: deskripsiEvent,     // <-- Menambahkan Deskripsi Singkat
                 link: 'https://harvest-system-v2.vercel.app/events',
-                target: targetEvent // 'Leader', 'Agent', atau 'Semua'
+                target: targetEvent
               }
             })
           });

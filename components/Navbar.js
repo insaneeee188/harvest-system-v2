@@ -87,6 +87,11 @@ export default function Navbar() {
               <Link href="/events" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Event</Link>
               <Link href="/contest" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Contest</Link>
               
+              {/* LINK PRODUCTION REPORT */}
+              <Link href="/production-report" className="text-white hover:text-[#A8C338] text-sm font-bold transition">
+                Production Report
+              </Link>
+              
               <div className="flex items-center gap-4 ml-4 border-l border-white/20 pl-6">
                 
                 {/* NOTIFICATION BELL */}
@@ -120,16 +125,28 @@ export default function Navbar() {
                   )}
                 </div>
 
-                {/* PROFILE BUTTON */}
+                {/* PROFILE BUTTON DESKTOP */}
                 <div className="relative">
                   <button onClick={() => { setIsProfileDropdownOpen(!isProfileDropdownOpen); setIsNotifOpen(false); }} className="flex items-center gap-2 text-white focus:outline-none">
                     <span className="bg-[#A8C338] text-[#083344] w-8 h-8 rounded-full flex items-center justify-center font-black text-xs">{userData?.name?.charAt(0) || 'A'}</span>
                     <svg className={`w-4 h-4 transition-transform ${isProfileDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                   </button>
                   {isProfileDropdownOpen && (
-                    <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-xl py-2 border border-gray-100 z-50">
-                      {userData?.role === 'admin' && <Link href="/admin" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">🛡️ Admin Panel</Link>}
-                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-50 font-bold">🚪 Log Out</button>
+                    <div className="absolute right-0 mt-3 w-52 bg-white rounded-xl shadow-xl py-2 border border-gray-100 z-50">
+                      {userData?.role === 'admin' && (
+                        <>
+                          <Link href="/admin" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">
+                            🛡️ Admin Panel
+                          </Link>
+                          <Link href="/admin/production-report" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">
+                            📈 Admin Production
+                          </Link>
+                          <hr className="my-1 border-gray-100" />
+                        </>
+                      )}
+                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-50 font-bold">
+                        🚪 Log Out
+                      </button>
                     </div>
                   )}
                 </div>
@@ -137,7 +154,7 @@ export default function Navbar() {
               </div>
             </div>
           ) : (
-            /* USER BELUM LOGIN (HANYA TOMBOL MASUK/DAFTAR) */
+            /* USER BELUM LOGIN */
             <div>
               <Link href="/" className="border border-white/40 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-[#A8C338] hover:text-[#083344] transition-all">
                 Masuk / Daftar
@@ -157,9 +174,22 @@ export default function Navbar() {
                   <span className="bg-[#A8C338] text-[#083344] w-8 h-8 rounded-full flex items-center justify-center font-black text-xs border border-[#A8C338]">{userData?.name?.charAt(0) || 'A'}</span>
                 </button>
                 {isProfileDropdownOpen && (
-                  <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-xl py-2 border border-gray-100 z-50">
-                    {userData?.role === 'admin' && <Link href="/admin" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">🛡️ Admin Panel</Link>}
-                    <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-50 font-bold">🚪 Log Out</button>
+                  <div className="absolute right-0 mt-3 w-52 bg-white rounded-xl shadow-xl py-2 border border-gray-100 z-50">
+                    <Link href="/production-report" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">📊 Production Report</Link>
+                    {userData?.role === 'admin' && (
+                      <>
+                        <Link href="/admin" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">
+                          🛡️ Admin Panel
+                        </Link>
+                        <Link href="/admin/production-report" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">
+                          📈 Admin Production
+                        </Link>
+                      </>
+                    )}
+                    <hr className="my-1 border-gray-100" />
+                    <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-50 font-bold">
+                      🚪 Log Out
+                    </button>
                   </div>
                 )}
               </div>

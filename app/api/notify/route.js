@@ -1,3 +1,5 @@
+// app/api/notify/route.js
+
 import { sendTelegramNotification } from '../../../lib/telegram';
 import { NextResponse } from 'next/server';
 
@@ -14,7 +16,6 @@ export async function POST(req) {
     // 3. Pastikan image/poster URL terekstrak dengan benar
     const payloadData = {
       ...rawData,
-      // Memastikan field gambar dari frontend (imageUrl / posterUrl / poster / image) terbaca
       imageUrl: rawData.imageUrl || rawData.posterUrl || rawData.poster || rawData.image || rawData.gambar || null
     };
 

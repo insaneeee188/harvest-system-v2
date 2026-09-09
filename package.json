@@ -14,13 +14,18 @@
   "license": "ISC",
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.3",
+    "exceljs": "^4.4.0",
     "firebase": "^12.17.1",
+    "form-data": "^4.0.6",
     "next": "^16.3.0",
+    "node-fetch": "^3.3.2",
     "papaparse": "^5.5.4",
+    "puppeteer": "^25.10.0",
     "react": "^19.2.8",
     "react-calendar": "^6.0.1",
     "react-dom": "^19.2.8",
-    "react-image-crop": "^11.1.2"
+    "react-image-crop": "^11.1.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "autoprefixer": "^10.5.4",

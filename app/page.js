@@ -17,7 +17,11 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   // ================= STATE SWITCH TAB LOGIN / REGISTER =================
-  const [isLoginTab, setIsLoginTab] = useState(true); // Default ke Masuk Akun
+  const [isLoginTab, setIsLoginTab] = useState(true);
+
+  // ================= STATE SHOW / HIDE PASSWORD =================
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
 
   // ================= STATE LUPA PASSWORD =================
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -111,13 +115,16 @@ export default function HomePage() {
 
     try {
       const res = await createUserWithEmailAndPassword(auth, regEmail, regPassword);
+      
       await setDoc(doc(db, 'users', res.user.uid), {
         name: regNama,
         email: regEmail,
         role: regRole,
+        status: 'pending',
         createdAt: new Date().toISOString(),
       });
-      setRegSuccess('Pendaftaran berhasil! Otomatis masuk...');
+      
+      setRegSuccess('Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan Admin.');
     } catch (err) {
       setRegError('Gagal mendaftar: Email mungkin sudah digunakan atau tidak valid.');
     } finally {
@@ -343,14 +350,11 @@ export default function HomePage() {
         
         <div className="min-h-screen w-full bg-gradient-to-br from-[#0a3543] via-[#072c38] to-[#041c25] font-sans flex flex-col justify-between p-6 sm:p-10 lg:p-12 relative overflow-hidden">
           
-          {/* Light Glow Efek Latar Belakang */}
           <div className="absolute top-1/4 -left-32 w-[500px] h-[500px] bg-[#a8c338]/10 rounded-full blur-[120px] pointer-events-none" />
           <div className="absolute bottom-10 right-10 w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none" />
 
-          {/* Wrapper Utama 2 Kolom */}
           <div className="w-full max-w-7xl mx-auto my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10">
             
-            {/* SISI KIRI: Logo Harvest Center + Text */}
             <div className="lg:col-span-7 flex flex-col justify-start items-center text-center space-y-5 -mt-6 lg:-mt-12">
               <img
                 src="/harvest-logo.png"
@@ -366,10 +370,8 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* SISI KANAN: Card Form Login, Register & Reset Password */}
             <div className="lg:col-span-5 w-full max-w-md mx-auto lg:ml-auto bg-[#07232d]/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-white/10 shadow-2xl">
               
-              {/* Tab Selector */}
               <div className="flex bg-[#04161c] p-1 rounded-2xl mb-6 border border-white/5">
                 <button
                   type="button"
@@ -401,11 +403,9 @@ export default function HomePage() {
                 </button>
               </div>
 
-              {/* FORM MASUK AKUN / LUPA PASSWORD */}
               {isLoginTab ? (
                 <div>
                   {!isForgotPassword ? (
-                    /* FORM LOGIN STANDAR */
                     <>
                       {loginError && (
                         <div className="mb-4 text-xs bg-red-500/20 text-red-200 p-3 rounded-xl border border-red-500/30 text-center font-medium">
@@ -424,16 +424,37 @@ export default function HomePage() {
                             className="w-full px-4 py-3 text-xs sm:text-sm bg-[#0e3b4a] border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#A8C338] transition-all"
                           />
                         </div>
+                        
+                        {/* INPUT PASSWORD LOGIN DENGAN TOGGLE EYE ICON */}
                         <div>
                           <label className="block text-xs font-semibold text-gray-300 mb-1.5">Password</label>
-                          <input
-                            type="password"
-                            required
-                            value={loginPassword}
-                            onChange={(e) => setLoginPassword(e.target.value)}
-                            placeholder="••••••••"
-                            className="w-full px-4 py-3 text-xs sm:text-sm bg-[#0e3b4a] border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#A8C338] transition-all"
-                          />
+                          <div className="relative">
+                            <input
+                              type={showLoginPassword ? "text" : "password"}
+                              required
+                              value={loginPassword}
+                              onChange={(e) => setLoginPassword(e.target.value)}
+                              placeholder="••••••••"
+                              className="w-full px-4 py-3 pr-10 text-xs sm:text-sm bg-[#0e3b4a] border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#A8C338] transition-all"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowLoginPassword(!showLoginPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition"
+                              title={showLoginPassword ? "Sembunyikan Password" : "Tampilkan Password"}
+                            >
+                              {showLoginPassword ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                                </svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12c1.274 4.057 5.065 7 9.964 7 4.899 0 8.69-2.943 9.964-7-1.274-4.057-5.064-7-9.964-7-4.899 0-8.69 2.943-9.964 7z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
                         </div>
                         
                         <button
@@ -444,7 +465,6 @@ export default function HomePage() {
                           {isLoggingIn ? 'Memproses...' : 'MASUK SEKARANG'}
                         </button>
 
-                        {/* TOMBOL LUPA PASSWORD DIBAWAH MASUK SEKARANG */}
                         <div className="text-center pt-2">
                           <button
                             type="button"
@@ -460,7 +480,6 @@ export default function HomePage() {
                       </form>
                     </>
                   ) : (
-                    /* FORM RESET PASSWORD */
                     <div className="space-y-4">
                       <div className="text-center mb-2">
                         <h3 className="text-sm font-bold text-white mb-1">Reset Password</h3>
@@ -513,7 +532,6 @@ export default function HomePage() {
                   )}
                 </div>
               ) : (
-                /* FORM DAFTAR AKUN */
                 <div>
                   {regError && (
                     <div className="mb-3 text-xs bg-red-500/20 text-red-200 p-2.5 rounded-xl border border-red-500/30 text-center font-medium">
@@ -548,17 +566,40 @@ export default function HomePage() {
                         className="w-full px-4 py-2.5 text-xs sm:text-sm bg-[#0e3b4a] border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#A8C338] transition-all"
                       />
                     </div>
+
+                    {/* INPUT PASSWORD REGISTER DENGAN TOGGLE EYE ICON */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-300 mb-1">Password (Min. 6 Karakter)</label>
-                      <input
-                        type="password"
-                        required
-                        value={regPassword}
-                        onChange={(e) => setRegPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full px-4 py-2.5 text-xs sm:text-sm bg-[#0e3b4a] border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#A8C338] transition-all"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showRegPassword ? "text" : "password"}
+                          required
+                          value={regPassword}
+                          onChange={(e) => setRegPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full px-4 py-2.5 pr-10 text-xs sm:text-sm bg-[#0e3b4a] border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#A8C338] transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegPassword(!showRegPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition"
+                          title={showRegPassword ? "Sembunyikan Password" : "Tampilkan Password"}
+                        >
+                          {showRegPassword ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12c1.274 4.057 5.065 7 9.964 7 4.899 0 8.69-2.943 9.964-7-1.274-4.057-5.064-7-9.964-7-4.899 0-8.69 2.943-9.964 7z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     </div>
+
+                    {/* DIBATASI HANYA AGENT & LEADER */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-300 mb-1">Tipe Akun (Role)</label>
                       <select
@@ -568,10 +609,9 @@ export default function HomePage() {
                       >
                         <option value="Agent">Agent</option>
                         <option value="Leader">Leader</option>
-                        <option value="AAB">AAB</option>
-                        <option value="AB">AB</option>
                       </select>
                     </div>
+
                     <button
                       type="submit"
                       disabled={isRegistering}
@@ -592,20 +632,39 @@ export default function HomePage() {
     );
   }
 
+  // ================= TAMPILAN JIKA USER STATUS PENDING =================
+  if (userData?.status === 'pending') {
+    return (
+      <div className="min-h-screen bg-[#072d38] flex items-center justify-center p-6 text-center">
+        <div className="bg-[#07232d] border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-4">
+          <div className="text-5xl">⏳</div>
+          <h2 className="text-2xl font-bold text-white">Menunggu Persetujuan</h2>
+          <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">
+            Halo <span className="text-[#A8C338] font-bold">{userData?.name || 'User'}</span>, akun Anda telah berhasil didaftarkan dan saat ini sedang menunggu persetujuan dari Admin.
+          </p>
+          <button
+            onClick={() => auth.signOut()}
+            className="w-full py-3 mt-4 bg-red-500/20 text-red-200 border border-red-500/30 rounded-xl font-bold text-xs hover:bg-red-500/30 transition-all"
+          >
+            Keluar / Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ================= LOGGED IN USER VIEW =================
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-gray-50 to-slate-100/50 pb-24 font-sans">
       
-      {/* BANNER UTAMA DENGAN BADGE DIPERBESAR */}
+      {/* BANNER UTAMA */}
       <div className="max-w-[1400px] mx-auto px-4 pt-6">
         <div className="bg-[#072c38] rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col justify-center items-start gap-4">
           
-          {/* Judul Utama */}
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
             Semangat Pagi, <span className="text-[#a8c338]">{userData?.name?.split(' ')[0] || userData?.nama || 'rifqy'}!</span>
           </h1>
 
-          {/* Badge Pill ADMIN Diperbesar */}
           <div className="px-6 py-2 rounded-full border-2 border-[#a8c338]/60 bg-[#123e4a]/70 inline-flex items-center justify-center shadow-md">
             <span className="text-sm font-black text-[#a8c338] uppercase tracking-widest">
               {userData?.role || 'ADMIN'}
@@ -620,7 +679,7 @@ export default function HomePage() {
         <div className="flex items-center justify-between mb-4 px-1">
           <h2 className="text-sm font-black tracking-wider uppercase text-gray-400">Quick Navigation</h2>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-5">
           
           <a
             href="#top-achievers"
@@ -669,6 +728,15 @@ export default function HomePage() {
             </div>
             <h3 className="font-extrabold text-[#083344] text-sm group-hover:text-rose-600 transition-colors">Contest</h3>
             <p className="text-[11px] text-gray-400 mt-1">Lihat Kontes</p>
+          </Link>
+
+          <Link href="/production-report" className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="w-14 h-14 rounded-2xl bg-cyan-50 flex items-center justify-center text-3xl mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+              📊
+            </div>
+            <h3 className="font-extrabold text-[#083344] text-sm group-hover:text-cyan-600 transition-colors">Production</h3>
+            <p className="text-[11px] text-gray-400 mt-1">Laporan Produksi</p>
           </Link>
 
         </div>
@@ -952,13 +1020,6 @@ export default function HomePage() {
                 <span className="font-mono text-[11px] min-w-[40px] text-center">
                   {Math.round(zoomScale * 100)}%
                 </span>
-                <button
-                  onClick={() => setZoomScale((prev) => Math.min(2.5, prev + 0.2))}
-                  className="hover:text-[#A8C338] font-black text-sm px-1"
-                  title="Zoom In"
-                >
-                  ➕
-                </button>
                 <button
                   onClick={() => setZoomScale(1)}
                   className="text-[10px] bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-gray-200"

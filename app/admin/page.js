@@ -36,8 +36,17 @@ export default function AdminDashboardPage() {
   const usersPerPage = 5; 
   const indexOfLastUser = currentPageUsers * usersPerPage;
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = usersList.slice(indexOfFirstUser, indexOfLastUser);
-  const totalPagesUsers = Math.ceil(usersList.length / usersPerPage) || 1;
+  const currentUsers = Array.isArray(usersList) 
+    ? usersList.slice(indexOfFirstUser, indexOfLastUser) 
+    : [];
+  const totalPagesUsers = Array.isArray(usersList) 
+    ? Math.ceil(usersList.length / usersPerPage) || 1 
+    : 1;
+
+  // Safety count untuk indikator pending
+  const pendingCount = Array.isArray(usersList)
+    ? usersList.filter((u) => u?.status === 'pending').length
+    : 0;
 
   // --- CONTEST STATES ---
   const [contestsList, setContestsList] = useState([]);
@@ -105,8 +114,12 @@ export default function AdminDashboardPage() {
   const modsPerPage = 5; 
   const indexOfLastMod = currentPageMods * modsPerPage;
   const indexOfFirstMod = indexOfLastMod - modsPerPage;
-  const currentMods = modulesList.slice(indexOfFirstMod, indexOfLastMod);
-  const totalPagesMods = Math.ceil(modulesList.length / modsPerPage) || 1;
+  const currentMods = Array.isArray(modulesList)
+    ? modulesList.slice(indexOfFirstMod, indexOfLastMod)
+    : [];
+  const totalPagesMods = Array.isArray(modulesList) 
+    ? Math.ceil(modulesList.length / modsPerPage) || 1 
+    : 1;
 
   const [editModuleId, setEditModuleId] = useState(null);
   const [sesiBab, setSesiBab] = useState(''); 
@@ -302,10 +315,8 @@ export default function AdminDashboardPage() {
         await updateDoc(doc(db, 'agency_contests', editContestId), { ...payload, updatedAt: new Date().toISOString() });
         alert("Kontes berhasil diperbarui!"); 
       } else {
-        // 1. Simpan ke Firestore
         await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
 
-        // 2. Kirim Notifikasi ke Telegram via API Route (DIPERBAIKI)
         try {
           await fetch('/api/notify', {
             method: 'POST',
@@ -315,8 +326,8 @@ export default function AdminDashboardPage() {
               data: {
                 title: judulContest,
                 period: periodeContest,
-                posterUrl: posterContest,    // <-- Menambahkan Gambar Poster Contest
-                deskripsi: deskripsiContest, // <-- Menambahkan Deskripsi
+                posterUrl: posterContest,
+                deskripsi: deskripsiContest,
                 link: 'https://harvest-system-v2.vercel.app/contests',
                 target: targetContest
               }
@@ -448,24 +459,22 @@ export default function AdminDashboardPage() {
         await updateDoc(doc(db, 'events', editEventId), { ...payload, updatedAt: new Date().toISOString() });
         alert(`${modeKegiatan === 'training' ? 'Training' : 'Event'} berhasil diperbarui!`); 
       } else {
-        // 1. Simpan ke Firestore
         await addDoc(collection(db, 'events'), { ...payload, createdAt: new Date().toISOString() });
 
-        // 2. Kirim Notifikasi ke Telegram via API Route (DIPERBAIKI)
         try {
           await fetch('/api/notify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              type: modeKegiatan, // 'event' atau 'training'
+              type: modeKegiatan,
               data: {
                 title: judulEvent,
                 date: tanggalEvent,
-                waktu: waktuEvent,             // <-- Menambahkan Jam / Waktu
-                lokasi: lokasiEvent,           // <-- Menambahkan Lokasi Fisik
-                linkZoom: linkZoomEvent,       // <-- Menambahkan Link Zoom
-                posterUrl: posterEvent,        // <-- Menambahkan Poster Flyer URL
-                deskripsi: deskripsiEvent,     // <-- Menambahkan Deskripsi Singkat
+                waktu: waktuEvent,
+                lokasi: lokasiEvent,
+                linkZoom: linkZoomEvent,
+                posterUrl: posterEvent,
+                deskripsi: deskripsiEvent,
                 link: 'https://harvest-system-v2.vercel.app/events',
                 target: targetEvent
               }
@@ -702,9 +711,21 @@ export default function AdminDashboardPage() {
 
       {/* 1. APPROVAL USER */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm w-full overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-[#083344]">🔐 Persetujuan Agen Baru</h2>
+        
+        {/* Header Tabel Persetujuan Agen Baru */}
+        <div className="p-4 sm:p-6 border-b border-gray-200 flex justify-between items-center flex-wrap gap-2">
+          <h2 className="text-lg font-bold text-[#083344] flex items-center gap-2">
+            🔐 Persetujuan Agen Baru
+          </h2>
+
+          {/* Indikator Jumlah User Pending */}
+          {pendingCount > 0 && (
+            <span className="bg-red-500 text-white text-xs font-extrabold px-3 py-1 rounded-full animate-pulse shadow-md">
+              {pendingCount} Menunggu Persetujuan
+            </span>
+          )}
         </div>
+
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
@@ -716,27 +737,35 @@ export default function AdminDashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {currentUsers.map((usr) => (
-                <tr key={usr.id} className="border-b hover:bg-gray-50">
-                  <td className="p-4">
-                    <p className="font-bold text-[#083344]">{usr.name}</p>
-                    <p className="text-xs text-gray-500">{usr.email}</p>
-                  </td>
-                  <td className="p-4">
-                    <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold uppercase">{usr.role}</span>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${usr.status === 'approved' ? 'bg-[#A8C338]/20 text-[#083344]' : 'bg-red-100 text-red-600'}`}>{usr.status}</span>
-                  </td>
-                  <td className="p-4 text-center">
-                    {usr.status === 'pending' ? (
-                      <button onClick={() => handleApprove(usr.id, usr.name)} className="bg-[#083344] text-white text-xs font-bold px-4 py-2 rounded-lg hover:opacity-90">Setujui</button>
-                    ) : (
-                      <span className="text-xs text-gray-400 font-bold italic">Selesai</span>
-                    )}
+              {currentUsers.length > 0 ? (
+                currentUsers.map((usr) => (
+                  <tr key={usr.id} className="border-b hover:bg-gray-50">
+                    <td className="p-4">
+                      <p className="font-bold text-[#083344]">{usr.name}</p>
+                      <p className="text-xs text-gray-500">{usr.email}</p>
+                    </td>
+                    <td className="p-4">
+                      <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold uppercase">{usr.role}</span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${usr.status === 'approved' ? 'bg-[#A8C338]/20 text-[#083344]' : 'bg-red-100 text-red-600'}`}>{usr.status}</span>
+                    </td>
+                    <td className="p-4 text-center">
+                      {usr.status === 'pending' ? (
+                        <button onClick={() => handleApprove(usr.id, usr.name)} className="bg-[#083344] text-white text-xs font-bold px-4 py-2 rounded-lg hover:opacity-90">Setujui</button>
+                      ) : (
+                        <span className="text-xs text-gray-400 font-bold italic">Selesai</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="p-6 text-center text-gray-400 font-medium">
+                    Tidak ada data pendaftaran agen.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

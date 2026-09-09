@@ -78,7 +78,7 @@ export default function Navbar() {
             HARVEST <span className="hidden sm:inline">AGENCY</span>
           </Link>
           
-          {/* USER SUDAH LOGIN */}
+          {/* USER SUDAH LOGIN (DESKTOP) */}
           {user ? (
             <div className="hidden md:flex space-x-6 items-center">
               <Link href="/" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Home</Link>
@@ -94,7 +94,7 @@ export default function Navbar() {
               
               <div className="flex items-center gap-4 ml-4 border-l border-white/20 pl-6">
                 
-                {/* NOTIFICATION BELL */}
+                {/* NOTIFICATION BELL DESKTOP */}
                 <div className="relative">
                   <button onClick={() => { setIsNotifOpen(!isNotifOpen); setIsProfileDropdownOpen(false); }} className="text-white hover:text-[#A8C338] transition relative">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
@@ -155,48 +155,137 @@ export default function Navbar() {
             </div>
           ) : (
             /* USER BELUM LOGIN */
-            <div>
+            <div className="hidden md:block">
               <Link href="/" className="border border-white/40 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-[#A8C338] hover:text-[#083344] transition-all">
                 Masuk / Daftar
               </Link>
             </div>
           )}
 
-          {/* MOBILE MENU TRIGGER */}
-          {user && (
-            <div className="md:hidden flex items-center gap-4">
-              <button onClick={() => { setIsNotifOpen(!isNotifOpen); setIsProfileDropdownOpen(false); setIsMobileMenuOpen(false); }} className="text-white relative">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                {hasUnreadNotif && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#083344] animate-pulse"></span>}
-              </button>
-              <div className="relative">
-                <button onClick={() => { setIsProfileDropdownOpen(!isProfileDropdownOpen); setIsMobileMenuOpen(false); setIsNotifOpen(false); }} className="flex items-center gap-1 text-white">
-                  <span className="bg-[#A8C338] text-[#083344] w-8 h-8 rounded-full flex items-center justify-center font-black text-xs border border-[#A8C338]">{userData?.name?.charAt(0) || 'A'}</span>
-                </button>
-                {isProfileDropdownOpen && (
-                  <div className="absolute right-0 mt-3 w-52 bg-white rounded-xl shadow-xl py-2 border border-gray-100 z-50">
-                    <Link href="/production-report" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">📊 Production Report</Link>
-                    {userData?.role === 'admin' && (
-                      <>
-                        <Link href="/admin" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">
-                          🛡️ Admin Panel
-                        </Link>
-                        <Link href="/admin/production-report" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">
-                          📈 Admin Production
-                        </Link>
-                      </>
-                    )}
-                    <hr className="my-1 border-gray-100" />
-                    <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-50 font-bold">
-                      🚪 Log Out
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {/* MOBILE TRIGGER & HAMBURGER BUTTON */}
+          <div className="md:hidden flex items-center gap-3">
+            {user && (
+              <>
+                {/* NOTIFIKASI MOBILE */}
+                <div className="relative">
+                  <button onClick={() => { setIsNotifOpen(!isNotifOpen); setIsProfileDropdownOpen(false); setIsMobileMenuOpen(false); }} className="text-white p-1 relative">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    {hasUnreadNotif && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#083344] animate-pulse"></span>}
+                  </button>
+
+                  {/* POPUP NOTIFIKASI MOBILE */}
+                  {isNotifOpen && (
+                    <div className="absolute right-0 mt-3 w-72 bg-white rounded-xl shadow-2xl py-2 border border-gray-100 z-50">
+                      <div className="px-4 py-2 border-b border-gray-100 font-black text-[#083344] flex justify-between">
+                        Notifikasi
+                      </div>
+                      <div className="max-h-64 overflow-y-auto p-2 space-y-2">
+                        {userData?.role === 'admin' && pendingUsersCount > 0 && (
+                          <Link href="/admin#approval-section" onClick={closeAll} className="block p-3 bg-red-50 rounded-lg hover:bg-red-100 transition border border-red-100">
+                            <p className="text-xs font-bold text-red-600">⚠️ Butuh Persetujuan</p>
+                            <p className="text-sm text-gray-700 mt-1">Ada <b>{pendingUsersCount} agen baru</b> yang mendaftar dan menunggu approval Anda.</p>
+                          </Link>
+                        )}
+                        {globalNotifs.map((notif, idx) => (
+                          <div key={idx} className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                            <p className="text-xs font-bold text-blue-600">{notif.title}</p>
+                            <p className="text-sm text-gray-700 mt-1">{notif.message}</p>
+                          </div>
+                        ))}
+                        {!hasUnreadNotif && <p className="text-xs text-center text-gray-400 py-4">Belum ada notifikasi baru.</p>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* PROFILE BUTTON MOBILE */}
+                <div className="relative">
+                  <button onClick={() => { setIsProfileDropdownOpen(!isProfileDropdownOpen); setIsMobileMenuOpen(false); setIsNotifOpen(false); }} className="flex items-center gap-1 text-white">
+                    <span className="bg-[#A8C338] text-[#083344] w-8 h-8 rounded-full flex items-center justify-center font-black text-xs border border-[#A8C338]">{userData?.name?.charAt(0) || 'A'}</span>
+                  </button>
+                  {isProfileDropdownOpen && (
+                    <div className="absolute right-0 mt-3 w-52 bg-white rounded-xl shadow-xl py-2 border border-gray-100 z-50">
+                      <Link href="/production-report" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">📊 Production Report</Link>
+                      {userData?.role === 'admin' && (
+                        <>
+                          <Link href="/admin" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">
+                            🛡️ Admin Panel
+                          </Link>
+                          <Link href="/admin/production-report" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">
+                            📈 Admin Production
+                          </Link>
+                        </>
+                      )}
+                      <hr className="my-1 border-gray-100" />
+                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-50 font-bold">
+                        🚪 Log Out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* TOMBOL BURGER MENU MOBILE */}
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(!isMobileMenuOpen);
+                setIsProfileDropdownOpen(false);
+                setIsNotifOpen(false);
+              }}
+              className="text-white p-2 rounded-lg hover:bg-white/10 focus:outline-none"
+              aria-label="Toggle Navigation Menu"
+            >
+              {isMobileMenuOpen ? (
+                /* Ikon Silang (Close) */
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                /* Ikon Burger (Three lines) */
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </button>
+          </div>
 
         </div>
+
+        {/* MENU DROPDOWN BURGER MOBILE */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden pb-6 pt-2 border-t border-white/10 space-y-3 font-bold text-sm">
+            {user ? (
+              <>
+                <Link href="/" onClick={closeAll} className="block px-4 py-2.5 rounded-xl text-white hover:bg-white/10 hover:text-[#A8C338] transition">
+                  🏠 Home
+                </Link>
+                <Link href="/daily-activity" onClick={closeAll} className="block px-4 py-2.5 rounded-xl text-white hover:bg-white/10 hover:text-[#A8C338] transition">
+                  📝 My Activity
+                </Link>
+                <Link href="/academy" onClick={closeAll} className="block px-4 py-2.5 rounded-xl text-white hover:bg-white/10 hover:text-[#A8C338] transition">
+                  🎓 Harvest Academy
+                </Link>
+                <Link href="/events" onClick={closeAll} className="block px-4 py-2.5 rounded-xl text-white hover:bg-white/10 hover:text-[#A8C338] transition">
+                  📅 Event
+                </Link>
+                <Link href="/contest" onClick={closeAll} className="block px-4 py-2.5 rounded-xl text-white hover:bg-white/10 hover:text-[#A8C338] transition">
+                  🏆 Contest
+                </Link>
+                <Link href="/production-report" onClick={closeAll} className="block px-4 py-2.5 rounded-xl text-white hover:bg-white/10 hover:text-[#A8C338] transition">
+                  📊 Production Report
+                </Link>
+              </>
+            ) : (
+              <div className="pt-2 px-2">
+                <Link href="/" onClick={closeAll} className="block text-center bg-[#A8C338] text-[#083344] py-3 rounded-xl font-black shadow-md">
+                  Masuk / Daftar
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </nav>
   );

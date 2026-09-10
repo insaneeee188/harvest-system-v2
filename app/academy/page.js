@@ -184,14 +184,21 @@ export default function AcademyPage() {
               return (
                 <div key={modul.id} id={`modul-${modul.globalLevel}`} className={`rounded-3xl border transition-all duration-300 scroll-mt-28 overflow-hidden ${isUnlocked ? 'bg-white border-gray-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-70 grayscale'}`}>
                   
-                  <div className="p-6 md:p-8 flex justify-between items-center gap-5 pb-4">
-                    <div className="flex flex-col gap-4">
-                      <div className="inline-block">
-                        <span className={`px-6 py-2.5 rounded-full text-xl md:text-2xl font-black uppercase tracking-wide shadow-sm ${isUnlocked ? 'bg-[#A8C338] text-[#083344]' : 'bg-gray-300 text-gray-600'}`}>
-                          {displayTitle}
-                        </span>
-                      </div>
+                  <div className="p-6 md:p-8 flex justify-between items-start gap-5 pb-4">
+                    <div className="flex flex-col gap-3">
+                    <div className="inline-block">
+                    <span className={`px-6 py-2.5 rounded-full text-xl md:text-2xl font-black uppercase tracking-wide shadow-sm ${isUnlocked ? 'bg-[#A8C338] text-[#083344]' : 'bg-gray-300 text-gray-600'}`}>
+                         {displayTitle}
+                       </span>
                     </div>
+
+    {/* TAMBAHKAN BAGIAN DESKRIPSI DI SINI */}
+    {modul.deskripsi && (
+      <div className="text-sm text-gray-600 whitespace-pre-line mt-2 pl-2">
+        {modul.deskripsi}
+      </div>
+    )}
+  </div>
                     
                     {/* Ikon Check / Gembok */}
                     <div className="flex items-center">

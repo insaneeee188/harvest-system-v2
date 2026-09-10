@@ -294,7 +294,7 @@ export default function ContestPage() {
                            <p>Periode Contest: <span className="font-normal text-gray-500">{contest.periode || 'Cek Detail'}</span></p>
                            <p>Kategori Contest: <span className="font-normal text-gray-500">{contest.kategori || 'Agency'}</span></p>
                         </div>
-                        <button className="mt-auto block w-full bg-[#A8C338] text-[#083344] font-black text-xs py-3.5 rounded-xl transition">🔍 Lihat Detail & Zoom</button>
+                        <button className="mt-auto block w-full bg-[#A8C338] text-[#083344] font-black text-xs py-3.5 rounded-xl transition">🔍 Lihat Detail </button>
                       </div>
                     </div>
                   ))}

@@ -355,7 +355,7 @@ export default function EventsPage() {
                             )}
                           </div>
                           <button className="mt-auto w-full text-center bg-[#A8C338] text-[#083344] font-black text-xs py-3 rounded-xl transition hover:opacity-90">
-                            🔍 Lihat Detail & Zoom Poster
+                            🔍 Lihat Detail 
                           </button>
                         </div>
                       </div>

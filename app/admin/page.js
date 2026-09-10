@@ -14,11 +14,37 @@ import {
   deleteDoc 
 } from 'firebase/firestore';
 
+// Sub-component untuk fitur "See More" / "Lihat Selengkapnya" pada deskripsi
+function TruncatedText({ text, maxLength = 120 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (!text) return null;
+  if (text.length <= maxLength) {
+    return <p className="text-xs text-gray-600 mb-1 italic">"{text}"</p>;
+  }
+
+  return (
+    <p className="text-xs text-gray-600 mb-1 italic">
+      "{isExpanded ? text : `${text.slice(0, maxLength)}... `}"
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="text-blue-600 font-bold hover:underline not-italic ml-1"
+      >
+        {isExpanded ? 'Lihat Sedikit' : 'See More'}
+      </button>
+    </p>
+  );
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [userData, setUserData] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // State pengontrol visibilitas seluruh tampilan tabel
+  const [showTables, setShowTables] = useState(true);
 
   const getDefaultOneMonthLater = () => {
     const date = new Date();
@@ -30,7 +56,7 @@ export default function AdminDashboardPage() {
     return new Date().toISOString().split('T')[0];
   };
 
-  // --- USERS STATES ---
+  // --- USERS STATES & PAGINATION ---
   const [usersList, setUsersList] = useState([]);
   const [currentPageUsers, setCurrentPageUsers] = useState(1);
   const usersPerPage = 5; 
@@ -43,13 +69,23 @@ export default function AdminDashboardPage() {
     ? Math.ceil(usersList.length / usersPerPage) || 1 
     : 1;
 
-  // Safety count untuk indikator pending
   const pendingCount = Array.isArray(usersList)
     ? usersList.filter((u) => u?.status === 'pending').length
     : 0;
 
-  // --- CONTEST STATES ---
+  // --- CONTEST STATES & PAGINATION ---
   const [contestsList, setContestsList] = useState([]);
+  const [currentPageContests, setCurrentPageContests] = useState(1);
+  const contestsPerPage = 5;
+  const indexOfLastContest = currentPageContests * contestsPerPage;
+  const indexOfFirstContest = indexOfLastContest - contestsPerPage;
+  const currentContests = Array.isArray(contestsList)
+    ? contestsList.slice(indexOfFirstContest, indexOfLastContest)
+    : [];
+  const totalPagesContests = Array.isArray(contestsList)
+    ? Math.ceil(contestsList.length / contestsPerPage) || 1
+    : 1;
+
   const [editContestId, setEditContestId] = useState(null);
   const [judulContest, setJudulContest] = useState('');
   const [deskripsiContest, setDeskripsiContest] = useState('');
@@ -60,8 +96,19 @@ export default function AdminDashboardPage() {
   const [tanggalSelesaiContest, setTanggalSelesaiContest] = useState(getDefaultOneMonthLater());
   const [isSubmittingContest, setIsSubmittingContest] = useState(false);
 
-  // --- ACHIEVER STATES ---
+  // --- ACHIEVER STATES & PAGINATION ---
   const [achieversList, setAchieversList] = useState([]);
+  const [currentPageAchievers, setCurrentPageAchievers] = useState(1);
+  const achieversPerPage = 5;
+  const indexOfLastAchiever = currentPageAchievers * achieversPerPage;
+  const indexOfFirstAchiever = indexOfLastAchiever - achieversPerPage;
+  const currentAchievers = Array.isArray(achieversList)
+    ? achieversList.slice(indexOfFirstAchiever, indexOfLastAchiever)
+    : [];
+  const totalPagesAchievers = Array.isArray(achieversList)
+    ? Math.ceil(achieversList.length / achieversPerPage) || 1
+    : 1;
+
   const [editAchieverId, setEditAchieverId] = useState(null);
   const [judulAchiever, setJudulAchiever] = useState('TOP LEADER');
   const [periodeAchiever, setPeriodeAchiever] = useState('');
@@ -84,10 +131,21 @@ export default function AdminDashboardPage() {
 
   const [isSubmittingAchiever, setIsSubmittingAchiever] = useState(false);
 
-  // --- EVENT & TRAINING STATES ---
+  // --- EVENT & TRAINING STATES & PAGINATION ---
   const [eventsList, setEventsList] = useState([]);
+  const [currentPageEvents, setCurrentPageEvents] = useState(1);
+  const eventsPerPage = 5;
+  const indexOfLastEvent = currentPageEvents * eventsPerPage;
+  const indexOfFirstEvent = indexOfLastEvent - eventsPerPage;
+  const currentEvents = Array.isArray(eventsList)
+    ? eventsList.slice(indexOfFirstEvent, indexOfLastEvent)
+    : [];
+  const totalPagesEvents = Array.isArray(eventsList)
+    ? Math.ceil(eventsList.length / eventsPerPage) || 1
+    : 1;
+
   const [editEventId, setEditEventId] = useState(null);
-  const [modeKegiatan, setModeKegiatan] = useState('event'); // 'event' | 'training'
+  const [modeKegiatan, setModeKegiatan] = useState('event'); 
   const [judulEvent, setJudulEvent] = useState('');
   const [deskripsiEvent, setDeskripsiEvent] = useState(''); 
   const [targetEvent, setTargetEvent] = useState('Semua'); 
@@ -100,15 +158,27 @@ export default function AdminDashboardPage() {
   const [posterEvent, setPosterEvent] = useState(''); 
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
 
-  // --- DOCUMENT STATES ---
+  // --- DOCUMENT STATES & PAGINATION ---
   const [libraryList, setLibraryList] = useState([]);
+  const [currentPageDocs, setCurrentPageDocs] = useState(1);
+  const docsPerPage = 5;
+  const indexOfLastDoc = currentPageDocs * docsPerPage;
+  const indexOfFirstDoc = indexOfLastDoc - docsPerPage;
+  const currentDocs = Array.isArray(libraryList)
+    ? libraryList.slice(indexOfFirstDoc, indexOfLastDoc)
+    : [];
+  const totalPagesDocs = Array.isArray(libraryList)
+    ? Math.ceil(libraryList.length / docsPerPage) || 1
+    : 1;
+
   const [editDocId, setEditDocId] = useState(null);
   const [judulDoc, setJudulDoc] = useState('');
-  const [kategoriDoc, setKategoriDoc] = useState('Selling');
+  const [kategoriDoc, setKategoriDoc] = useState('Selling'); 
+  const [tipeDoc, setTipeDoc] = useState('video'); 
   const [linkDoc, setLinkDoc] = useState('');
   const [isSubmittingDoc, setIsSubmittingDoc] = useState(false);
 
-  // --- ACADEMY MODULES STATES ---
+  // --- ACADEMY MODULES STATES & PAGINATION ---
   const [modulesList, setModulesList] = useState([]); 
   const [currentPageMods, setCurrentPageMods] = useState(1);
   const modsPerPage = 5; 
@@ -130,8 +200,19 @@ export default function AdminDashboardPage() {
   const [listVideo, setListVideo] = useState('');
   const [isSubmittingBab, setIsSubmittingBab] = useState(false);
 
-  // --- QUIZZES STATES ---
+  // --- QUIZZES STATES & PAGINATION ---
   const [quizzesList, setQuizzesList] = useState([]);
+  const [currentPageQuizzes, setCurrentPageQuizzes] = useState(1);
+  const quizzesPerPage = 5;
+  const indexOfLastQuiz = currentPageQuizzes * quizzesPerPage;
+  const indexOfFirstQuiz = indexOfLastQuiz - quizzesPerPage;
+  const currentQuizzes = Array.isArray(quizzesList)
+    ? quizzesList.slice(indexOfFirstQuiz, indexOfLastQuiz)
+    : [];
+  const totalPagesQuizzes = Array.isArray(quizzesList)
+    ? Math.ceil(quizzesList.length / quizzesPerPage) || 1
+    : 1;
+
   const [editQuizId, setEditQuizId] = useState(null);
   const [kuisLevel, setKuisLevel] = useState('');
   const [kuisPertanyaan, setKuisPertanyaan] = useState('');
@@ -318,6 +399,20 @@ export default function AdminDashboardPage() {
         await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
 
         try {
+          await addDoc(collection(db, 'notifications'), {
+            title: `🏆 Contest Baru: ${judulContest}`,
+            message: deskripsiContest || 'Ayo ikuti contest terbaru dari Harvest!',
+            type: 'contest',
+            target: targetContest,
+            link: '/contests',
+            createdAt: new Date().toISOString(),
+            isRead: false
+          });
+        } catch (webNotifErr) {
+          console.error("Gagal menyimpan notifikasi web:", webNotifErr);
+        }
+
+        try {
           await fetch('/api/notify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -337,7 +432,7 @@ export default function AdminDashboardPage() {
           console.error("Gagal mengirim notifikasi Telegram:", notifyErr);
         }
 
-        alert("Kontes berhasil ditambahkan dan notifikasi terkirim!"); 
+        alert("Kontes berhasil ditambahkan, serta Notifikasi Web & Telegram terkirim!"); 
       }
       resetContestForm();
       fetchContestsAndAchievers(); 
@@ -462,6 +557,20 @@ export default function AdminDashboardPage() {
         await addDoc(collection(db, 'events'), { ...payload, createdAt: new Date().toISOString() });
 
         try {
+          await addDoc(collection(db, 'notifications'), {
+            title: `${modeKegiatan === 'training' ? '📚 Training Baru' : '🎉 Event Baru'}: ${judulEvent}`,
+            message: deskripsiEvent || 'Jangan lewatkan agenda penting ini!',
+            type: modeKegiatan,
+            target: targetEvent,
+            link: '/events',
+            createdAt: new Date().toISOString(),
+            isRead: false
+          });
+        } catch (webNotifErr) {
+          console.error("Gagal menyimpan notifikasi web:", webNotifErr);
+        }
+
+        try {
           await fetch('/api/notify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -484,7 +593,7 @@ export default function AdminDashboardPage() {
           console.error("Gagal mengirim notifikasi Telegram:", notifyErr);
         }
 
-        alert(`${modeKegiatan === 'training' ? 'Training' : 'Event'} berhasil ditambahkan dan notifikasi terkirim!`);
+        alert(`${modeKegiatan === 'training' ? 'Training' : 'Event'} berhasil ditambahkan, Notifikasi Web & Telegram terkirim!`);
       }
       resetEventForm();
       fetchEvents(); 
@@ -519,12 +628,18 @@ export default function AdminDashboardPage() {
     setJudulDoc(''); 
     setLinkDoc(''); 
     setKategoriDoc('Selling');
+    setTipeDoc('video');
   };
 
   const handleSaveDoc = async (e) => { 
     e.preventDefault(); 
     setIsSubmittingDoc(true); 
-    const payload = { judul: judulDoc, kategori: kategoriDoc, link: linkDoc };
+    const payload = { 
+      judul: judulDoc, 
+      kategori: kategoriDoc, 
+      tipe: tipeDoc,
+      link: linkDoc 
+    };
 
     try {
       if (editDocId) {
@@ -532,7 +647,41 @@ export default function AdminDashboardPage() {
         alert("Dokumen berhasil diperbarui!"); 
       } else {
         await addDoc(collection(db, 'library_docs'), { ...payload, createdAt: new Date().toISOString() });
-        alert("Dokumen berhasil ditambah!"); 
+
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            title: `${tipeDoc === 'video' ? '🎥 Video' : '📄 File'} Baru: ${judulDoc}`,
+            message: `Materi kualifikasi ${kategoriDoc} baru telah ditambahkan ke Library.`,
+            type: tipeDoc,
+            target: 'Semua',
+            link: '/library',
+            createdAt: new Date().toISOString(),
+            isRead: false
+          });
+        } catch (webNotifErr) {
+          console.error("Gagal menyimpan notifikasi web:", webNotifErr);
+        }
+
+        try {
+          await fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: tipeDoc,
+              data: {
+                title: judulDoc,
+                kategori: kategoriDoc,
+                linkDoc: linkDoc,
+                link: 'https://harvest-system-v2.vercel.app/library',
+                target: 'Semua'
+              }
+            })
+          });
+        } catch (notifyErr) {
+          console.error("Gagal mengirim notifikasi Telegram:", notifyErr);
+        }
+
+        alert("Dokumen berhasil ditambah, Notifikasi Web & Telegram terkirim!"); 
       }
       resetDocForm();
       fetchLibrary(); 
@@ -547,6 +696,7 @@ export default function AdminDashboardPage() {
     setEditDocId(item.id);
     setJudulDoc(item.judul || '');
     setKategoriDoc(item.kategori || 'Selling');
+    setTipeDoc(item.tipe || 'video');
     setLinkDoc(item.link || '');
     
     const el = document.getElementById("form-doc");
@@ -703,22 +853,30 @@ export default function AdminDashboardPage() {
   return (
     <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 py-8 space-y-10 bg-gray-50 min-h-screen overflow-x-hidden">
       
-      {/* HEADER DASHBOARD */}
-      <div className="bg-[#083344] p-6 rounded-2xl shadow-sm flex flex-col items-start gap-4">
-        <h1 className="text-2xl sm:text-3xl font-black text-white">🛡️ Pusat Kendali Admin (FULL)</h1>
-        <p className="text-gray-300 text-sm mt-1">Kelola Seluruh Sistem Harvest: Contest, Event, Library, Academy, & Kuis.</p>
+      {/* HEADER DASHBOARD DENGAN TOMBOL RESET / TOGGLE TAMPILAN */}
+      <div className="bg-[#083344] p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white">🛡️ Pusat Kendali Admin</h1>
+          <p className="text-gray-300 text-sm mt-1">Kelola Seluruh Sistem Harvest: Contest, Event, Library, Academy, & Kuis.</p>
+        </div>
+        
+        {/* Tombol Bersihkan Tampilan Table */}
+        <button 
+          type="button"
+          onClick={() => setShowTables(!showTables)}
+          className="bg-white/10 text-white border border-white/20 px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/20 transition whitespace-nowrap"
+        >
+          {showTables ? '🧹 Bersihkan Tampilan Table' : '👁️ Tampilkan Kembali Table'}
+        </button>
       </div>
 
       {/* 1. APPROVAL USER */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm w-full overflow-hidden">
-        
-        {/* Header Tabel Persetujuan Agen Baru */}
         <div className="p-4 sm:p-6 border-b border-gray-200 flex justify-between items-center flex-wrap gap-2">
           <h2 className="text-lg font-bold text-[#083344] flex items-center gap-2">
             🔐 Persetujuan Agen Baru
           </h2>
 
-          {/* Indikator Jumlah User Pending */}
           {pendingCount > 0 && (
             <span className="bg-red-500 text-white text-xs font-extrabold px-3 py-1 rounded-full animate-pulse shadow-md">
               {pendingCount} Menunggu Persetujuan
@@ -737,7 +895,7 @@ export default function AdminDashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {currentUsers.length > 0 ? (
+              {showTables && currentUsers.length > 0 ? (
                 currentUsers.map((usr) => (
                   <tr key={usr.id} className="border-b hover:bg-gray-50">
                     <td className="p-4">
@@ -762,14 +920,14 @@ export default function AdminDashboardPage() {
               ) : (
                 <tr>
                   <td colSpan="4" className="p-6 text-center text-gray-400 font-medium">
-                    Tidak ada data pendaftaran agen.
+                    {showTables ? 'Tidak ada data pendaftaran agen.' : 'Tampilan disembunyikan. Klik "Tampilkan Kembali Table" untuk membuka.'}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-        {totalPagesUsers > 1 && (
+        {showTables && totalPagesUsers > 1 && (
           <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50">
             <button onClick={() => setCurrentPageUsers(p => Math.max(p - 1, 1))} disabled={currentPageUsers === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">← Sebelumnya</button>
             <span className="text-xs font-bold text-gray-600">Hal {currentPageUsers} dari {totalPagesUsers}</span>
@@ -783,7 +941,7 @@ export default function AdminDashboardPage() {
         <div id="form-contest" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
           <div className="flex justify-between items-center mb-5">
             <h2 className="font-bold text-lg text-[#083344]">🎫 {editContestId ? 'Edit Contest' : 'Input Agency Contest'}</h2>
-            {editContestId && <button onClick={resetContestForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
+            {editContestId && <button type="button" onClick={resetContestForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal Edit</button>}
           </div>
           <form onSubmit={handleSaveContest} className="space-y-4">
             <div>
@@ -823,42 +981,80 @@ export default function AdminDashboardPage() {
               <label className="block text-xs font-bold text-gray-700 mb-1">Link Gambar Poster</label>
               <input type="url" required value={posterContest} onChange={(e) => setPosterContest(e.target.value)} placeholder="Contoh: https://link-gambar.com/poster.jpg" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
             </div>
-            <button type="submit" disabled={isSubmittingContest} className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${editContestId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'}`}>
-              {isSubmittingContest ? 'Menyimpan...' : (editContestId ? 'Simpan Perubahan Contest' : 'Publish Contest')}
-            </button>
+            <div className="flex gap-2">
+              {editContestId && (
+                <button
+                  type="button"
+                  onClick={resetContestForm}
+                  className="w-1/3 bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm hover:bg-gray-300 transition"
+                >
+                  Batal Edit
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={isSubmittingContest}
+                className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${
+                  editContestId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'
+                }`}
+              >
+                {isSubmittingContest
+                  ? 'Menyimpan...'
+                  : editContestId
+                  ? 'Simpan Perubahan Contest'
+                  : 'Publish Contest'}
+              </button>
+            </div>
           </form>
         </div>
-        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
-          <h2 className="font-bold text-lg text-[#083344] mb-5">📋 Daftar Agency Contest</h2>
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-left text-sm border-collapse min-w-[400px]">
-               <thead>
-                 <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
-                   <th className="py-3 px-4 font-bold">NAMA CONTEST</th>
-                   <th className="py-3 px-4 font-bold text-center">AKSI</th>
-                 </tr>
-               </thead>
-               <tbody>
-                 {contestsList.map(item => (
-                   <tr key={item.id} className="border-b hover:bg-gray-50">
-                     <td className="py-4 px-4 font-bold text-[#083344]">
-                       {item.judul}
-                       <div className="text-[10px] font-normal text-gray-500 mt-1 flex flex-wrap gap-2">
-                         <span className="bg-gray-100 px-2 py-0.5 rounded">Kat: {item.kategori || 'Agency'}</span>
-                         <span className="bg-gray-100 px-2 py-0.5 rounded">Trg: {item.target || 'Semua'}</span>
-                         <span className="bg-gray-100 px-2 py-0.5 rounded">Per: {item.periode || '-'}</span>
-                         <span className="bg-gray-100 px-2 py-0.5 rounded">Selesai: {item.tanggalSelesai || '-'}</span>
-                       </div>
-                     </td>
-                     <td className="py-4 px-4 text-center whitespace-nowrap">
-                       <button onClick={() => handleEditContest(item)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
-                       <button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
-                     </td>
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden flex flex-col justify-between">
+          <div>
+            <h2 className="font-bold text-lg text-[#083344] mb-5">📋 Daftar Agency Contest</h2>
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm border-collapse min-w-[400px]">
+                 <thead>
+                   <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                     <th className="py-3 px-4 font-bold">NAMA CONTEST</th>
+                     <th className="py-3 px-4 font-bold text-center">AKSI</th>
                    </tr>
-                 ))}
-               </tbody>
-            </table>
+                 </thead>
+                 <tbody>
+                   {showTables && currentContests.length > 0 ? (
+                     currentContests.map(item => (
+                       <tr key={item.id} className="border-b hover:bg-gray-50">
+                         <td className="py-4 px-4 font-bold text-[#083344]">
+                           {item.judul}
+                           <div className="text-[10px] font-normal text-gray-500 mt-1 flex flex-wrap gap-2">
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Kat: {item.kategori || 'Agency'}</span>
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Trg: {item.target || 'Semua'}</span>
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Per: {item.periode || '-'}</span>
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Selesai: {item.tanggalSelesai || '-'}</span>
+                           </div>
+                         </td>
+                         <td className="py-4 px-4 text-center whitespace-nowrap">
+                           <button onClick={() => handleEditContest(item)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                           <button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
+                         </td>
+                       </tr>
+                     ))
+                   ) : (
+                     <tr>
+                       <td colSpan="2" className="p-6 text-center text-gray-400 font-medium">
+                         {showTables ? 'Tidak ada data contest.' : 'Tampilan disembunyikan. Klik "Tampilkan Kembali Table" untuk membuka.'}
+                       </td>
+                     </tr>
+                   )}
+                 </tbody>
+              </table>
+            </div>
           </div>
+          {showTables && totalPagesContests > 1 && (
+            <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 rounded-b-xl mt-4">
+              <button onClick={() => setCurrentPageContests(p => Math.max(p - 1, 1))} disabled={currentPageContests === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">← Sebelumnya</button>
+              <span className="text-xs font-bold text-gray-600">Hal {currentPageContests} dari {totalPagesContests}</span>
+              <button onClick={() => setCurrentPageContests(p => Math.min(p + 1, totalPagesContests))} disabled={currentPageContests === totalPagesContests} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">Selanjutnya →</button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -867,7 +1063,7 @@ export default function AdminDashboardPage() {
         <div id="form-achiever" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
           <div className="flex justify-between items-center mb-5">
             <h2 className="font-bold text-lg text-[#083344]">🏆 {editAchieverId ? 'Edit Top Achiever' : 'Input Top Achiever'}</h2>
-            {editAchieverId && <button onClick={resetAchieverForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
+            {editAchieverId && <button type="button" onClick={resetAchieverForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal Edit</button>}
           </div>
           <form onSubmit={handleSaveAchiever} className="space-y-4">
             <div>
@@ -984,39 +1180,77 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            <button type="submit" disabled={isSubmittingAchiever} className={`w-full font-bold py-2.5 rounded-lg text-sm mt-4 transition ${editAchieverId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'}`}>
-              {isSubmittingAchiever ? 'Menyimpan...' : (editAchieverId ? 'Simpan Perubahan Podium' : 'Publish Podium')}
-            </button>
+            <div className="flex gap-2 mt-4">
+              {editAchieverId && (
+                <button
+                  type="button"
+                  onClick={resetAchieverForm}
+                  className="w-1/3 bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm hover:bg-gray-300 transition"
+                >
+                  Batal Edit
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={isSubmittingAchiever}
+                className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${
+                  editAchieverId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'
+                }`}
+              >
+                {isSubmittingAchiever
+                  ? 'Menyimpan...'
+                  : editAchieverId
+                  ? 'Simpan Perubahan Podium'
+                  : 'Publish Podium'}
+              </button>
+            </div>
           </form>
         </div>
-        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
-          <h2 className="font-bold text-lg text-[#083344] mb-5">🏅 Daftar Top Achiever</h2>
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-left text-sm border-collapse min-w-[400px]">
-               <thead>
-                 <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
-                   <th className="py-3 px-4 font-bold">KATEGORI & PERIODE</th>
-                   <th className="py-3 px-4 font-bold">PEMENANG (J1)</th>
-                   <th className="py-3 px-4 font-bold text-center">AKSI</th>
-                 </tr>
-               </thead>
-               <tbody>
-                 {achieversList.map(item => (
-                   <tr key={item.id} className="border-b hover:bg-gray-50">
-                     <td className="py-4 px-4">
-                       <p className="font-black text-[#083344]">{item.judul}</p>
-                       <p className="text-xs text-gray-600">{item.periode} (Selesai: {item.tanggalSelesai || '-'})</p>
-                     </td>
-                     <td className="py-4 px-4 text-sm font-bold text-gray-700">{item.nama1 || 'Tanpa Nama'}</td>
-                     <td className="py-4 px-4 text-center whitespace-nowrap">
-                       <button onClick={() => handleEditAchiever(item)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
-                       <button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
-                     </td>
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden flex flex-col justify-between">
+          <div>
+            <h2 className="font-bold text-lg text-[#083344] mb-5">🏅 Daftar Top Achiever</h2>
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm border-collapse min-w-[400px]">
+                 <thead>
+                   <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                     <th className="py-3 px-4 font-bold">KATEGORI & PERIODE</th>
+                     <th className="py-3 px-4 font-bold">PEMENANG (J1)</th>
+                     <th className="py-3 px-4 font-bold text-center">AKSI</th>
                    </tr>
-                 ))}
-               </tbody>
-            </table>
+                 </thead>
+                 <tbody>
+                   {showTables && currentAchievers.length > 0 ? (
+                     currentAchievers.map(item => (
+                       <tr key={item.id} className="border-b hover:bg-gray-50">
+                         <td className="py-4 px-4">
+                           <p className="font-black text-[#083344]">{item.judul}</p>
+                           <p className="text-xs text-gray-600">{item.periode} (Selesai: {item.tanggalSelesai || '-'})</p>
+                         </td>
+                         <td className="py-4 px-4 text-sm font-bold text-gray-700">{item.nama1 || 'Tanpa Nama'}</td>
+                         <td className="py-4 px-4 text-center whitespace-nowrap">
+                           <button onClick={() => handleEditAchiever(item)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                           <button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
+                         </td>
+                       </tr>
+                     ))
+                   ) : (
+                     <tr>
+                       <td colSpan="3" className="p-6 text-center text-gray-400 font-medium">
+                         {showTables ? 'Tidak ada data top achiever.' : 'Tampilan disembunyikan. Klik "Tampilkan Kembali Table" untuk membuka.'}
+                       </td>
+                     </tr>
+                   )}
+                 </tbody>
+              </table>
+            </div>
           </div>
+          {showTables && totalPagesAchievers > 1 && (
+            <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 rounded-b-xl mt-4">
+              <button onClick={() => setCurrentPageAchievers(p => Math.max(p - 1, 1))} disabled={currentPageAchievers === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">← Sebelumnya</button>
+              <span className="text-xs font-bold text-gray-600">Hal {currentPageAchievers} dari {totalPagesAchievers}</span>
+              <button onClick={() => setCurrentPageAchievers(p => Math.min(p + 1, totalPagesAchievers))} disabled={currentPageAchievers === totalPagesAchievers} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">Selanjutnya →</button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1025,7 +1259,7 @@ export default function AdminDashboardPage() {
         <div id="form-event" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden h-fit">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-lg text-[#083344]">➕ {editEventId ? 'Edit Kegiatan' : 'Tambah Kegiatan'}</h2>
-            {editEventId && <button onClick={resetEventForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
+            {editEventId && <button type="button" onClick={resetEventForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal Edit</button>}
           </div>
 
           <div className="flex bg-gray-100 p-1 rounded-xl mb-5">
@@ -1113,52 +1347,105 @@ export default function AdminDashboardPage() {
               <input type="url" value={posterEvent} onChange={(e) => setPosterEvent(e.target.value)} placeholder="Contoh: https://link-gambar.com/flyer.jpg" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
             </div>
 
-            <button type="submit" disabled={isSubmittingEvent} className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${editEventId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'}`}>
-              {isSubmittingEvent ? 'Menyimpan...' : (editEventId ? `Simpan Perubahan ${modeKegiatan === 'training' ? 'Training' : 'Event'}` : `Publish ${modeKegiatan === 'training' ? 'Training' : 'Event'}`)}
-            </button>
+            <div className="flex gap-2">
+              {editEventId && (
+                <button
+                  type="button"
+                  onClick={resetEventForm}
+                  className="w-1/3 bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm hover:bg-gray-300 transition"
+                >
+                  Batal Edit
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={isSubmittingEvent}
+                className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${
+                  editEventId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'
+                }`}
+              >
+                {isSubmittingEvent
+                  ? 'Menyimpan...'
+                  : editEventId
+                  ? `Simpan Perubahan ${modeKegiatan === 'training' ? 'Training' : 'Event'}`
+                  : `Publish ${modeKegiatan === 'training' ? 'Training' : 'Event'}`}
+              </button>
+            </div>
           </form>
         </div>
 
-        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
-          <h2 className="font-bold text-lg text-[#083344] mb-5">📅 Jadwal Event & Training</h2>
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-left text-sm border-collapse min-w-[500px]">
-               <thead>
-                 <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
-                   <th className="py-3 px-4 font-bold">INFO KEGIATAN</th>
-                   <th className="py-3 px-4 font-bold text-center">AKSI</th>
-                 </tr>
-               </thead>
-               <tbody>
-                 {eventsList.map((event) => (
-                   <tr key={event.id} className="border-b hover:bg-gray-50">
-                     <td className="py-4 px-4">
-                       <div className="flex items-center gap-2 mb-1">
-                         <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${event.jenisKegiatan === 'training' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
-                           {event.jenisKegiatan || 'Event'}
-                         </span>
-                         <p className="font-bold text-[#083344]">{event.judul}</p>
-                       </div>
-                       {event.deskripsi && <p className="text-xs text-gray-600 mb-1 italic">"{event.deskripsi}"</p>}
-                       <p className="text-xs text-gray-500">
-                         {event.tanggal ? `${event.tanggal} ${event.waktu ? '| ' + event.waktu : ''}` : 'Kegiatan Berdurasi'} (Selesai: {event.tanggalSelesai || '-'})
-                       </p>
-                       {event.lokasi && <p className="text-xs text-gray-600 truncate max-w-xs mt-0.5">🏢 {event.lokasi}</p>}
-                       {event.linkZoom && <p className="text-xs text-blue-600 truncate max-w-xs mt-0.5">🔗 {event.linkZoom}</p>}
-                       <div className="text-[10px] font-normal text-gray-500 mt-1 flex flex-wrap gap-2">
-                         <span className="bg-gray-100 px-2 py-0.5 rounded">Kat: {event.kategori || 'Agency'}</span>
-                         <span className="bg-gray-100 px-2 py-0.5 rounded">Trg: {event.target || 'Semua'}</span>
-                       </div>
-                     </td>
-                     <td className="py-4 px-4 text-center whitespace-nowrap">
-                       <button onClick={() => handleEditEvent(event)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
-                       <button onClick={() => handleDeleteEvent(event.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
-                     </td>
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden flex flex-col justify-between">
+          <div>
+            <h2 className="font-bold text-lg text-[#083344] mb-5">📅 Jadwal Event & Training</h2>
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm border-collapse min-w-[500px]">
+                 <thead>
+                   <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                     <th className="py-3 px-4 font-bold">INFO KEGIATAN</th>
+                     <th className="py-3 px-4 font-bold text-center">AKSI</th>
                    </tr>
-                 ))}
-               </tbody>
-            </table>
+                 </thead>
+                 <tbody>
+                   {showTables && currentEvents.length > 0 ? (
+                     currentEvents.map((event) => (
+                       <tr key={event.id} className="border-b hover:bg-gray-50">
+                         <td className="py-4 px-4">
+                           <div className="flex items-center gap-2 mb-1">
+                             <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${event.jenisKegiatan === 'training' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                               {event.jenisKegiatan || 'Event'}
+                             </span>
+                             <p className="font-bold text-[#083344]">{event.judul}</p>
+                           </div>
+                           <TruncatedText text={event.deskripsi} maxLength={100} />
+                           <p className="text-xs text-gray-500">
+                             {event.tanggal ? `${event.tanggal} ${event.waktu ? '| ' + event.waktu : ''}` : 'Kegiatan Berdurasi'} (Selesai: {event.tanggalSelesai || '-'})
+                           </p>
+                           {event.lokasi && <p className="text-xs text-gray-600 truncate max-w-xs mt-0.5">🏢 {event.lokasi}</p>}
+                           {event.linkZoom && <p className="text-xs text-blue-600 truncate max-w-xs mt-0.5">🔗 {event.linkZoom}</p>}
+                           <div className="text-[10px] font-normal text-gray-500 mt-1 flex flex-wrap gap-2">
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Kat: {event.kategori || 'Agency'}</span>
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Trg: {event.target || 'Semua'}</span>
+                           </div>
+                         </td>
+                         <td className="py-4 px-4 text-center whitespace-nowrap">
+                           <button onClick={() => handleEditEvent(event)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                           <button onClick={() => handleDeleteEvent(event.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
+                         </td>
+                       </tr>
+                     ))
+                   ) : (
+                     <tr>
+                       <td colSpan="2" className="p-6 text-center text-gray-400 font-medium">
+                         {showTables ? 'Tidak ada kegiatan tersimpan.' : 'Tampilan disembunyikan. Klik "Tampilkan Kembali Table" untuk membuka.'}
+                       </td>
+                     </tr>
+                   )}
+                 </tbody>
+              </table>
+            </div>
           </div>
+
+          {showTables && totalPagesEvents > 1 && (
+            <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 rounded-b-xl mt-4">
+              <button 
+                onClick={() => setCurrentPageEvents(p => Math.max(p - 1, 1))} 
+                disabled={currentPageEvents === 1} 
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition"
+              >
+                ← Sebelumnya
+              </button>
+              <span className="text-xs font-bold text-gray-600">
+                Hal {currentPageEvents} dari {totalPagesEvents}
+              </span>
+              <button 
+                onClick={() => setCurrentPageEvents(p => Math.min(p + 1, totalPagesEvents))} 
+                disabled={currentPageEvents === totalPagesEvents} 
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition"
+              >
+                Selanjutnya →
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1166,59 +1453,120 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-doc" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden h-fit">
           <div className="flex justify-between items-center mb-5">
-            <h2 className="font-bold text-lg text-[#083344]">📁 {editDocId ? 'Edit Dokumen' : 'Tambah Dokumen'}</h2>
-            {editDocId && <button onClick={resetDocForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal</button>}
+            <h2 className="font-bold text-lg text-[#083344]">📁 {editDocId ? 'Edit Dokumen / Training' : 'Tambah Dokumen / Training'}</h2>
+            {editDocId && <button type="button" onClick={resetDocForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal Edit</button>}
           </div>
           <form onSubmit={handleSaveDoc} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold mb-1">Judul Dokumen</label>
-              <input type="text" value={judulDoc} onChange={(e) => setJudulDoc(e.target.value)} required placeholder="Contoh: Dokumen Panduan Klaim" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+              <label className="block text-xs font-bold mb-1">Judul Dokumen / Video</label>
+              <input type="text" value={judulDoc} onChange={(e) => setJudulDoc(e.target.value)} required placeholder="Contoh: Modul Dasar Selling Skill" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
             </div>
-            <div>
-              <label className="block text-xs font-bold mb-1">Kategori</label>
-              <select value={kategoriDoc} onChange={(e) => setKategoriDoc(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50">
-                <option value="Selling">Selling</option>
-                <option value="Product Knowledge">Product Knowledge</option>
-                <option value="Recruiting Skill">Recruiting Skill</option>
-                <option value="Soft Skill">Soft Skill</option>
-              </select>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-bold mb-1">Tipe Media</label>
+                <select value={tipeDoc} onChange={(e) => setTipeDoc(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold">
+                  <option value="video">🎥 Video</option>
+                  <option value="file">📄 File / PDF</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1">Kategori Topik</label>
+                <select value={kategoriDoc} onChange={(e) => setKategoriDoc(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold">
+                  <option value="Selling">Selling</option>
+                  <option value="Product Knowledge">Product Knowledge</option>
+                  <option value="Recruiting Skill">Recruiting Skill</option>
+                  <option value="Soft Skill">Soft Skill</option>
+                </select>
+              </div>
             </div>
+
             <div>
-              <label className="block text-xs font-bold mb-1">Link Akses</label>
+              <label className="block text-xs font-bold mb-1">Link Akses (Drive / YouTube / Video)</label>
               <input type="url" value={linkDoc} onChange={(e) => setLinkDoc(e.target.value)} required placeholder="Contoh: https://drive.google.com/..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
             </div>
-            <button type="submit" disabled={isSubmittingDoc} className={`w-full font-bold py-2.5 rounded-lg text-sm ${editDocId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'}`}>
-              {isSubmittingDoc ? 'Menyimpan...' : (editDocId ? 'Simpan Perubahan Dokumen' : 'Publish Dokumen')}
-            </button>
+            <div className="flex gap-2">
+              {editDocId && (
+                <button
+                  type="button"
+                  onClick={resetDocForm}
+                  className="w-1/3 bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm hover:bg-gray-300 transition"
+                >
+                  Batal Edit
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={isSubmittingDoc}
+                className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${
+                  editDocId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'
+                }`}
+              >
+                {isSubmittingDoc
+                  ? 'Menyimpan...'
+                  : editDocId
+                  ? 'Simpan Perubahan'
+                  : 'Publish File/Video'}
+              </button>
+            </div>
           </form>
         </div>
-        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden">
-          <h2 className="font-bold text-lg text-[#083344] mb-5">📂 Daftar Dokumen</h2>
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-left text-sm border-collapse min-w-[400px]">
-               <thead>
-                 <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
-                   <th className="py-3 px-4 font-bold">JUDUL</th>
-                   <th className="py-3 px-4 font-bold">KATEGORI</th>
-                   <th className="py-3 px-4 font-bold text-center">AKSI</th>
-                 </tr>
-               </thead>
-               <tbody>
-                 {libraryList.map((docItem) => (
-                   <tr key={docItem.id} className="border-b hover:bg-gray-50">
-                     <td className="py-4 px-4 font-bold text-[#083344]">{docItem.judul}</td>
-                     <td className="py-4 px-4">
-                       <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs font-bold uppercase">{docItem.kategori}</span>
-                     </td>
-                     <td className="py-4 px-4 text-center whitespace-nowrap">
-                       <button onClick={() => handleEditDoc(docItem)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
-                       <button onClick={() => handleDeleteDoc(docItem.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
-                     </td>
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden flex flex-col justify-between">
+          <div>
+            <h2 className="font-bold text-lg text-[#083344] mb-5">📂 Daftar Dokumen & Video Training</h2>
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm border-collapse min-w-[400px]">
+                 <thead>
+                   <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                     <th className="py-3 px-4 font-bold">JUDUL</th>
+                     <th className="py-3 px-4 font-bold">TIPE & KATEGORI</th>
+                     <th className="py-3 px-4 font-bold text-center">AKSI</th>
                    </tr>
-                 ))}
-               </tbody>
-            </table>
+                 </thead>
+                 <tbody>
+                   {showTables && currentDocs.length > 0 ? (
+                     currentDocs.map((docItem) => (
+                       <tr key={docItem.id} className="border-b hover:bg-gray-50">
+                         <td className="py-4 px-4 font-bold text-[#083344]">{docItem.judul}</td>
+                         <td className="py-4 px-4">
+                           <div className="flex flex-wrap items-center gap-1">
+                             <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                               docItem.tipe === 'video' 
+                                 ? 'bg-purple-100 text-purple-700 border border-purple-200' 
+                                 : 'bg-blue-100 text-blue-700 border border-blue-200'
+                             }`}>
+                               {docItem.tipe === 'video' ? '🎥 Video' : '📄 File'}
+                             </span>
+
+                             <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[10px] font-bold">
+                               {docItem.kategori}
+                             </span>
+                           </div>
+                         </td>
+                         <td className="py-4 px-4 text-center whitespace-nowrap">
+                           <button onClick={() => handleEditDoc(docItem)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                           <button onClick={() => handleDeleteDoc(docItem.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
+                         </td>
+                       </tr>
+                     ))
+                   ) : (
+                     <tr>
+                       <td colSpan="3" className="p-6 text-center text-gray-400 font-medium">
+                         {showTables ? 'Tidak ada dokumen tersimpan.' : 'Tampilan disembunyikan. Klik "Tampilkan Kembali Table" untuk membuka.'}
+                       </td>
+                     </tr>
+                   )}
+                 </tbody>
+              </table>
+            </div>
           </div>
+          {showTables && totalPagesDocs > 1 && (
+            <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 rounded-b-xl mt-4">
+              <button onClick={() => setCurrentPageDocs(p => Math.max(p - 1, 1))} disabled={currentPageDocs === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">← Sebelumnya</button>
+              <span className="text-xs font-bold text-gray-600">Hal {currentPageDocs} dari {totalPagesDocs}</span>
+              <button onClick={() => setCurrentPageDocs(p => Math.min(p + 1, totalPagesDocs))} disabled={currentPageDocs === totalPagesDocs} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">Selanjutnya →</button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1226,7 +1574,7 @@ export default function AdminDashboardPage() {
       <div id="form-modul" className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 w-full overflow-hidden">
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-bold text-xl text-[#083344]">🎓 {editModuleId ? 'Edit Modul Pembelajaran' : 'Manajemen Learning Path'}</h2>
-          {editModuleId && <button onClick={resetModuleForm} className="text-xs bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full font-bold hover:bg-gray-300 transition">Batal Edit</button>}
+          {editModuleId && <button type="button" onClick={resetModuleForm} className="text-xs bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full font-bold hover:bg-gray-300 transition">Batal Edit</button>}
         </div>
         
         <form onSubmit={handleSaveModule} className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1259,9 +1607,32 @@ export default function AdminDashboardPage() {
               <label className="text-xs font-bold text-gray-700">Link Video (Format: Judul|Link)</label>
               <textarea value={listVideo} onChange={(e) => setListVideo(e.target.value)} placeholder="Judul Video 1|https://youtube.com/watch...&#10;Judul Video 2|https://drive.google.com/..." className="w-full mt-1 px-3 py-2 border rounded-lg text-sm bg-gray-50 h-16 font-mono"></textarea>
             </div>
-            <button type="submit" disabled={isSubmittingBab} className={`w-full font-bold py-3 rounded-xl text-sm transition-all ${editModuleId ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md' : 'bg-[#A8C338] text-[#083344] hover:bg-[#96af31]'}`}>
-              {isSubmittingBab ? 'Menyimpan...' : (editModuleId ? 'Simpan Perubahan Modul' : 'Publish Modul Baru')}
-            </button>
+            <div className="flex gap-2">
+              {editModuleId && (
+                <button
+                  type="button"
+                  onClick={resetModuleForm}
+                  className="w-1/3 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl text-sm hover:bg-gray-300 transition"
+                >
+                  Batal Edit
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={isSubmittingBab}
+                className={`w-full font-bold py-3 rounded-xl text-sm transition-all ${
+                  editModuleId
+                    ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'
+                    : 'bg-[#A8C338] text-[#083344] hover:bg-[#96af31]'
+                }`}
+              >
+                {isSubmittingBab
+                  ? 'Menyimpan...'
+                  : editModuleId
+                  ? 'Simpan Perubahan Modul'
+                  : 'Publish Modul Baru'}
+              </button>
+            </div>
           </div>
         </form>
         
@@ -1277,26 +1648,34 @@ export default function AdminDashboardPage() {
                  </tr>
                </thead>
                <tbody>
-                 {currentMods.map((modul) => (
-                   <tr key={modul.id} className="border-b hover:bg-gray-50">
-                     <td className="py-4 px-4">
-                       <div className="flex gap-2 mb-2">
-                         <span className="bg-[#A8C338] text-[#083344] px-2 py-0.5 rounded-full text-[10px] font-black">SESI {modul.sesi ?? modul.level}</span>
-                         <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-[10px] font-black">URUTAN {modul.urutan ?? 1}</span>
-                       </div>
-                       <span className="font-bold text-[#083344]">{modul.judul}</span>
-                     </td>
-                     <td className="py-4 px-4 text-gray-500 text-xs line-clamp-2 max-w-xs">{modul.deskripsi}</td>
-                     <td className="py-4 px-4 text-center whitespace-nowrap">
-                       <button onClick={() => handleEditModule(modul)} className="text-blue-500 hover:bg-blue-50 font-bold px-3 py-1 rounded text-xs mr-2 border border-blue-100 transition">Edit</button>
-                       <button onClick={() => handleDeleteModule(modul.id)} className="text-red-500 hover:bg-red-50 font-bold px-3 py-1 rounded text-xs border border-red-100 transition">Hapus</button>
+                 {showTables && currentMods.length > 0 ? (
+                   currentMods.map((modul) => (
+                     <tr key={modul.id} className="border-b hover:bg-gray-50">
+                       <td className="py-4 px-4">
+                         <div className="flex gap-2 mb-2">
+                           <span className="bg-[#A8C338] text-[#083344] px-2 py-0.5 rounded-full text-[10px] font-black">SESI {modul.sesi ?? modul.level}</span>
+                           <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-[10px] font-black">URUTAN {modul.urutan ?? 1}</span>
+                         </div>
+                         <span className="font-bold text-[#083344]">{modul.judul}</span>
+                       </td>
+                       <td className="py-4 px-4 text-gray-500 text-xs line-clamp-2 max-w-xs">{modul.deskripsi}</td>
+                       <td className="py-4 px-4 text-center whitespace-nowrap">
+                         <button onClick={() => handleEditModule(modul)} className="text-blue-500 hover:bg-blue-50 font-bold px-3 py-1 rounded text-xs mr-2 border border-blue-100 transition">Edit</button>
+                         <button onClick={() => handleDeleteModule(modul.id)} className="text-red-500 hover:bg-red-50 font-bold px-3 py-1 rounded text-xs border border-red-100 transition">Hapus</button>
+                       </td>
+                     </tr>
+                   ))
+                 ) : (
+                   <tr>
+                     <td colSpan="3" className="p-6 text-center text-gray-400 font-medium">
+                       {showTables ? 'Tidak ada modul pembelajaran.' : 'Tampilan disembunyikan. Klik "Tampilkan Kembali Table" untuk membuka.'}
                      </td>
                    </tr>
-                 ))}
+                 )}
                </tbody>
             </table>
           </div>
-          {totalPagesMods > 1 && (
+          {showTables && totalPagesMods > 1 && (
             <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 mt-4 rounded-b-xl">
               <button onClick={() => setCurrentPageMods(p => Math.max(p - 1, 1))} disabled={currentPageMods === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">← Sebelumnya</button>
               <span className="text-xs font-bold text-gray-600">Hal {currentPageMods} dari {totalPagesMods}</span>
@@ -1311,7 +1690,7 @@ export default function AdminDashboardPage() {
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-bold text-xl text-[#083344]">📝 Manajemen Bank Soal (Kuis)</h2>
           {editQuizId && (
-            <button onClick={resetQuizForm} className="text-xs bg-gray-200 text-gray-600 px-3 py-1 rounded-md font-bold hover:bg-gray-300 transition">
+            <button type="button" onClick={resetQuizForm} className="text-xs bg-gray-200 text-gray-600 px-3 py-1 rounded-md font-bold hover:bg-gray-300 transition">
               Batal Edit
             </button>
           )}
@@ -1344,44 +1723,72 @@ export default function AdminDashboardPage() {
                   <option value="D">D</option>
                 </select>
               </div>
-              <button 
-                type="submit" 
-                disabled={isSubmittingKuis} 
-                className={`w-full text-white font-bold py-2.5 rounded-lg text-sm transition ${editQuizId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#083344] hover:bg-[#0c4a60]'}`}
-              >
-                {isSubmittingKuis ? 'Menyimpan...' : (editQuizId ? 'Simpan Perubahan Soal' : 'Simpan Soal')}
-              </button>
+              <div className="flex gap-2">
+                {editQuizId && (
+                  <button
+                    type="button"
+                    onClick={resetQuizForm}
+                    className="w-1/3 bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm hover:bg-gray-300 transition"
+                  >
+                    Batal Edit
+                  </button>
+                )}
+                <button 
+                  type="submit" 
+                  disabled={isSubmittingKuis} 
+                  className={`w-full text-white font-bold py-2.5 rounded-lg text-sm transition ${editQuizId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#083344] hover:bg-[#0c4a60]'}`}
+                >
+                  {isSubmittingKuis ? 'Menyimpan...' : (editQuizId ? 'Simpan Soal' : 'Tambah Soal')}
+                </button>
+              </div>
             </form>
           </div>
 
-          <div className="lg:col-span-2 w-full overflow-hidden">
-            <h3 className="font-bold mb-4">Daftar Soal Tersimpan</h3>
-            <div className="overflow-x-auto w-full">
-              <table className="w-full text-left text-sm border-collapse min-w-[500px]">
-                 <thead>
-                   <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
-                     <th className="py-2 px-3 font-bold w-16 text-center">LVL</th>
-                     <th className="py-2 px-3 font-bold">PERTANYAAN & JAWABAN</th>
-                     <th className="py-2 px-3 font-bold text-center">AKSI</th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                   {quizzesList.map((kuis) => (
-                     <tr key={kuis.id} className="border-b hover:bg-gray-50">
-                       <td className="py-3 px-3 font-black text-[#A8C338] text-center">{kuis.level}</td>
-                       <td className="py-3 px-3">
-                         <p className="font-bold text-[#083344] text-sm mb-1">{kuis.pertanyaan}</p>
-                         <p className="text-[10px] text-green-600 font-bold">Benar: {kuis.jawabanBenar}</p>
-                       </td>
-                       <td className="py-3 px-3 text-center whitespace-nowrap">
-                         <button onClick={() => handleEditQuiz(kuis)} className="text-blue-500 hover:bg-blue-50 font-bold px-2 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
-                         <button onClick={() => handleDeleteQuiz(kuis.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs border border-red-100">Hapus</button>
-                       </td>
+          <div className="lg:col-span-2 w-full overflow-hidden flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold mb-4">Daftar Soal Tersimpan</h3>
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left text-sm border-collapse min-w-[500px]">
+                   <thead>
+                     <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                       <th className="py-2 px-3 font-bold w-16 text-center">LVL</th>
+                       <th className="py-2 px-3 font-bold">PERTANYAAN & JAWABAN</th>
+                       <th className="py-2 px-3 font-bold text-center">AKSI</th>
                      </tr>
-                   ))}
-                 </tbody>
-              </table>
+                   </thead>
+                   <tbody>
+                     {showTables && currentQuizzes.length > 0 ? (
+                       currentQuizzes.map((kuis) => (
+                         <tr key={kuis.id} className="border-b hover:bg-gray-50">
+                           <td className="py-3 px-3 font-black text-[#A8C338] text-center">{kuis.level}</td>
+                           <td className="py-3 px-3">
+                             <p className="font-bold text-[#083344] text-sm mb-1">{kuis.pertanyaan}</p>
+                             <p className="text-[10px] text-green-600 font-bold">Benar: {kuis.jawabanBenar}</p>
+                           </td>
+                           <td className="py-3 px-3 text-center whitespace-nowrap">
+                             <button onClick={() => handleEditQuiz(kuis)} className="text-blue-500 hover:bg-blue-50 font-bold px-2 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                             <button onClick={() => handleDeleteQuiz(kuis.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs border border-red-100">Hapus</button>
+                           </td>
+                         </tr>
+                       ))
+                     ) : (
+                       <tr>
+                         <td colSpan="3" className="p-6 text-center text-gray-400 font-medium">
+                           {showTables ? 'Tidak ada soal tersimpan.' : 'Tampilan disembunyikan. Klik "Tampilkan Kembali Table" untuk membuka.'}
+                         </td>
+                       </tr>
+                     )}
+                   </tbody>
+                </table>
+              </div>
             </div>
+            {showTables && totalPagesQuizzes > 1 && (
+              <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 rounded-b-xl mt-4">
+                <button onClick={() => setCurrentPageQuizzes(p => Math.max(p - 1, 1))} disabled={currentPageQuizzes === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">← Sebelumnya</button>
+                <span className="text-xs font-bold text-gray-600">Hal {currentPageQuizzes} dari {totalPagesQuizzes}</span>
+                <button onClick={() => setCurrentPageQuizzes(p => Math.min(p + 1, totalPagesQuizzes))} disabled={currentPageQuizzes === totalPagesQuizzes} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">Selanjutnya →</button>
+              </div>
+            )}
           </div>
         </div>
       </div>

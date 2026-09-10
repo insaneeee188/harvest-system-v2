@@ -18,7 +18,10 @@ export default function AcademyPage() {
 
   const [modulesList, setModulesList] = useState([]);
   const [libraryList, setLibraryList] = useState([]);
+  
+  // State Filter untuk Library & Resource
   const [libraryFilter, setLibraryFilter] = useState('All');
+  const [typeFilter, setTypeFilter] = useState('All'); // 'All', 'video', 'file'
 
   useEffect(() => {
     let isMounted = true;
@@ -186,21 +189,19 @@ export default function AcademyPage() {
                   
                   <div className="p-6 md:p-8 flex justify-between items-start gap-5 pb-4">
                     <div className="flex flex-col gap-3">
-                    <div className="inline-block">
-                    <span className={`px-6 py-2.5 rounded-full text-xl md:text-2xl font-black uppercase tracking-wide shadow-sm ${isUnlocked ? 'bg-[#A8C338] text-[#083344]' : 'bg-gray-300 text-gray-600'}`}>
-                         {displayTitle}
-                       </span>
-                    </div>
+                      <div className="inline-block">
+                        <span className={`px-6 py-2.5 rounded-full text-xl md:text-2xl font-black uppercase tracking-wide shadow-sm ${isUnlocked ? 'bg-[#A8C338] text-[#083344]' : 'bg-gray-300 text-gray-600'}`}>
+                          {displayTitle}
+                        </span>
+                      </div>
 
-    {/* TAMBAHKAN BAGIAN DESKRIPSI DI SINI */}
-    {modul.deskripsi && (
-      <div className="text-sm text-gray-600 whitespace-pre-line mt-2 pl-2">
-        {modul.deskripsi}
-      </div>
-    )}
-  </div>
+                      {modul.deskripsi && (
+                        <div className="text-sm text-gray-600 whitespace-pre-line mt-2 pl-2">
+                          {modul.deskripsi}
+                        </div>
+                      )}
+                    </div>
                     
-                    {/* Ikon Check / Gembok */}
                     <div className="flex items-center">
                       {!isUnlocked && <span className="text-3xl flex-shrink-0">🔒</span>}
                       {isCompleted && (
@@ -283,9 +284,37 @@ export default function AcademyPage() {
     }
 
     if (activeTab === 'library') {
-      const filteredDocs = libraryFilter === 'All' ? libraryList : libraryList.filter(d => d.kategori === libraryFilter);
+      const filteredDocs = libraryList.filter(d => {
+        const matchesCategory = libraryFilter === 'All' || d.kategori === libraryFilter;
+        const matchesType = typeFilter === 'All' || d.tipe === typeFilter || (!d.tipe && typeFilter === 'file');
+        return matchesCategory && matchesType;
+      });
+
       return (
         <div className="space-y-6 animate-fade-in">
+          {/* FILTER BARIS 1: Tipe Materi (Video / File) */}
+          <div className="flex flex-wrap items-center gap-3 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+            <span className="text-xs font-black text-[#083344] uppercase tracking-wider">Tipe Materi:</span>
+            {[
+              { id: 'All', label: '🌐 Semua Tipe' },
+              { id: 'video', label: '🎬 Video Training' },
+              { id: 'file', label: '📄 File / Dokumen' }
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTypeFilter(t.id)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  typeFilter === t.id 
+                    ? 'bg-[#A8C338] text-[#083344] shadow-sm font-black' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* FILTER BARIS 2: Kategori Topik */}
           <div className="flex flex-wrap gap-2">
             {['All', 'Selling', 'Product Knowledge', 'Recruiting Skill', 'Soft Skill'].map(cat => (
               <button 
@@ -294,17 +323,44 @@ export default function AcademyPage() {
               >{cat}</button>
             ))}
           </div>
+
+          {/* DAFTAR DOKUMEN / VIDEO */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredDocs.length === 0 ? (
-              <div className="col-span-full text-center py-12 text-gray-400 bg-white rounded-3xl border border-gray-100">Belum ada materi untuk kategori ini.</div>
+              <div className="col-span-full text-center py-12 text-gray-400 bg-white rounded-3xl border border-gray-100">Belum ada materi untuk kategori/tipe ini.</div>
             ) : (
-              filteredDocs.map(docItem => (
-                <a key={docItem.id} href={docItem.link} target="_blank" rel="noreferrer" className="block bg-white p-6 rounded-3xl border border-gray-100 hover:border-[#A8C338] hover:shadow-md transition group">
-                  <span className="bg-gray-100 text-gray-600 text-[10px] font-black px-3 py-1 rounded-full uppercase mb-3 inline-block group-hover:bg-[#A8C338] group-hover:text-[#083344] transition">{docItem.kategori}</span>
-                  <h3 className="font-bold text-[#083344] text-lg leading-tight mb-2">{docItem.judul}</h3>
-                  <p className="text-xs text-blue-500 mt-4 flex items-center gap-1 font-bold group-hover:translate-x-1 transition-transform">🔗 Buka / Tonton Materi →</p>
-                </a>
-              ))
+              filteredDocs.map(docItem => {
+                const isVideo = docItem.tipe === 'video';
+                const embedUrl = isVideo ? getSmartEmbedUrl(docItem.link) : null;
+
+                return (
+                  <div key={docItem.id} className="bg-white p-6 rounded-3xl border border-gray-100 hover:border-[#A8C338] hover:shadow-md transition flex flex-col justify-between group">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="bg-gray-100 text-gray-600 text-[10px] font-black px-3 py-1 rounded-full uppercase group-hover:bg-[#A8C338] group-hover:text-[#083344] transition">
+                          {docItem.kategori}
+                        </span>
+                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg uppercase ${isVideo ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                          {isVideo ? '🎬 Video' : '📄 File'}
+                        </span>
+                      </div>
+
+                      <h3 className="font-bold text-[#083344] text-lg leading-tight mb-3">{docItem.judul}</h3>
+
+                      {/* Embed Player jika Video */}
+                      {isVideo && embedUrl && (
+                        <div className="my-3 rounded-xl overflow-hidden aspect-video bg-black border border-gray-200">
+                          <iframe src={embedUrl} className="w-full h-full border-0" allowFullScreen></iframe>
+                        </div>
+                      )}
+                    </div>
+
+                    <a href={docItem.link} target="_blank" rel="noreferrer" className="text-xs text-blue-500 mt-4 flex items-center gap-1 font-bold group-hover:translate-x-1 transition-transform">
+                      {isVideo ? '▶ Buka / Tonton Video →' : '🔗 Buka / Unduh File →'}
+                    </a>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

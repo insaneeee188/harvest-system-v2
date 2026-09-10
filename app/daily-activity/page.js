@@ -3,27 +3,195 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '../../firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import * as XLSX from 'xlsx'; // Import library Excel
 
+// -------------------------------------------------------------
+// 1. SUB-KOMPONEN FORM BETA
+// -------------------------------------------------------------
+function BetaFormContent({ userData }) {
+  const [formData, setFormData] = useState({
+    reportDate: '',
+    propecting: '',
+    janjiTemu: '',
+    presentasi: '',
+    followUp: '',
+    askingReferral: '',
+    noActivityReasons: [],
+    otherReason: ''
+  });
+
+  const [submitting, setSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const handleCheckboxChange = (reason) => {
+    setFormData((prev) => {
+      const exists = prev.noActivityReasons.includes(reason);
+      if (exists) {
+        return { ...prev, noActivityReasons: prev.noActivityReasons.filter((r) => r !== reason) };
+      } else {
+        return { ...prev, noActivityReasons: [...prev.noActivityReasons, reason] };
+      }
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.reportDate) return alert("Pilih tanggal laporan!");
+    setSubmitting(true);
+    setSuccessMsg('');
+
+    try {
+      await addDoc(collection(db, 'beta_reports'), {
+        userName: userData.name,
+        userRole: userData.role,
+        reportDate: formData.reportDate,
+        propecting: formData.propecting,
+        janjiTemu: formData.janjiTemu,
+        presentasi: formData.presentasi,
+        followUp: formData.followUp,
+        askingReferral: formData.askingReferral,
+        noActivityReasons: formData.noActivityReasons,
+        otherReason: formData.otherReason,
+        createdAt: serverTimestamp()
+      });
+
+      setSuccessMsg('Laporan berhasil dikirim!');
+      setFormData({
+        reportDate: '',
+        propecting: '',
+        janjiTemu: '',
+        presentasi: '',
+        followUp: '',
+        askingReferral: '',
+        noActivityReasons: [],
+        otherReason: ''
+      });
+    } catch (error) {
+      alert("Gagal menyimpan data: " + error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-4 font-sans text-gray-800 animate-fade-in-up">
+      <div className="bg-white rounded-xl p-6 border border-gray-200 border-t-8 border-t-indigo-600 shadow-sm">
+        <h2 className="text-2xl font-bold text-gray-900">Activity Report</h2>
+        <p className="text-xs text-gray-500 mt-1">
+          Pengisian otomatis untuk akun: <span className="font-semibold text-indigo-600">{userData?.name}</span> ({userData?.role})
+        </p>
+      </div>
+
+      {successMsg && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-sm font-semibold">
+          {successMsg}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <label className="block text-sm font-medium text-gray-900 mb-2">
+            Report Untuk Tanggal? <span className="text-red-500">*</span>
+          </label>
+          <input 
+            type="date" 
+            required 
+            value={formData.reportDate} 
+            onChange={(e) => setFormData({...formData, reportDate: e.target.value})} 
+            className="w-full sm:w-1/2 p-2.5 text-sm border-b border-gray-300 focus:border-indigo-600 outline-none transition-all"
+          />
+        </div>
+
+        {[
+          { key: 'propecting', label: 'Propecting' },
+          { key: 'janjiTemu', label: 'Janji Temu (3 orang)' },
+          { key: 'presentasi', label: 'Presentasi' },
+          { key: 'followUp', label: 'Follow Up' },
+          { key: 'askingReferral', label: 'Asking referral' }
+        ].map((field) => (
+          <div key={field.key} className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <label className="block text-sm font-medium text-gray-900 mb-4">{field.label}</label>
+            <input 
+              type="text" 
+              placeholder="Jawaban Anda" 
+              value={formData[field.key]} 
+              onChange={(e) => setFormData({...formData, [field.key]: e.target.value})} 
+              className="w-full max-w-md p-1.5 text-sm border-b border-gray-300 focus:border-indigo-600 outline-none transition-all placeholder-gray-400"
+            />
+          </div>
+        ))}
+
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm space-y-3">
+          <label className="block text-sm font-medium text-gray-900 mb-2">Tidak Ada Aktifitas</label>
+          
+          {['Sakit', 'Sibuk pekerjaan lain', 'Tidak terencana'].map((reason) => (
+            <label key={reason} className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={formData.noActivityReasons.includes(reason)} 
+                onChange={() => handleCheckboxChange(reason)} 
+                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
+              />
+              <span>{reason}</span>
+            </label>
+          ))}
+
+          <div className="flex items-center gap-3 pt-1">
+            <label className="flex items-center gap-3 text-sm text-gray-700">
+              <input 
+                type="checkbox" 
+                checked={formData.noActivityReasons.includes('Yang lain')} 
+                onChange={() => handleCheckboxChange('Yang lain')} 
+                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
+              />
+              <span>Yang lain:</span>
+            </label>
+            <input 
+              type="text" 
+              value={formData.otherReason} 
+              onChange={(e) => setFormData({...formData, otherReason: e.target.value})} 
+              disabled={!formData.noActivityReasons.includes('Yang lain')} 
+              className="flex-1 p-1 text-sm border-b border-gray-300 focus:border-indigo-600 outline-none disabled:bg-transparent transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center pt-2">
+          <button 
+            type="submit" 
+            disabled={submitting} 
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2.5 rounded-lg text-sm shadow-sm transition-all"
+          >
+            {submitting ? 'Kirim...' : 'Kirim Laporan'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// 2. HALAMAN UTAMA (MY ACTIVITY PAGE)
+// -------------------------------------------------------------
 export default function MyActivityPage() {
   const router = useRouter();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('form'); 
+  
+  // Default Tab langsung ke Form Beta
+  const [activeTab, setActiveTab] = useState('beta_form'); 
 
-  // State Tab My Calendar (Khusus User Login)
-  const [trialMonth, setTrialMonth] = useState("8");
-  const [trialYear, setTrialYear] = useState("2026");
-  const [trialMatrix, setTrialMatrix] = useState([]);
-  const [isTrialFetching, setIsTrialFetching] = useState(false);
-  const [trialErrorMsg, setTrialErrorMsg] = useState('');
-
-  // STATE UNTUK ALARM PENGINGAT
+  // Alarm Pengingat
   const [isAlarmActive, setIsAlarmActive] = useState(false);
   const [alarmTime, setAlarmTime] = useState("20:00");
 
-  const API_AGENT_URL = "https://script.google.com/macros/s/AKfycbzAguHalkAcXhMnle3vRVteuqR7rjUt8h8q4MKLg36Gf2_kglIPD5QFqrbW1ltxRNPEWA/exec";
-  const API_LEADER_URL = "https://script.google.com/macros/s/AKfycbyBcfK5MifD8-RfQar0jrpf1oMBKMwxMzXcYSyY0rydOiPf-rbkHdix5Jhdn86vYfc/exec";
+  // State & Filter Kalender
+  const [betaMonth, setBetaMonth] = useState("8");
+  const [betaYear, setBetaYear] = useState("2026");
+  const [betaCalendarMatrix, setBetaCalendarMatrix] = useState([]);
+  const [betaCalendarLoading, setBetaCalendarLoading] = useState(false);
+  const [rawReports, setRawReports] = useState([]); // Menyimpan raw data untuk Export Excel
 
   useEffect(() => {
     let isMounted = true;
@@ -38,7 +206,6 @@ export default function MyActivityPage() {
     return () => { isMounted = false; unsubscribe(); };
   }, [router]);
 
-  // EFEK ALARM PENGINGAT
   useEffect(() => {
     if (!isAlarmActive) return;
     const interval = setInterval(() => {
@@ -56,27 +223,107 @@ export default function MyActivityPage() {
     return () => clearInterval(interval);
   }, [isAlarmActive, alarmTime]);
 
-  // FETCH DATA TAB MY CALENDAR
-  const handleTrialFilter = async () => {
+  // Fetch & Generate Kalender Grid
+  const generateBetaCalendar = async () => {
     if (!userData?.name) return;
-    setIsTrialFetching(true); setTrialErrorMsg(''); setTrialMatrix([]);
-    const userRole = userData?.role?.toLowerCase();
-    const apiUrl = userRole === 'leader' ? API_LEADER_URL : API_AGENT_URL;
+    setBetaCalendarLoading(true);
     try {
-      const res = await fetch(`${apiUrl}?nama=${encodeURIComponent(userData.name.trim())}&bulan=${trialMonth}&tahun=${trialYear}`);
-      const data = await res.json();
-      if (data && data.matrix) setTrialMatrix(data.matrix);
-      else setTrialErrorMsg("Format data dari server tidak sesuai.");
-    } catch (err) { setTrialErrorMsg("Gagal mengambil data kalender."); }
-    finally { setIsTrialFetching(false); }
+      const q = query(
+        collection(db, 'beta_reports'),
+        where('userName', '==', userData.name)
+      );
+      const querySnapshot = await getDocs(q);
+      const reportsMap = {};
+      const fetchedReports = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.reportDate) {
+          reportsMap[data.reportDate] = data;
+          
+          // Filter hanya masukkan data bulan/tahun yang dipilih ke array export
+          const [rYear, rMonth] = data.reportDate.split('-');
+          if (parseInt(rYear, 10) === parseInt(betaYear, 10) && parseInt(rMonth, 10) === parseInt(betaMonth, 10)) {
+            fetchedReports.push(data);
+          }
+        }
+      });
+
+      setRawReports(fetchedReports);
+
+      const year = parseInt(betaYear, 10);
+      const month = parseInt(betaMonth, 10) - 1;
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      const weeks = [];
+      let currentDay = 1;
+
+      for (let w = 0; w < 6; w++) {
+        const week = [];
+        let hasDayInWeek = false;
+
+        for (let d = 0; d < 7; d++) {
+          if ((w === 0 && d < firstDay) || currentDay > daysInMonth) {
+            week.push({ dayNumber: null, report: null });
+          } else {
+            hasDayInWeek = true;
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
+            week.push({
+              dayNumber: currentDay,
+              report: reportsMap[dateStr] || null
+            });
+            currentDay++;
+          }
+        }
+        if (hasDayInWeek) weeks.push(week);
+      }
+
+      setBetaCalendarMatrix(weeks);
+    } catch (error) {
+      console.error("Error fetching calendar:", error);
+    } finally {
+      setBetaCalendarLoading(false);
+    }
   };
 
-  // Trigger otomatis saat tab My Calendar dibuka atau bulan/tahun diganti
-  useEffect(() => {
-    if (activeTab === 'mycalendar' && userData?.name) {
-      handleTrialFilter();
+  // Fungsi Export ke Excel
+  const exportToExcel = () => {
+    if (rawReports.length === 0) {
+      alert("Tidak ada data laporan untuk bulan dan tahun yang dipilih!");
+      return;
     }
-  }, [activeTab, trialMonth, trialYear]);
+
+    // Merapikan format kolom untuk Excel
+    const excelData = rawReports.map((r, index) => ({
+      No: index + 1,
+      Nama: r.userName || '',
+      Role: r.userRole || '',
+      Tanggal: r.reportDate || '',
+      Prospecting: r.propecting || '-',
+      'Janji Temu': r.janjiTemu || '-',
+      Presentasi: r.presentasi || '-',
+      'Follow Up': r.followUp || '-',
+      'Asking Referral': r.askingReferral || '-',
+      'Alasan Tidak Ada Aktivitas': r.noActivityReasons ? r.noActivityReasons.join(', ') : '-',
+      'Alasan Lainnya': r.otherReason || '-'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Aktivitas");
+
+    // Download File Excel
+    const fileName = `Laporan_Aktivitas_${userData.name.replace(/\s+/g, '_')}_${betaMonth}_${betaYear}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'beta_calendar' && userData?.name) {
+      generateBetaCalendar();
+    }
+  }, [activeTab, betaMonth, betaYear]);
 
   if (loading) return <div className="text-center mt-20 font-bold text-[#083344] animate-pulse">Memuat Data...</div>;
   if (!userData) return null;
@@ -89,7 +336,7 @@ export default function MyActivityPage() {
           <p className="text-gray-500 text-sm">Portal Laporan & Kalender Khusus {userData.role?.toUpperCase()} Harvest Agency.</p>
         </div>
 
-        {/* 🌟 KOTAK PENGATURAN ALARM */}
+        {/* Pengaturan Alarm */}
         <div className="max-w-md mx-auto bg-white p-4 rounded-2xl shadow-sm border border-blue-100 flex items-center justify-between mb-8 gap-4">
           <div className="flex items-center gap-3">
             <span className="text-2xl">⏰</span>
@@ -103,95 +350,161 @@ export default function MyActivityPage() {
           </button>
         </div>
 
-        {/* TAB MENU */}
+        {/* Tab Menu Utama (Hanya Menyisakan Form & Kalender) */}
         <div className="flex justify-center mb-8 w-full">
-          <div className="inline-flex bg-gray-100 p-1 rounded-xl shadow-sm border border-gray-200 w-full sm:w-auto overflow-x-auto">
-            <button onClick={() => setActiveTab('form')} className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'form' ? 'bg-[#083344] text-white shadow-md' : 'text-gray-500'}`}>📝 Form Input</button>
-            <button onClick={() => setActiveTab('mycalendar')} className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'mycalendar' ? 'bg-[#083344] text-white shadow-md' : 'text-gray-500'}`}>🗓️ My Calendar</button>
+          <div className="inline-flex bg-gray-100 p-1 rounded-xl shadow-sm border border-gray-200 w-full sm:w-auto gap-1">
+            <button 
+              onClick={() => setActiveTab('beta_form')} 
+              className={`px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'beta_form' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 hover:text-indigo-600'}`}
+            >
+              📝 Form Input
+            </button>
+            <button 
+              onClick={() => setActiveTab('beta_calendar')} 
+              className={`px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'beta_calendar' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 hover:text-indigo-600'}`}
+            >
+              📅 Kalender Laporan
+            </button>
           </div>
         </div>
 
-        {/* KONTEN FORM */}
-        {activeTab === 'form' && (
-          <div className="animate-fade-in-up w-full">
-             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden min-h-[600px] relative">
-                {userData.role?.toLowerCase() === 'agent' ? (
-                  <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSewvzEXFUqAdDGQlOxiImARcmRWrMBJ2B13s1KZY212oG6PgA/viewform?usp=dialog" className="w-full h-[800px] sm:h-[600px] border-0 rounded-xl">Memuat…</iframe>
-                ) : (
-                  <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSf9z7OjNfKNlw7kDfDjREPFonWvizRtAJVkLjdIcn5iszklxQ/viewform?usp=dialog" className="w-full h-[800px] sm:h-[600px] border-0 rounded-xl">Memuat…</iframe>
-                )}
-             </div>
-          </div>
-        )}
+        {/* Tab Form Input */}
+        {activeTab === 'beta_form' && <BetaFormContent userData={userData} />}
 
-        {/* KONTEN TAB MY CALENDAR */}
-        {activeTab === 'mycalendar' && (
+        {/* Tab Kalender Laporan */}
+        {activeTab === 'beta_calendar' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-fade-in-up w-full">
+            {/* Header Kalender & Opsi Filter + Download */}
             <div className="bg-[#083344] text-white p-4 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4">
               <h2 className="text-xl sm:text-2xl font-bold tracking-wide text-center md:text-left">
-                {userData?.name || 'User'} Kalender
+                {userData?.name} Kalender
               </h2>
-
-              <div className="flex items-center gap-2 w-full md:w-auto bg-white/10 p-2 rounded-xl backdrop-blur-sm">
+              <div className="flex flex-wrap items-center justify-center gap-2 w-full md:w-auto bg-white/10 p-2 rounded-xl backdrop-blur-sm">
                 <select 
-                  value={trialMonth} 
-                  onChange={(e) => setTrialMonth(e.target.value)} 
+                  value={betaMonth} 
+                  onChange={(e) => setBetaMonth(e.target.value)} 
                   className="bg-white text-gray-800 text-xs sm:text-sm px-3 py-1.5 rounded-lg font-medium outline-none"
                 >
-                  <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+                  <option value="1">Januari</option>
+                  <option value="2">Februari</option>
+                  <option value="3">Maret</option>
+                  <option value="4">April</option>
+                  <option value="5">Mei</option>
+                  <option value="6">Juni</option>
+                  <option value="7">Juli</option>
+                  <option value="8">Agustus</option>
+                  <option value="9">September</option>
+                  <option value="10">Oktober</option>
+                  <option value="11">November</option>
+                  <option value="12">Desember</option>
                 </select>
-
                 <input 
                   type="number" 
-                  value={trialYear} 
-                  onChange={(e) => setTrialYear(e.target.value)} 
-                  className="bg-white text-gray-800 text-xs sm:text-sm px-3 py-1.5 rounded-lg font-medium w-20 outline-none"
+                  value={betaYear} 
+                  onChange={(e) => setBetaYear(e.target.value)} 
+                  className="bg-white text-gray-800 text-xs sm:text-sm px-3 py-1.5 rounded-lg font-medium w-20 outline-none" 
                 />
-
                 <button 
-                  onClick={handleTrialFilter} 
-                  disabled={isTrialFetching}
+                  onClick={generateBetaCalendar} 
+                  disabled={betaCalendarLoading} 
                   className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap"
                 >
-                  {isTrialFetching ? '⏳' : 'Tampilkan'}
+                  {betaCalendarLoading ? '⏳' : 'Tampilkan'}
+                </button>
+                
+                {/* Tombol Export Excel */}
+                <button 
+                  onClick={exportToExcel} 
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-sm"
+                >
+                  📊 Export Excel
                 </button>
               </div>
             </div>
 
+            {/* Content Table Kalender */}
             <div className="p-4 overflow-x-auto min-h-[350px]">
-              {isTrialFetching ? (
+              {betaCalendarLoading ? (
                 <div className="flex flex-col items-center justify-center py-20 text-gray-500">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#083344] mb-4"></div>
+                  <p className="text-xs">Memuat data kalender...</p>
                 </div>
-              ) : trialErrorMsg ? (
-                <div className="text-center text-red-600 font-bold py-10">{trialErrorMsg}</div>
-              ) : trialMatrix.length > 0 ? (
-                <table className="w-full border-collapse border border-gray-300 text-xs rounded-lg overflow-hidden shadow-sm table-fixed min-w-[700px]">
+              ) : (
+                <table className="w-full border-collapse border border-gray-200 text-xs rounded-lg overflow-hidden shadow-sm table-fixed min-w-[700px]">
+                  <thead>
+                    <tr className="bg-gray-50 text-gray-800 font-bold border-b border-gray-200">
+                      <th className="p-3 border border-gray-200 w-[14.28%]">Minggu</th>
+                      <th className="p-3 border border-gray-200 w-[14.28%]">Senin</th>
+                      <th className="p-3 border border-gray-200 w-[14.28%]">Selasa</th>
+                      <th className="p-3 border border-gray-200 w-[14.28%]">Rabu</th>
+                      <th className="p-3 border border-gray-200 w-[14.28%]">Kamis</th>
+                      <th className="p-3 border border-gray-200 w-[14.28%]">Jum'at</th>
+                      <th className="p-3 border border-gray-200 w-[14.28%]">Sabtu</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {trialMatrix.map((row, rIdx) => {
-                      const isHeaderRow = rIdx === 0;
-                      return (
-                        <tr key={rIdx} className={isHeaderRow ? "bg-gray-100 text-gray-700 font-bold border-b" : "border-b"}>
-                          {row.map((cell, cIdx) => (
-                            <td key={cIdx} className={`p-2 border border-gray-300 align-top ${isHeaderRow ? 'py-3 text-center' : 'h-28'}`} style={{ backgroundColor: cell.bg, color: cell.color }}>
-                              {!isHeaderRow && !isNaN(cell.text?.trim()) ? (
-                                <div className="font-bold text-gray-700 text-center border-b pb-1 bg-gray-50">{cell.text}</div>
-                              ) : (
-                                <div className="whitespace-pre-line text-left leading-tight">{cell.text}</div>
-                              )}
+                    {betaCalendarMatrix.map((week, wIdx) => (
+                      <tr key={wIdx}>
+                        {week.map((cell, cIdx) => {
+                          if (!cell.dayNumber) {
+                            return <td key={cIdx} className="p-2 border border-gray-200 bg-gray-50/50 h-32 align-top"></td>;
+                          }
+
+                          const r = cell.report;
+                          let bgColor = "#ffff00"; // Default: Kuning (No Report)
+                          let textColor = "#000000";
+
+                          const hasNoActivity = r && r.noActivityReasons && r.noActivityReasons.length > 0;
+                          const hasActivity = r && (r.propecting || r.janjiTemu || r.presentasi || r.followUp || r.askingReferral);
+
+                          if (hasNoActivity) {
+                            bgColor = "#ea4335"; // Merah (Tidak Ada Aktivitas)
+                            textColor = "#ffffff";
+                          } else if (hasActivity) {
+                            bgColor = "#93c47d"; // Hijau (Ada Aktivitas)
+                            textColor = "#000000";
+                          }
+
+                          return (
+                            <td key={cIdx} className="border border-gray-200 align-top h-32 p-0 overflow-hidden">
+                              <div className="font-bold text-gray-700 text-center py-1 border-b border-gray-200 bg-white">
+                                {cell.dayNumber}
+                              </div>
+
+                              <div 
+                                className="p-2 h-full text-[11px] leading-tight flex flex-col justify-start"
+                                style={{ backgroundColor: bgColor, color: textColor }}
+                              >
+                                {!r ? (
+                                  <div className="font-normal">No Report</div>
+                                ) : hasNoActivity ? (
+                                  <div>
+                                    <span className="font-medium">• Tidak Ada Aktivitas: </span>
+                                    {r.noActivityReasons.join(', ')}
+                                    {r.otherReason ? `, ${r.otherReason}` : ''}
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1">
+                                    {r.propecting && <div>• Prospecting: {r.propecting}</div>}
+                                    {r.janjiTemu && <div>• Janji Temu: {r.janjiTemu}</div>}
+                                    {r.presentasi && <div>• Presentasi: {r.presentasi}</div>}
+                                    {r.followUp && <div>• Follow Up: {r.followUp}</div>}
+                                    {r.askingReferral && <div>• Asking Referral: {r.askingReferral}</div>}
+                                  </div>
+                                )}
+                              </div>
                             </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
+                          );
+                        })}
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
-              ) : (
-                <div className="text-center py-20 text-gray-400 text-sm">Klik "Tampilkan" untuk memuat kalender.</div>
               )}
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

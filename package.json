@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@tailwindcss/postcss": "^4.3.3",
     "exceljs": "^4.4.0",
     "firebase": "^12.17.1",

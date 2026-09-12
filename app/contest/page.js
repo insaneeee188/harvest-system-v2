@@ -1,4 +1,5 @@
 'use client';
+
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { auth, db } from '../../firebase';
@@ -13,8 +14,8 @@ export default function ContestPage() {
 
   // States Contest & Filtering
   const [contestsList, setContestsList] = useState([]);
-  const [filterKategori, setFilterKategori] = useState('Semua'); 
-  const [filterTarget, setFilterTarget] = useState('Semua'); 
+  const [filterKategori, setFilterKategori] = useState('Semua');
+  const [filterTarget, setFilterTarget] = useState('Semua');
 
   // Kategori Dinamis dari Data Firestore
   const [availableTargets, setAvailableTargets] = useState(['Semua']);
@@ -42,9 +43,9 @@ export default function ContestPage() {
   useEffect(() => {
     let isMounted = true;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) { 
-        if (isMounted) router.push('/login'); 
-        return; 
+      if (!user) {
+        if (isMounted) router.push('/login');
+        return;
       }
       
       const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -55,6 +56,7 @@ export default function ContestPage() {
         const snapContests = await getDocs(collection(db, 'agency_contests'));
 
         if (isMounted) {
+          // KHUSUS: Filter hanya mengambil tipe 'contest'
           const rawContests = snapContests.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .filter(i => i.type === 'contest');
@@ -151,8 +153,8 @@ export default function ContestPage() {
   const totalHighlightPages = Math.ceil(filteredContests.length / highlightsPerPage);
 
   // Reset Halaman saat Filter Berubah
-  useEffect(() => { 
-    setCurrentPage(1); 
+  useEffect(() => {
+    setCurrentPage(1);
     setHighlightPage(1);
   }, [filterKategori, filterTarget]);
 
@@ -260,9 +262,9 @@ export default function ContestPage() {
             {availableTargets.length > 1 && (
               <div className="flex bg-white/10 p-1 rounded-full border border-white/20">
                 {availableTargets.map((cat, idx) => (
-                  <button 
-                    key={`target-${cat}-${idx}`} 
-                    onClick={() => setFilterTarget(cat)} 
+                  <button
+                    key={`target-${cat}-${idx}`}
+                    onClick={() => setFilterTarget(cat)}
                     className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterTarget === cat ? 'bg-[#A8C338] text-[#083344] shadow-md' : 'text-gray-300 hover:text-white'}`}
                   >
                     {cat}
@@ -275,9 +277,9 @@ export default function ContestPage() {
             {availableKategori.length > 1 && (
               <div className="flex bg-white/10 p-1 rounded-full border border-white/20">
                 {availableKategori.map((cat, idx) => (
-                  <button 
-                    key={`kategori-${cat}-${idx}`} 
-                    onClick={() => setFilterKategori(cat)} 
+                  <button
+                    key={`kategori-${cat}-${idx}`}
+                    onClick={() => setFilterKategori(cat)}
                     className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filterKategori === cat ? 'bg-[#A8C338] text-[#083344] shadow-md' : 'text-gray-300 hover:text-white'}`}
                   >
                     {cat}
@@ -322,9 +324,9 @@ export default function ContestPage() {
                 {/* PAGINASI GRID UTAMA */}
                 {totalPages > 1 && (
                   <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mt-6">
-                    <button 
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
-                      disabled={currentPage === 1} 
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
                       className="text-xs font-bold px-4 py-2 bg-gray-50 text-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-all"
                     >
                       ← Sebelumnya
@@ -346,9 +348,9 @@ export default function ContestPage() {
                       ))}
                     </div>
 
-                    <button 
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
-                      disabled={currentPage === totalPages} 
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
                       className="text-xs font-bold px-4 py-2 bg-gray-50 text-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-all"
                     >
                       Selanjutnya →
@@ -363,7 +365,7 @@ export default function ContestPage() {
             )}
           </div>
 
-          {/* KANAN: CARD DAFTAR PRIORITAS KONTES (WITH PAGINATION) */}
+          {/* KANAN: CARD DAFTAR PRIORITAS KONTES */}
           <div className="lg:col-span-1 space-y-6 sticky top-10">
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-4 pb-3 border-b">
@@ -371,7 +373,7 @@ export default function ContestPage() {
                 
                 {totalHighlightPages > 1 && (
                   <div className="flex items-center gap-1">
-                    <button 
+                    <button
                       onClick={() => setHighlightPage(p => Math.max(1, p - 1))}
                       disabled={highlightPage === 1}
                       className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 font-bold text-xs flex items-center justify-center hover:bg-gray-200 disabled:opacity-30 transition-all"
@@ -381,7 +383,7 @@ export default function ContestPage() {
                     <span className="text-[10px] font-bold text-gray-400 px-1">
                       {highlightPage}/{totalHighlightPages}
                     </span>
-                    <button 
+                    <button
                       onClick={() => setHighlightPage(p => Math.min(totalHighlightPages, p + 1))}
                       disabled={highlightPage === totalHighlightPages}
                       className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 font-bold text-xs flex items-center justify-center hover:bg-gray-200 disabled:opacity-30 transition-all"
@@ -396,8 +398,8 @@ export default function ContestPage() {
                 {currentHighlights.map((item, idx) => {
                   const globalIndex = indexOfFirstHighlight + idx + 1;
                   return (
-                    <div 
-                      key={item.id || idx} 
+                    <div
+                      key={item.id || idx}
                       onClick={() => item && openModal(item)}
                       className="p-3 rounded-2xl border transition-all flex items-center gap-3 bg-gray-50 hover:bg-white hover:border-[#A8C338] cursor-pointer hover:shadow-sm"
                     >
@@ -427,14 +429,14 @@ export default function ContestPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-[#083344]/80 backdrop-blur-md animate-fade-in">
           <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl relative flex flex-col overflow-hidden max-h-[90vh]">
             
-            <button 
-              onClick={closeModal} 
+            <button
+              onClick={closeModal}
               className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white w-10 h-10 rounded-full font-black flex items-center justify-center shadow-2xl z-50 transition-transform hover:scale-110"
             >
               ✕
             </button>
 
-            <div 
+            <div
               className="relative w-full h-[50vh] sm:h-[55vh] bg-black overflow-hidden flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
@@ -444,10 +446,10 @@ export default function ContestPage() {
               onTouchMove={handleTouchMove}
               onTouchEnd={handleMouseUp}
             >
-              <img 
-                src={selectedContest.posterUrl || 'https://placehold.co/800x600/083344/ffffff?text=Poster'} 
-                alt="Poster" 
-                className="max-h-full max-w-full object-contain transition-transform duration-100 ease-out pointer-events-none" 
+              <img
+                src={selectedContest.posterUrl || 'https://placehold.co/800x600/083344/ffffff?text=Poster'}
+                alt="Poster"
+                className="max-h-full max-w-full object-contain transition-transform duration-100 ease-out pointer-events-none"
                 style={{
                   transform: `translate(${dragPos.x}px, ${dragPos.y}px) scale(${zoomScale})`
                 }}

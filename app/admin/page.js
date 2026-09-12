@@ -239,7 +239,6 @@ export default function AdminDashboardPage() {
       const snap = await getDocs(collection(db, 'agency_contests')); 
       const data = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
 
-      // Auto-delete dihilangkan agar histori kontes yang sudah berakhir tetap bisa dilihat pada ContestPage
       setContestsList(data.filter(i => i.type === 'contest'));
       setAchieversList(data.filter(i => i.type === 'achiever'));
     } catch (e) {
@@ -256,6 +255,11 @@ export default function AdminDashboardPage() {
 
       snap.docs.forEach(docSnap => {
         const eventData = docSnap.data();
+        
+        if (eventData.type === 'contest' || eventData.jenisKegiatan === 'contest') {
+          return;
+        }
+
         const expDate = eventData.tanggalSelesai || eventData.tanggal;
         if (expDate && expDate < today) {
           expiredDeletes.push(deleteDoc(doc(db, 'events', docSnap.id)));

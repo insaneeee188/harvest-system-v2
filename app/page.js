@@ -48,7 +48,10 @@ export default function HomePage() {
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // Dynamic Register States based on Role
   const [regNama, setRegNama] = useState('');
+  const [regKodeAgent, setRegKodeAgent] = useState('');
+  const [regUnit, setRegUnit] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regRole, setRegRole] = useState('Agent');
@@ -116,13 +119,20 @@ export default function HomePage() {
     try {
       const res = await createUserWithEmailAndPassword(auth, regEmail, regPassword);
       
-      await setDoc(doc(db, 'users', res.user.uid), {
+      const payload = {
         name: regNama,
+        agentCode: regKodeAgent,
         email: regEmail,
         role: regRole,
         status: 'pending',
         createdAt: new Date().toISOString(),
-      });
+      };
+
+      if (regRole === 'Agent') {
+        payload.unit = regUnit;
+      }
+      
+      await setDoc(doc(db, 'users', res.user.uid), payload);
       
       setRegSuccess('Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan Admin.');
     } catch (err) {
@@ -173,7 +183,7 @@ export default function HomePage() {
           (err) => console.error('Error User Data:', err)
         );
 
-        // 2. REAL-TIME LISTENER: EVENTS
+        // 2. REAL-TIME LISTENER: EVENTS (DENGAN FILTER SANITASI KONTES)
         const eventsRef = collection(db, 'events');
         unsubscribeEvents = onSnapshot(
           eventsRef,
@@ -187,6 +197,8 @@ export default function HomePage() {
             today.setHours(0, 0, 0, 0);
 
             const upcoming = allEvents
+              // PERBAIKAN: Abaikan item dengan type atau jenisKegiatan bertipe 'contest'
+              .filter((ev) => ev.type !== 'contest' && ev.jenisKegiatan !== 'contest')
               .filter((ev) => {
                 const endDateStr = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.endDate || ev.tanggal || ev.startDate || ev.date;
                 const expiryDate = parseDateOnly(endDateStr);
@@ -284,11 +296,13 @@ export default function HomePage() {
   for (let i = 0; i < startDay; i++) calendarDays.push(null);
   for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
 
+  // ================= PERBAIKAN PADA PENCARIAN ITEM KALENDER =================
   const getItemByDate = (day) => {
     if (!day) return null;
     const targetDate = new Date(year, month, day);
     targetDate.setHours(0, 0, 0, 0);
 
+    // Hanya mencari match pada eventsList (yang sudah bersih dari jenis 'contest')
     const eventMatch = eventsList.find((ev) => {
       const startStr = ev.tanggal || ev.startDate || ev.date || ev.tanggalSelesaiEvent || ev.tanggalSelesai;
       const endStr = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.endDate || startStr;
@@ -302,19 +316,7 @@ export default function HomePage() {
 
     if (eventMatch) return { ...eventMatch, categoryType: 'Event' };
 
-    const contestMatch = contestsList.find((ct) => {
-      const startStr = ct.startDate || ct.periodeAwal || ct.tanggal || ct.endDate || ct.periodeAkhir;
-      const endStr = ct.endDate || ct.periodeAkhir || startStr;
-      
-      const startDate = parseDateOnly(startStr);
-      const endDate = parseDateOnly(endStr);
-
-      if (!startDate || !endDate) return false;
-      return targetDate >= startDate && targetDate <= endDate;
-    });
-
-    if (contestMatch) return { ...contestMatch, categoryType: 'Contest' };
-
+    // PERBAIKAN: Pengecekan contestMatch dari contestsList dihapus agar kontes tidak dirender di kalender harian
     return null;
   };
 
@@ -425,7 +427,6 @@ export default function HomePage() {
                           />
                         </div>
                         
-                        {/* INPUT PASSWORD LOGIN DENGAN TOGGLE EYE ICON */}
                         <div>
                           <label className="block text-xs font-semibold text-gray-300 mb-1.5">Password</label>
                           <div className="relative">
@@ -555,6 +556,33 @@ export default function HomePage() {
                         className="w-full px-4 py-2.5 text-xs sm:text-sm bg-[#0e3b4a] border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#A8C338] transition-all"
                       />
                     </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">Kode Agent</label>
+                      <input
+                        type="text"
+                        required
+                        value={regKodeAgent}
+                        onChange={(e) => setRegKodeAgent(e.target.value)}
+                        placeholder="Kode Agent"
+                        className="w-full px-4 py-2.5 text-xs sm:text-sm bg-[#0e3b4a] border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#A8C338] transition-all"
+                      />
+                    </div>
+
+                    {regRole === 'Agent' && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-300 mb-1">Unit</label>
+                        <input
+                          type="text"
+                          required
+                          value={regUnit}
+                          onChange={(e) => setRegUnit(e.target.value)}
+                          placeholder="Nama Unit"
+                          className="w-full px-4 py-2.5 text-xs sm:text-sm bg-[#0e3b4a] border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#A8C338] transition-all"
+                        />
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-xs font-semibold text-gray-300 mb-1">Email Anda</label>
                       <input
@@ -567,7 +595,6 @@ export default function HomePage() {
                       />
                     </div>
 
-                    {/* INPUT PASSWORD REGISTER DENGAN TOGGLE EYE ICON */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-300 mb-1">Password (Min. 6 Karakter)</label>
                       <div className="relative">
@@ -599,7 +626,6 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    {/* DIBATASI HANYA AGENT & LEADER */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-300 mb-1">Tipe Akun (Role)</label>
                       <select
@@ -1022,7 +1048,7 @@ export default function HomePage() {
                 </span>
                 <button
                   onClick={() => setZoomScale(1)}
-                  className="text-[10px] bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-gray-200"
+                  className="text-[10px] bg-[#A8C338] text-[#083344] font-bold px-2 py-0.5 rounded shadow"
                 >
                   Reset
                 </button>

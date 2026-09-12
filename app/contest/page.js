@@ -20,9 +20,13 @@ export default function ContestPage() {
   const [availableTargets, setAvailableTargets] = useState(['Semua']);
   const [availableKategori, setAvailableKategori] = useState(['Semua']);
 
-  // Pagination
+  // Pagination Grid Utama
   const [currentPage, setCurrentPage] = useState(1);
   const contestsPerPage = 4;
+
+  // Pagination khusus Highlight (Sisi Kanan)
+  const [highlightPage, setHighlightPage] = useState(1);
+  const highlightsPerPage = 3;
 
   // States Pop-up Modal Kontes
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,16 +59,16 @@ export default function ContestPage() {
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .filter(i => i.type === 'contest');
 
-          // LOGIKA PENGURUTAN PRIORITAS KONTES
+          // LOGIKA PENGURUTAN PRIORITAS KONTES (DURASI SINGKAT & MENDEKATI HARI INI)
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
           const sortedContests = rawContests.sort((a, b) => {
-            const startA = a.startDate ? new Date(`${a.startDate}T00:00:00`) : new Date(0);
-            const endA = a.endDate ? new Date(`${a.endDate}T23:59:59`) : new Date(8640000000000000);
-            
-            const startB = b.startDate ? new Date(`${b.startDate}T00:00:00`) : new Date(0);
-            const endB = b.endDate ? new Date(`${b.endDate}T23:59:59`) : new Date(8640000000000000);
+            const startA = a.startDate ? new Date(`${a.startDate}T00:00:00`) : new Date(a.createdAt || 0);
+            const endA = a.endDate || a.tanggalSelesai ? new Date(`${a.endDate || a.tanggalSelesai}T23:59:59`) : new Date(8640000000000000);
+
+            const startB = b.startDate ? new Date(`${b.startDate}T00:00:00`) : new Date(b.createdAt || 0);
+            const endB = b.endDate || b.tanggalSelesai ? new Date(`${b.endDate || b.tanggalSelesai}T23:59:59`) : new Date(8640000000000000);
 
             const isRunningA = today >= startA && today <= endA;
             const isRunningB = today >= startB && today <= endB;
@@ -72,29 +76,37 @@ export default function ContestPage() {
             const isUpcomingA = today < startA;
             const isUpcomingB = today < startB;
 
-            // 1. Prioritas Kontes Berlangsung
+            // 1. DAHULUKAN KONTES YANG SEDANG BERLANGSUNG
             if (isRunningA && isRunningB) {
-              const diff = endA - endB;
-              if (diff !== 0) return diff;
-              return (a.judul || '').localeCompare(b.judul || ''); 
+              const remainingA = endA - today;
+              const remainingB = endB - today;
+              
+              const durationA = endA - startA;
+              const durationB = endB - startB;
+
+              if (remainingA !== remainingB) return remainingA - remainingB;
+              if (durationA !== durationB) return durationA - durationB;
+
+              return (a.judul || '').localeCompare(b.judul || '');
             }
             if (isRunningA) return -1;
             if (isRunningB) return 1;
 
-            // 2. Prioritas Kontes Akan Datang (Upcoming)
+            // 2. KONTES AKAN DATANG (UPCOMING)
             if (isUpcomingA && isUpcomingB) {
-              const diff = startA - startB;
-              if (diff !== 0) return diff; 
-              
-              const endDiff = endA - endB;
-              if (endDiff !== 0) return endDiff;
+              const diffStart = startA - startB;
+              if (diffStart !== 0) return diffStart;
+
+              const durationA = endA - startA;
+              const durationB = endB - startB;
+              if (durationA !== durationB) return durationA - durationB;
 
               return (a.judul || '').localeCompare(b.judul || '');
             }
             if (isUpcomingA) return -1;
             if (isUpcomingB) return 1;
 
-            // 3. Prioritas Kontes Sudah Berakhir
+            // 3. KONTES SUDAH BERAKHIR
             const endDiff = endB - endA;
             if (endDiff !== 0) return endDiff;
             return (a.judul || '').localeCompare(b.judul || '');
@@ -126,16 +138,23 @@ export default function ContestPage() {
     return matchKategori && matchTarget;
   });
 
-  // Top 3 Kontes Paling Prioritas untuk Card Atas Kanan
-  const topPriorityContests = filteredContests.slice(0, 3);
-
-  // LOGIKA PAGINATION
+  // LOGIKA PAGINATION GRID UTAMA (KIRI)
   const indexOfLastContest = currentPage * contestsPerPage;
   const indexOfFirstContest = indexOfLastContest - contestsPerPage;
   const currentContests = filteredContests.slice(indexOfFirstContest, indexOfLastContest);
   const totalPages = Math.ceil(filteredContests.length / contestsPerPage);
 
-  useEffect(() => { setCurrentPage(1); }, [filterKategori, filterTarget]);
+  // LOGIKA PAGINATION HIGHLIGHT (KANAN)
+  const indexOfLastHighlight = highlightPage * highlightsPerPage;
+  const indexOfFirstHighlight = indexOfLastHighlight - highlightsPerPage;
+  const currentHighlights = filteredContests.slice(indexOfFirstHighlight, indexOfLastHighlight);
+  const totalHighlightPages = Math.ceil(filteredContests.length / highlightsPerPage);
+
+  // Reset Halaman saat Filter Berubah
+  useEffect(() => { 
+    setCurrentPage(1); 
+    setHighlightPage(1);
+  }, [filterKategori, filterTarget]);
 
   const openModal = (contest) => {
     setSelectedContest(contest);
@@ -213,7 +232,7 @@ export default function ContestPage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const start = contest.startDate ? new Date(`${contest.startDate}T00:00:00`) : null;
-    const end = contest.endDate ? new Date(`${contest.endDate}T23:59:59`) : null;
+    const end = contest.endDate || contest.tanggalSelesai ? new Date(`${contest.endDate || contest.tanggalSelesai}T23:59:59`) : null;
 
     if (start && end && today >= start && today <= end) {
       return <span className="text-[10px] bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full ml-auto">Segera Berakhir</span>;
@@ -300,11 +319,40 @@ export default function ContestPage() {
                   ))}
                 </div>
 
+                {/* PAGINASI GRID UTAMA */}
                 {totalPages > 1 && (
-                  <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="text-xs font-bold px-4 py-2 bg-gray-50 text-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-100">← Sebelumnya</button>
-                    <span className="text-xs font-bold text-gray-400">Hal {currentPage} dari {totalPages}</span>
-                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="text-xs font-bold px-4 py-2 bg-gray-50 text-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-100">Selanjutnya →</button>
+                  <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mt-6">
+                    <button 
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                      disabled={currentPage === 1} 
+                      className="text-xs font-bold px-4 py-2 bg-gray-50 text-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-all"
+                    >
+                      ← Sebelumnya
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                            currentPage === page
+                              ? 'bg-[#083344] text-white shadow-md'
+                              : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button 
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                      disabled={currentPage === totalPages} 
+                      className="text-xs font-bold px-4 py-2 bg-gray-50 text-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition-all"
+                    >
+                      Selanjutnya →
+                    </button>
                   </div>
                 )}
               </>
@@ -315,42 +363,60 @@ export default function ContestPage() {
             )}
           </div>
 
-          {/* KANAN: CARD DAFTAR PRIORITAS KONTES */}
+          {/* KANAN: CARD DAFTAR PRIORITAS KONTES (WITH PAGINATION) */}
           <div className="lg:col-span-1 space-y-6 sticky top-10">
-            
-            {/* WIDGET TOP 3 CONTEST PRIORITAS */}
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-              <h3 className="font-black text-[#083344] text-lg mb-4 pb-3 border-b flex items-center justify-between">
-                📌 Highlight Contest
-              </h3>
+              <div className="flex items-center justify-between mb-4 pb-3 border-b">
+                <h3 className="font-black text-[#083344] text-lg">📌 Highlight Contest</h3>
+                
+                {totalHighlightPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={() => setHighlightPage(p => Math.max(1, p - 1))}
+                      disabled={highlightPage === 1}
+                      className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 font-bold text-xs flex items-center justify-center hover:bg-gray-200 disabled:opacity-30 transition-all"
+                    >
+                      ‹
+                    </button>
+                    <span className="text-[10px] font-bold text-gray-400 px-1">
+                      {highlightPage}/{totalHighlightPages}
+                    </span>
+                    <button 
+                      onClick={() => setHighlightPage(p => Math.min(totalHighlightPages, p + 1))}
+                      disabled={highlightPage === totalHighlightPages}
+                      className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 font-bold text-xs flex items-center justify-center hover:bg-gray-200 disabled:opacity-30 transition-all"
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-3">
-                {[0, 1, 2].map((num) => {
-                  const item = topPriorityContests[num];
+                {currentHighlights.map((item, idx) => {
+                  const globalIndex = indexOfFirstHighlight + idx + 1;
                   return (
                     <div 
-                      key={num} 
+                      key={item.id || idx} 
                       onClick={() => item && openModal(item)}
-                      className={`p-3 rounded-2xl border transition-all flex items-center gap-3 ${
-                        item ? 'bg-gray-50 hover:bg-white hover:border-[#A8C338] cursor-pointer hover:shadow-sm' : 'bg-gray-50/50 border-dashed border-gray-200'
-                      }`}
+                      className="p-3 rounded-2xl border transition-all flex items-center gap-3 bg-gray-50 hover:bg-white hover:border-[#A8C338] cursor-pointer hover:shadow-sm"
                     >
                       <span className="w-7 h-7 rounded-full bg-[#083344] text-white font-black text-xs flex items-center justify-center flex-shrink-0">
-                        {num + 1}
+                        {globalIndex}
                       </span>
-                      {item ? (
-                        <div className="flex-1 min-w-0 flex items-center justify-between">
-                          <p className="font-bold text-xs text-[#083344] truncate">{item.judul}</p>
-                          {getContestBadge(item)}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-400 font-medium italic">Belum ada kontes</p>
-                      )}
+                      <div className="flex-1 min-w-0 flex items-center justify-between">
+                        <p className="font-bold text-xs text-[#083344] truncate">{item.judul}</p>
+                        {getContestBadge(item)}
+                      </div>
                     </div>
                   );
                 })}
+
+                {currentHighlights.length === 0 && (
+                  <p className="text-xs text-gray-400 font-medium italic text-center py-4">Belum ada kontes</p>
+                )}
               </div>
             </div>
-
           </div>
 
         </div>

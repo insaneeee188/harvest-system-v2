@@ -92,6 +92,7 @@ export default function AdminDashboardPage() {
   const [posterContest, setPosterContest] = useState('');
   const [kategoriContest, setKategoriContest] = useState('Agency'); 
   const [targetContest, setTargetContest] = useState('Semua');
+  const [startDateContest, setStartDateContest] = useState(getTodayDate());
   const [periodeContest, setPeriodeContest] = useState('');
   const [tanggalSelesaiContest, setTanggalSelesaiContest] = useState(getDefaultOneMonthLater());
   const [isSubmittingContest, setIsSubmittingContest] = useState(false);
@@ -236,21 +237,9 @@ export default function AdminDashboardPage() {
   const fetchContestsAndAchievers = useCallback(async () => { 
     try {
       const snap = await getDocs(collection(db, 'agency_contests')); 
-      const today = new Date().toISOString().split('T')[0];
-      const data = [];
-      const expiredDeletes = [];
+      const data = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
 
-      snap.docs.forEach(docSnap => {
-        const item = { id: docSnap.id, ...docSnap.data() };
-        if (item.tanggalSelesai && item.tanggalSelesai < today) {
-          expiredDeletes.push(deleteDoc(doc(db, 'agency_contests', docSnap.id)));
-        } else {
-          data.push(item);
-        }
-      });
-
-      if (expiredDeletes.length > 0) await Promise.all(expiredDeletes);
-
+      // Auto-delete dihilangkan agar histori kontes yang sudah berakhir tetap bisa dilihat pada ContestPage
       setContestsList(data.filter(i => i.type === 'contest'));
       setAchieversList(data.filter(i => i.type === 'achiever'));
     } catch (e) {
@@ -373,6 +362,7 @@ export default function AdminDashboardPage() {
     setPosterContest(''); 
     setKategoriContest('Agency'); 
     setTargetContest('Semua'); 
+    setStartDateContest(getTodayDate());
     setPeriodeContest(''); 
     setTanggalSelesaiContest(getDefaultOneMonthLater());
   };
@@ -387,8 +377,10 @@ export default function AdminDashboardPage() {
       posterUrl: posterContest, 
       kategori: kategoriContest, 
       target: targetContest, 
-      periode: periodeContest,
-      tanggalSelesai: tanggalSelesaiContest 
+      startDate: startDateContest,
+      endDate: tanggalSelesaiContest,
+      tanggalSelesai: tanggalSelesaiContest, 
+      periode: periodeContest
     };
     
     try {
@@ -450,8 +442,9 @@ export default function AdminDashboardPage() {
     setPosterContest(item.posterUrl || '');
     setKategoriContest(item.kategori || 'Agency');
     setTargetContest(item.target || 'Semua');
+    setStartDateContest(item.startDate || getTodayDate());
     setPeriodeContest(item.periode || '');
-    setTanggalSelesaiContest(item.tanggalSelesai || getDefaultOneMonthLater());
+    setTanggalSelesaiContest(item.tanggalSelesai || item.endDate || getDefaultOneMonthLater());
     
     const el = document.getElementById("form-contest");
     if (el) el.scrollIntoView({ behavior: "smooth" });
@@ -973,10 +966,30 @@ export default function AdminDashboardPage() {
               <label className="block text-xs font-bold text-gray-700 mb-1">Periode (Teks Tampilan)</label>
               <input type="text" value={periodeContest} onChange={(e) => setPeriodeContest(e.target.value)} placeholder="Contoh: 1 - 31 Juli 2026" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Selesai (Auto-Hapus saat lewat)</label>
-              <input type="date" required value={tanggalSelesaiContest} onChange={(e) => setTanggalSelesaiContest(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold" />
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Mulai</label>
+                <input 
+                  type="date" 
+                  required 
+                  value={startDateContest} 
+                  onChange={(e) => setStartDateContest(e.target.value)} 
+                  className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Selesai</label>
+                <input 
+                  type="date" 
+                  required 
+                  value={tanggalSelesaiContest} 
+                  onChange={(e) => setTanggalSelesaiContest(e.target.value)} 
+                  className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold" 
+                />
+              </div>
             </div>
+
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">Link Gambar Poster</label>
               <input type="url" required value={posterContest} onChange={(e) => setPosterContest(e.target.value)} placeholder="Contoh: https://link-gambar.com/poster.jpg" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
@@ -1028,7 +1041,8 @@ export default function AdminDashboardPage() {
                              <span className="bg-gray-100 px-2 py-0.5 rounded">Kat: {item.kategori || 'Agency'}</span>
                              <span className="bg-gray-100 px-2 py-0.5 rounded">Trg: {item.target || 'Semua'}</span>
                              <span className="bg-gray-100 px-2 py-0.5 rounded">Per: {item.periode || '-'}</span>
-                             <span className="bg-gray-100 px-2 py-0.5 rounded">Selesai: {item.tanggalSelesai || '-'}</span>
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Mulai: {item.startDate || '-'}</span>
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Selesai: {item.tanggalSelesai || item.endDate || '-'}</span>
                            </div>
                          </td>
                          <td className="py-4 px-4 text-center whitespace-nowrap">
@@ -1081,7 +1095,7 @@ export default function AdminDashboardPage() {
               <input type="text" required value={periodeAchiever} onChange={(e) => setPeriodeAchiever(e.target.value)} placeholder="Contoh: AGUSTUS 2026" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 uppercase" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Selesai Penayangan (Auto-Hapus)</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Selesai Penayangan</label>
               <input type="date" required value={tanggalSelesaiAchiever} onChange={(e) => setTanggalSelesaiAchiever(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold" />
             </div>
             
@@ -1326,7 +1340,7 @@ export default function AdminDashboardPage() {
 
             <div>
               <label className="block text-xs font-bold mb-1">
-                {modeKegiatan === 'event' ? 'Tanggal Selesai Event / Penayangan' : 'Tanggal Selesai Penayangan (Auto-Hapus)'}
+                {modeKegiatan === 'event' ? 'Tanggal Selesai Event / Penayangan' : 'Tanggal Selesai Penayangan'}
               </label>
               <input type="date" required value={tanggalSelesaiEvent} onChange={(e) => setTanggalSelesaiEvent(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold" />
             </div>

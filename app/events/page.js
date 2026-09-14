@@ -16,30 +16,48 @@ export default function EventsPage() {
   const [eventsList, setEventsList] = useState([]);
   const [filterKategori, setFilterKategori] = useState('Semua');
 
-  // Pagination
+  // Pagination Utama Halaman
   const [currentPage, setCurrentPage] = useState(1);
   const eventsPerPage = 4;
 
-  // States Modal Pop-Up
+  // States Modal Pop-Up & Paginasi Modal Kalender
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [modalEvents, setModalEvents] = useState([]);
+  const [currentModalIndex, setCurrentModalIndex] = useState(0);
 
-  // Logika Zoom & Drag Poster
+  // Event aktif yang sedang ditampilkan di modal
+  const selectedEvent = modalEvents[currentModalIndex] || null;
+
+  // Logika Zoom, Drag, & Swipe Poster
   const [zoomScale, setZoomScale] = useState(1);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const touchStartDist = useRef(null);
 
+  // Reference & State untuk Fitur Touch & Slide (Swipe) Modal
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
+
   // States Kalender Pintar
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
+
+  // HELPER: Konversi string waktu "14:00" atau "08:30 WIB" ke total menit
+  const parseTimeToMinutes = useCallback((timeStr) => {
+    if (!timeStr || typeof timeStr !== 'string') return 0;
+    const cleanTime = timeStr.replace(/[^0-9:]/g, '').trim();
+    const parts = cleanTime.split(':');
+    if (parts.length < 2) return 0;
+    const hours = parseInt(parts[0], 10) || 0;
+    const minutes = parseInt(parts[1], 10) || 0;
+    return hours * 60 + minutes;
+  }, []);
 
   // FUNGSI UTILS: Konversi aman "YYYY-MM-DD" -> Object Date
   const parseDateOnly = useCallback((dateStr) => {
     if (!dateStr) return null;
     if (typeof dateStr !== 'string') return null;
 
-    // Menangani format ISO string jika terlanjur masuk DB (e.g. 2026-03-01T...)
     const cleanStr = dateStr.split('T')[0];
     const parts = cleanStr.split('-');
     if (parts.length !== 3) return null;
@@ -72,7 +90,9 @@ export default function EventsPage() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Filter & Urutkan Event dari tanggal terdekat ke hari ini
+      // Filter & Urutkan Event:
+      // 1. Tanggal terdekat dari hari ini
+      // 2. Jika tanggal sama -> Urutkan berdasarkan jam terdekat (waktu paling awal)
       const upcoming = allEvents
         .filter((ev) => {
           const endDateStr = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.tanggal;
@@ -82,14 +102,22 @@ export default function EventsPage() {
         .sort((a, b) => {
           const startA = parseDateOnly(a.tanggal || a.tanggalSelesaiEvent || a.tanggalSelesai) || new Date(0);
           const startB = parseDateOnly(b.tanggal || b.tanggalSelesaiEvent || b.tanggalSelesai) || new Date(0);
-          return startA - startB;
+
+          const timeDiff = startA.getTime() - startB.getTime();
+          if (timeDiff !== 0) {
+            return timeDiff;
+          }
+
+          const minutesA = parseTimeToMinutes(a.waktu || a.jam);
+          const minutesB = parseTimeToMinutes(b.waktu || b.jam);
+          return minutesA - minutesB;
         });
 
       setEventsList(upcoming);
     } catch (err) {
       console.error('Gagal mengambil data event:', err);
     }
-  }, [parseDateOnly]);
+  }, [parseDateOnly, parseTimeToMinutes]);
 
   // Auth Listener
   useEffect(() => {
@@ -118,13 +146,13 @@ export default function EventsPage() {
     };
   }, [router, fetchEvents]);
 
-  // LOGIKA FILTER
+  // LOGIKA FILTER KATEGORI
   const filteredEvents = eventsList.filter((ev) => {
     if (filterKategori === 'Semua') return true;
     return (ev.kategori || 'Agency').toLowerCase() === filterKategori.toLowerCase();
   });
 
-  // LOGIKA PAGINATION
+  // LOGIKA PAGINATION UTAMA
   const indexOfLastEvent = currentPage * eventsPerPage;
   const indexOfFirstEvent = indexOfLastEvent - eventsPerPage;
   const currentEvents = filteredEvents.slice(indexOfFirstEvent, indexOfLastEvent);
@@ -134,7 +162,7 @@ export default function EventsPage() {
     setCurrentPage(1);
   }, [filterKategori]);
 
-  // LOGIKA KALENDER
+  // LOGIKA KALENDER PINTAR
   const year = currentMonthDate.getFullYear();
   const month = currentMonthDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -151,12 +179,13 @@ export default function EventsPage() {
   for (let i = 0; i < startDay; i++) calendarDays.push(null);
   for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
 
-  const getEventForDay = (day) => {
-    if (!day) return null;
+  // Mengambil SELURUH kegiatan pada hari yang sama dan diurutkan dari jam terkecil/paling awal
+  const getAllEventsForDay = (day) => {
+    if (!day) return [];
     const targetDate = new Date(year, month, day);
     targetDate.setHours(0, 0, 0, 0);
 
-    return eventsList.find((ev) => {
+    const dayEvents = eventsList.filter((ev) => {
       const startStr = ev.tanggal || ev.tanggalSelesaiEvent || ev.tanggalSelesai;
       const endStr = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.tanggal;
 
@@ -166,12 +195,22 @@ export default function EventsPage() {
       if (!startDate || !endDate) return false;
       return targetDate >= startDate && targetDate <= endDate;
     });
+
+    // Urutkan event pada hari yang sama berdasarkan jam mulai
+    return dayEvents.sort((a, b) => {
+      const timeA = parseTimeToMinutes(a.waktu || a.jam);
+      const timeB = parseTimeToMinutes(b.waktu || b.jam);
+      return timeA - timeB;
+    });
   };
 
   // KONTROL MODAL
-  const openModal = (item) => {
-    if (!item) return;
-    setSelectedEvent(item);
+  const openModal = (items, initialIndex = 0) => {
+    const eventsArray = Array.isArray(items) ? items : [items];
+    if (eventsArray.length === 0 || !eventsArray[0]) return;
+
+    setModalEvents(eventsArray);
+    setCurrentModalIndex(initialIndex);
     setZoomScale(1);
     setDragPos({ x: 0, y: 0 });
     setIsModalOpen(true);
@@ -179,12 +218,30 @@ export default function EventsPage() {
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
-    setSelectedEvent(null);
+    setModalEvents([]);
+    setCurrentModalIndex(0);
     setZoomScale(1);
     setDragPos({ x: 0, y: 0 });
   }, []);
 
-  // Shortcut Tombol ESC untuk Menutup Modal
+  // Navigasi Paginasi Modal
+  const handleNextModalEvent = useCallback(() => {
+    if (currentModalIndex < modalEvents.length - 1) {
+      setCurrentModalIndex((prev) => prev + 1);
+      setZoomScale(1);
+      setDragPos({ x: 0, y: 0 });
+    }
+  }, [currentModalIndex, modalEvents.length]);
+
+  const handlePrevModalEvent = useCallback(() => {
+    if (currentModalIndex > 0) {
+      setCurrentModalIndex((prev) => prev - 1);
+      setZoomScale(1);
+      setDragPos({ x: 0, y: 0 });
+    }
+  }, [currentModalIndex]);
+
+  // Shortcut ESC Tutup Modal
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isModalOpen) {
@@ -224,20 +281,30 @@ export default function EventsPage() {
 
   const handleMouseUp = () => setIsDragging(false);
 
+  // KONTROL TOUCH (ZOOM, DRAG, & SWIPE NEXT/PREV)
   const handleTouchStart = (e) => {
     if (e.touches.length === 2) {
+      // Pinch to Zoom
       touchStartDist.current = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-    } else if (e.touches.length === 1 && zoomScale > 1) {
-      setIsDragging(true);
-      setDragStart({ x: e.touches[0].clientX - dragPos.x, y: e.touches[0].clientY - dragPos.y });
+    } else if (e.touches.length === 1) {
+      if (zoomScale > 1) {
+        // Drag Gambar saat Di-zoom
+        setIsDragging(true);
+        setDragStart({ x: e.touches[0].clientX - dragPos.x, y: e.touches[0].clientY - dragPos.y });
+      } else {
+        // Catat Titik Awal Usapan (Swipe)
+        touchStartX.current = e.touches[0].clientX;
+        touchEndX.current = e.touches[0].clientX;
+      }
     }
   };
 
   const handleTouchMove = (e) => {
     if (e.touches.length === 2 && touchStartDist.current) {
+      // Pinch Zooming
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
@@ -248,9 +315,37 @@ export default function EventsPage() {
         else zoomOut();
         touchStartDist.current = dist;
       }
-    } else if (e.touches.length === 1 && isDragging && zoomScale > 1) {
-      setDragPos({ x: e.touches[0].clientX - dragStart.x, y: e.touches[0].clientY - dragStart.y });
+    } else if (e.touches.length === 1) {
+      if (isDragging && zoomScale > 1) {
+        // Perbarui Posisi Drag
+        setDragPos({ x: e.touches[0].clientX - dragStart.x, y: e.touches[0].clientY - dragStart.y });
+      } else if (zoomScale === 1) {
+        // Track pergerakan usapan swipe
+        touchEndX.current = e.touches[0].clientX;
+      }
     }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+
+    // Proses Deteksi Slide/Swipe saat tidak di-zoom
+    if (zoomScale === 1 && touchStartX.current !== null && touchEndX.current !== null) {
+      const distance = touchStartX.current - touchEndX.current;
+      const minSwipeDistance = 50; // Jarak usapan minimal dalam pixel
+
+      if (distance > minSwipeDistance) {
+        // Usap ke Kiri -> Event Berikutnya
+        handleNextModalEvent();
+      } else if (distance < -minSwipeDistance) {
+        // Usap ke Kanan -> Event Sebelumnya
+        handlePrevModalEvent();
+      }
+    }
+
+    // Reset Koordinat Touch
+    touchStartX.current = null;
+    touchEndX.current = null;
   };
 
   if (loading) {
@@ -308,7 +403,7 @@ export default function EventsPage() {
                     return (
                       <div
                         key={ev.id}
-                        onClick={() => openModal(ev)}
+                        onClick={() => openModal([ev])}
                         className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all hover:shadow-lg hover:border-[#A8C338] cursor-pointer group pb-4"
                       >
                         <div className="h-48 bg-gray-100 relative overflow-hidden">
@@ -326,9 +421,9 @@ export default function EventsPage() {
                           <div className="absolute top-3 left-3 bg-[#083344] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase shadow-md">
                             {ev.target || 'SEMUA USER'}
                           </div>
-                          {ev.waktu && (
+                          {(ev.waktu || ev.jam) && (
                             <div className="absolute top-3 right-3 bg-white text-red-600 text-[10px] font-black px-3 py-1 rounded-full shadow-md">
-                              {ev.waktu} WIB
+                              {ev.waktu || ev.jam} WIB
                             </div>
                           )}
                         </div>
@@ -355,7 +450,7 @@ export default function EventsPage() {
                             )}
                           </div>
                           <button className="mt-auto w-full text-center bg-[#A8C338] text-[#083344] font-black text-xs py-3 rounded-xl transition hover:opacity-90">
-                            🔍 Lihat Detail 
+                            🔍 Lihat Detail
                           </button>
                         </div>
                       </div>
@@ -363,8 +458,9 @@ export default function EventsPage() {
                   })}
                 </div>
 
+                {/* PAGINASI UTAMA */}
                 {totalPages > 1 && (
-                  <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                  <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mt-6">
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
@@ -372,9 +468,21 @@ export default function EventsPage() {
                     >
                       ← Sebelumnya
                     </button>
-                    <span className="text-xs font-bold text-gray-400">
-                      Hal {currentPage} dari {totalPages}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                            currentPage === pageNum
+                              ? 'bg-[#083344] text-white shadow-md'
+                              : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+                    </div>
                     <button
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
@@ -429,14 +537,14 @@ export default function EventsPage() {
 
             <div className="grid grid-cols-7 gap-y-2 text-center text-xs font-medium">
               {calendarDays.map((d, idx) => {
-                const activeEvent = getEventForDay(d);
-                const isEvt = Boolean(activeEvent);
+                const dayEvents = getAllEventsForDay(d);
+                const isEvt = dayEvents.length > 0;
 
                 return (
                   <div
                     key={idx}
                     onClick={() => {
-                      if (isEvt) openModal(activeEvent);
+                      if (isEvt) openModal(dayEvents, 0);
                     }}
                     className={`w-8 h-8 flex items-center justify-center rounded-full mx-auto transition-all ${
                       !d
@@ -455,10 +563,12 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {/* POP-UP MODAL EVENT */}
+      {/* POP-UP MODAL EVENT (TERMASUK TOUCH & SLIDE SWIPE UNTUK MOBILE) */}
       {isModalOpen && selectedEvent && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-[#083344]/80 backdrop-blur-md animate-fade-in">
           <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl relative flex flex-col overflow-hidden max-h-[90vh]">
+            
+            {/* TOMBOL CLOSE */}
             <button
               onClick={closeModal}
               className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white w-10 h-10 rounded-full font-black flex items-center justify-center shadow-2xl z-50 transition-transform hover:scale-110"
@@ -467,15 +577,16 @@ export default function EventsPage() {
               ✕
             </button>
 
+            {/* TAMPILAN POSTER / ZOOM / SWIPE */}
             <div
-              className="relative w-full h-[50vh] sm:h-[55vh] bg-black overflow-hidden flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
+              className="relative w-full h-[45vh] sm:h-[50vh] bg-black overflow-hidden flex items-center justify-center cursor-grab active:cursor-grabbing select-none shrink-0"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
-              onTouchEnd={handleMouseUp}
+              onTouchEnd={handleTouchEnd}
             >
               <img
                 src={
@@ -489,6 +600,14 @@ export default function EventsPage() {
                 }}
               />
 
+              {/* INDIKATOR SWIPE UNTUK USER MOBILE */}
+              {modalEvents.length > 1 && zoomScale === 1 && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/60 text-white text-[10px] px-3 py-1 rounded-full backdrop-blur-sm pointer-events-none sm:hidden">
+                  👈 Usap untuk berpindah 👉
+                </div>
+              )}
+
+              {/* KONTROL ZOOM */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/75 backdrop-blur-md text-white px-4 py-1.5 rounded-full flex items-center gap-3 shadow-xl z-20 border border-white/20">
                 <button
                   onClick={zoomOut}
@@ -516,7 +635,8 @@ export default function EventsPage() {
               </div>
             </div>
 
-            <div className="p-6 overflow-y-auto bg-white flex-1 text-center space-y-3">
+            {/* DESKRIPSI EVENT (SCROLLABLE) */}
+            <div className="p-6 overflow-y-auto flex-1 text-center space-y-3">
               <h2 className="text-xl font-black text-[#083344]">
                 "{selectedEvent.judul}"
               </h2>
@@ -541,7 +661,9 @@ export default function EventsPage() {
                       )}`
                     : ''}
                 </p>
-                {selectedEvent.waktu && <p>⏰ Waktu: {selectedEvent.waktu} WIB</p>}
+                {(selectedEvent.waktu || selectedEvent.jam) && (
+                  <p>⏰ Waktu: {selectedEvent.waktu || selectedEvent.jam} WIB</p>
+                )}
                 {selectedEvent.lokasi && <p>📍 Lokasi: {selectedEvent.lokasi}</p>}
               </div>
 
@@ -556,6 +678,30 @@ export default function EventsPage() {
                 </a>
               )}
             </div>
+
+            {/* FOOTER FIX PAGINASI */}
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center shrink-0">
+              <button
+                onClick={handlePrevModalEvent}
+                disabled={modalEvents.length <= 1 || currentModalIndex === 0}
+                className="px-4 py-2 bg-white border border-gray-300 text-[#083344] text-xs font-bold rounded-xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 transition shadow-sm"
+              >
+                ← Prev
+              </button>
+              
+              <span className="text-xs font-black text-[#083344]">
+                Kegiatan {modalEvents.length > 0 ? currentModalIndex + 1 : 0} dari {modalEvents.length}
+              </span>
+
+              <button
+                onClick={handleNextModalEvent}
+                disabled={modalEvents.length <= 1 || currentModalIndex === modalEvents.length - 1}
+                className="px-4 py-2 bg-[#083344] text-white text-xs font-bold rounded-xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#083344]/80 transition shadow-sm"
+              >
+                Next →
+              </button>
+            </div>
+
           </div>
         </div>
       )}

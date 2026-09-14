@@ -117,8 +117,10 @@ export default function HomePage() {
     }
 
     try {
+      // 1. Buat Akun Pengguna di Firebase Auth
       const res = await createUserWithEmailAndPassword(auth, regEmail, regPassword);
       
+      // 2. Siapkan Payload Firestore
       const payload = {
         name: regNama,
         agentCode: regKodeAgent,
@@ -132,10 +134,36 @@ export default function HomePage() {
         payload.unit = regUnit;
       }
       
+      // 3. Simpan Data ke Firestore
       await setDoc(doc(db, 'users', res.user.uid), payload);
       
+      // 4. KIRIM NOTIFIKASI TELEGRAM VIA API ROUTE
+      try {
+        await fetch('/api/notify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'approval', // Menegaskan tipe notifikasi pendaftaran
+            data: {
+              name: regNama,
+              agentCode: regKodeAgent,
+              unit: regRole === 'Agent' ? regUnit : '-',
+              email: regEmail,
+              role: regRole,
+              status: 'pending',
+            },
+          }),
+        });
+      } catch (notifErr) {
+        // Jangan gagalkan pendaftaran user jika notifikasi telegram error
+        console.error('Gagal mengirimkan notifikasi Telegram:', notifErr);
+      }
+
       setRegSuccess('Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan Admin.');
     } catch (err) {
+      console.error(err);
       setRegError('Gagal mendaftar: Email mungkin sudah digunakan atau tidak valid.');
     } finally {
       setIsRegistering(false);
@@ -316,7 +344,6 @@ export default function HomePage() {
 
     if (eventMatch) return { ...eventMatch, categoryType: 'Event' };
 
-    // PERBAIKAN: Pengecekan contestMatch dari contestsList dihapus agar kontes tidak dirender di kalender harian
     return null;
   };
 

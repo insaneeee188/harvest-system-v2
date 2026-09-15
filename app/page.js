@@ -166,7 +166,7 @@ export default function HomePage() {
     } catch (err) {
       console.error(err);
       setRegError('Gagal mendaftar: Email mungkin sudah digunakan atau tidak valid.');
-    } fontally {
+    } finally {
       setIsRegistering(false);
     }
   };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { auth, db } from '../firebase';
 import { 
@@ -35,9 +35,15 @@ export default function HomePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const eventsPerPage = 4;
 
+  // ================= STATE MODAL DETAIL EVENT & PAGINASI =================
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [modalEventsList, setModalEventsList] = useState([]);
+  const [currentEventIndex, setCurrentEventIndex] = useState(0);
   const [zoomScale, setZoomScale] = useState(1);
+
+  // Ref untuk Swipe Touch Gesture
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
 
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
   const [achieversList, setAchieversList] = useState([]);
@@ -117,10 +123,8 @@ export default function HomePage() {
     }
 
     try {
-      // 1. Buat Akun Pengguna di Firebase Auth
       const res = await createUserWithEmailAndPassword(auth, regEmail, regPassword);
       
-      // 2. Siapkan Payload Firestore
       const payload = {
         name: regNama,
         agentCode: regKodeAgent,
@@ -134,10 +138,8 @@ export default function HomePage() {
         payload.unit = regUnit;
       }
       
-      // 3. Simpan Data ke Firestore
       await setDoc(doc(db, 'users', res.user.uid), payload);
       
-      // 4. KIRIM NOTIFIKASI TELEGRAM VIA API ROUTE
       try {
         await fetch('/api/notify', {
           method: 'POST',
@@ -145,7 +147,7 @@ export default function HomePage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            type: 'approval', // Menegaskan tipe notifikasi pendaftaran
+            type: 'approval',
             data: {
               name: regNama,
               agentCode: regKodeAgent,
@@ -157,7 +159,6 @@ export default function HomePage() {
           }),
         });
       } catch (notifErr) {
-        // Jangan gagalkan pendaftaran user jika notifikasi telegram error
         console.error('Gagal mengirimkan notifikasi Telegram:', notifErr);
       }
 
@@ -165,7 +166,7 @@ export default function HomePage() {
     } catch (err) {
       console.error(err);
       setRegError('Gagal mendaftar: Email mungkin sudah digunakan atau tidak valid.');
-    } finally {
+    } fontally {
       setIsRegistering(false);
     }
   };
@@ -199,7 +200,6 @@ export default function HomePage() {
       if (currentUser) {
         setUser(currentUser);
 
-        // 1. USER DATA
         const userRef = doc(db, 'users', currentUser.uid);
         unsubscribeUserDoc = onSnapshot(
           userRef,
@@ -211,7 +211,6 @@ export default function HomePage() {
           (err) => console.error('Error User Data:', err)
         );
 
-        // 2. REAL-TIME LISTENER: EVENTS (DENGAN FILTER SANITASI KONTES)
         const eventsRef = collection(db, 'events');
         unsubscribeEvents = onSnapshot(
           eventsRef,
@@ -225,7 +224,6 @@ export default function HomePage() {
             today.setHours(0, 0, 0, 0);
 
             const upcoming = allEvents
-              // PERBAIKAN: Abaikan item dengan type atau jenisKegiatan bertipe 'contest'
               .filter((ev) => ev.type !== 'contest' && ev.jenisKegiatan !== 'contest')
               .filter((ev) => {
                 const endDateStr = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.endDate || ev.tanggal || ev.startDate || ev.date;
@@ -245,7 +243,6 @@ export default function HomePage() {
           (err) => console.error('Error Events:', err)
         );
 
-        // 3. CONTESTS & ACHIEVERS
         const contestRef = collection(db, 'agency_contests');
         unsubscribeAchievers = onSnapshot(
           contestRef,
@@ -324,14 +321,13 @@ export default function HomePage() {
   for (let i = 0; i < startDay; i++) calendarDays.push(null);
   for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
 
-  // ================= PERBAIKAN PADA PENCARIAN ITEM KALENDER =================
-  const getItemByDate = (day) => {
-    if (!day) return null;
+  // Pencarian list item kegiatan pada tanggal kalender yang dipilih
+  const getItemsByDate = (day) => {
+    if (!day) return [];
     const targetDate = new Date(year, month, day);
     targetDate.setHours(0, 0, 0, 0);
 
-    // Hanya mencari match pada eventsList (yang sudah bersih dari jenis 'contest')
-    const eventMatch = eventsList.find((ev) => {
+    const matches = eventsList.filter((ev) => {
       const startStr = ev.tanggal || ev.startDate || ev.date || ev.tanggalSelesaiEvent || ev.tanggalSelesai;
       const endStr = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.endDate || startStr;
       
@@ -342,9 +338,7 @@ export default function HomePage() {
       return targetDate >= startDate && targetDate <= endDate;
     });
 
-    if (eventMatch) return { ...eventMatch, categoryType: 'Event' };
-
-    return null;
+    return matches.map((ev) => ({ ...ev, categoryType: 'Event' }));
   };
 
   const todayDate = new Date();
@@ -353,11 +347,55 @@ export default function HomePage() {
     month === todayDate.getMonth() &&
     year === todayDate.getFullYear();
 
-  const openModal = (item) => {
-    setSelectedItem(item);
+  // Buka modal dengan mendukung array/list event untuk paginasi & swipe
+  const openModalWithList = (list, initialIndex = 0) => {
+    if (!list || list.length === 0) return;
+    setModalEventsList(list);
+    setCurrentEventIndex(initialIndex);
     setZoomScale(1);
     setIsModalOpen(true);
   };
+
+  // Handler Paginasi Modal
+  const handlePrevModalEvent = () => {
+    if (currentEventIndex > 0) {
+      setCurrentEventIndex((prev) => prev - 1);
+      setZoomScale(1);
+    }
+  };
+
+  const handleNextModalEvent = () => {
+    if (currentEventIndex < modalEventsList.length - 1) {
+      setCurrentEventIndex((prev) => prev + 1);
+      setZoomScale(1);
+    }
+  };
+
+  // Handler Touch Swipe Gesture
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const diffX = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50;
+
+    if (diffX > minSwipeDistance) {
+      handleNextModalEvent();
+    } else if (diffX < -minSwipeDistance) {
+      handlePrevModalEvent();
+    }
+
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
+  const selectedItem = modalEventsList[currentEventIndex] || null;
 
   if (loading) {
     return (
@@ -816,7 +854,7 @@ export default function HomePage() {
             {eventsList.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {currentEvents.map((ev) => {
+                  {currentEvents.map((ev, idx) => {
                     const startDateStr = ev.tanggal || ev.startDate || ev.date || ev.tanggalSelesaiEvent || ev.tanggalSelesai;
                     const endDateStr = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.endDate || startDateStr;
                     const isMultiDay = endDateStr && endDateStr !== startDateStr;
@@ -824,7 +862,7 @@ export default function HomePage() {
                     return (
                       <div
                         key={ev.id}
-                        onClick={() => openModal(ev)}
+                        onClick={() => openModalWithList(currentEvents, idx)}
                         className="bg-white rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden flex flex-col transition-all duration-300 hover:shadow-xl hover:border-[#A8C338] hover:-translate-y-1 cursor-pointer group pb-4"
                       >
                         <div className="h-44 bg-gray-100 relative overflow-hidden">
@@ -907,13 +945,13 @@ export default function HomePage() {
             </div>
             <div className="grid grid-cols-7 gap-y-2 text-center text-xs font-medium">
               {calendarDays.map((d, idx) => {
-                const item = getItemByDate(d);
-                const isEvt = item !== null;
+                const dayItems = getItemsByDate(d);
+                const isEvt = dayItems.length > 0;
                 const isTdy = isToday(d);
                 return (
                   <div
                     key={idx}
-                    onClick={() => { if (isEvt) openModal(item); }}
+                    onClick={() => { if (isEvt) openModalWithList(dayItems, 0); }}
                     className={`w-9 h-9 flex items-center justify-center rounded-2xl mx-auto transition-all ${
                       !d
                         ? ''
@@ -1033,7 +1071,7 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* MODAL DETAIL EVENT */}
+      {/* MODAL DETAIL EVENT DENGAN DUKUNGAN PAGINASI DAN SWIPE GESTURE */}
       {isModalOpen && selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white w-full max-w-xl rounded-3xl overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh]">
@@ -1048,7 +1086,13 @@ export default function HomePage() {
               ✕
             </button>
 
-            <div className="w-full bg-black relative flex items-center justify-center min-h-[300px] max-h-[50vh] overflow-hidden group">
+            {/* AREA GAMBAR DENGAN TOUCH SWIPE */}
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              className="w-full bg-black relative flex items-center justify-center min-h-[300px] max-h-[50vh] overflow-hidden group select-none cursor-grab active:cursor-grabbing"
+            >
               <img
                 src={
                   selectedItem.posterUrl ||
@@ -1128,6 +1172,31 @@ export default function HomePage() {
                 >
                   🔗 Buka Link Zoom / Meeting
                 </a>
+              )}
+
+              {/* FOOTER NAVIGASI MODAL (PREV / NEXT & INDEX) */}
+              {modalEventsList.length > 1 && (
+                <div className="flex justify-between items-center pt-4 border-t border-gray-100 mt-4">
+                  <button
+                    onClick={handlePrevModalEvent}
+                    disabled={currentEventIndex === 0}
+                    className="px-4 py-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl disabled:opacity-40 transition-colors"
+                  >
+                    ← Prev
+                  </button>
+
+                  <span className="text-xs font-bold text-gray-500">
+                    Kegiatan {currentEventIndex + 1} dari {modalEventsList.length}
+                  </span>
+
+                  <button
+                    onClick={handleNextModalEvent}
+                    disabled={currentEventIndex === modalEventsList.length - 1}
+                    className="px-4 py-2 text-xs font-bold bg-[#083344] hover:bg-[#072c38] text-white rounded-xl disabled:opacity-40 transition-colors"
+                  >
+                    Next →
+                  </button>
+                </div>
               )}
             </div>
 

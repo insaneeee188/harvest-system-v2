@@ -4,25 +4,53 @@ import { useRouter } from 'next/navigation';
 import { auth, db } from '../../firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
-import * as XLSX from 'xlsx'; // Import library Excel
+import * as XLSX from 'xlsx';
 
 // -------------------------------------------------------------
 // 1. SUB-KOMPONEN FORM BETA
 // -------------------------------------------------------------
 function BetaFormContent({ userData }) {
-  const [formData, setFormData] = useState({
+  // Mengecek apakah role adalah leader (case-insensitive)
+  const isLeader = userData?.role?.toLowerCase() === 'leader';
+
+  const initialFormState = {
     reportDate: '',
+    unitLeader: userData?.leaderName || '', // Untuk Agent: Nama Leader / Unit
     propecting: '',
     janjiTemu: '',
     presentasi: '',
     followUp: '',
+    praBop: '',          // Khusus Leader
+    coachingAgent: '',   // Khusus Leader
+    joinFieldWork: '',   // Khusus Leader
     askingReferral: '',
     noActivityReasons: [],
     otherReason: ''
-  });
+  };
 
+  const [formData, setFormData] = useState(initialFormState);
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Menentukan field mana saja yang tampil berdasarkan role
+  const formFields = isLeader
+    ? [
+        { key: 'propecting', label: 'Prospecting' },
+        { key: 'janjiTemu', label: 'Buat Janji Temu 3 Orang' },
+        { key: 'presentasi', label: 'Presentasi' },
+        { key: 'followUp', label: 'Follow Up' },
+        { key: 'praBop', label: 'PraBOP / BOP' },
+        { key: 'coachingAgent', label: 'Coaching / Training Agent' },
+        { key: 'joinFieldWork', label: 'Join Field Work' },
+        { key: 'askingReferral', label: 'Asking Referral' },
+      ]
+    : [
+        { key: 'propecting', label: 'Prospecting' },
+        { key: 'janjiTemu', label: 'Janji Temu 3 Orang' },
+        { key: 'presentasi', label: 'Presentasi' },
+        { key: 'followUp', label: 'Follow Up' },
+        { key: 'askingReferral', label: 'Asking Referral' },
+      ];
 
   const handleCheckboxChange = (reason) => {
     setFormData((prev) => {
@@ -42,7 +70,7 @@ function BetaFormContent({ userData }) {
     setSuccessMsg('');
 
     try {
-      await addDoc(collection(db, 'beta_reports'), {
+      const payload = {
         userName: userData.name,
         userRole: userData.role,
         reportDate: formData.reportDate,
@@ -54,19 +82,21 @@ function BetaFormContent({ userData }) {
         noActivityReasons: formData.noActivityReasons,
         otherReason: formData.otherReason,
         createdAt: serverTimestamp()
-      });
+      };
+
+      // Tambahkan payload spesifik berdasarkan Role
+      if (isLeader) {
+        payload.praBop = formData.praBop;
+        payload.coachingAgent = formData.coachingAgent;
+        payload.joinFieldWork = formData.joinFieldWork;
+      } else {
+        payload.unitLeader = formData.unitLeader;
+      }
+
+      await addDoc(collection(db, 'beta_reports'), payload);
 
       setSuccessMsg('Laporan berhasil dikirim!');
-      setFormData({
-        reportDate: '',
-        propecting: '',
-        janjiTemu: '',
-        presentasi: '',
-        followUp: '',
-        askingReferral: '',
-        noActivityReasons: [],
-        otherReason: ''
-      });
+      setFormData(initialFormState);
     } catch (error) {
       alert("Gagal menyimpan data: " + error.message);
     } finally {
@@ -77,7 +107,7 @@ function BetaFormContent({ userData }) {
   return (
     <div className="max-w-2xl mx-auto space-y-4 font-sans text-gray-800 animate-fade-in-up">
       <div className="bg-white rounded-xl p-6 border border-gray-200 border-t-8 border-t-indigo-600 shadow-sm">
-        <h2 className="text-2xl font-bold text-gray-900">Activity Report</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Activity Report ({isLeader ? 'Leader' : 'Agent'})</h2>
         <p className="text-xs text-gray-500 mt-1">
           Pengisian otomatis untuk akun: <span className="font-semibold text-indigo-600">{userData?.name}</span> ({userData?.role})
         </p>
@@ -90,6 +120,7 @@ function BetaFormContent({ userData }) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Input Tanggal */}
         <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
           <label className="block text-sm font-medium text-gray-900 mb-2">
             Report Untuk Tanggal? <span className="text-red-500">*</span>
@@ -103,29 +134,39 @@ function BetaFormContent({ userData }) {
           />
         </div>
 
-        {[
-          { key: 'propecting', label: 'Propecting' },
-          { key: 'janjiTemu', label: 'Janji Temu (3 orang)' },
-          { key: 'presentasi', label: 'Presentasi' },
-          { key: 'followUp', label: 'Follow Up' },
-          { key: 'askingReferral', label: 'Asking referral' }
-        ].map((field) => (
+        {/* Khusus Role Agent: Field Unit (Nama Leader) */}
+        {!isLeader && (
+          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <label className="block text-sm font-medium text-gray-900 mb-2">Unit (Nama Leader)</label>
+            <input 
+              type="text" 
+              placeholder="Masukkan Nama Leader" 
+              value={formData.unitLeader} 
+              onChange={(e) => setFormData({...formData, unitLeader: e.target.value})} 
+              className="w-full max-w-md p-1.5 text-sm border-b border-gray-300 focus:border-indigo-600 outline-none transition-all placeholder-gray-400"
+            />
+          </div>
+        )}
+
+        {/* Dynamic Fields Berdasarkan Role */}
+        {formFields.map((field) => (
           <div key={field.key} className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
             <label className="block text-sm font-medium text-gray-900 mb-4">{field.label}</label>
             <input 
               type="text" 
               placeholder="Jawaban Anda" 
-              value={formData[field.key]} 
+              value={formData[field.key] || ''} 
               onChange={(e) => setFormData({...formData, [field.key]: e.target.value})} 
               className="w-full max-w-md p-1.5 text-sm border-b border-gray-300 focus:border-indigo-600 outline-none transition-all placeholder-gray-400"
             />
           </div>
         ))}
 
+        {/* Checkbox Tidak Ada Aktivitas */}
         <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm space-y-3">
           <label className="block text-sm font-medium text-gray-900 mb-2">Tidak Ada Aktifitas</label>
           
-          {['Sakit', 'Sibuk pekerjaan lain', 'Tidak terencana'].map((reason) => (
+          {['Sakit', 'Urusan Keluarga', 'Sibuk pekerjaan lain', 'Tidak terencana'].map((reason) => (
             <label key={reason} className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
               <input 
                 type="checkbox" 
@@ -145,7 +186,7 @@ function BetaFormContent({ userData }) {
                 onChange={() => handleCheckboxChange('Yang lain')} 
                 className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300"
               />
-              <span>Yang lain:</span>
+              <span>Yang lain (Isi sendiri):</span>
             </label>
             <input 
               type="text" 
@@ -179,19 +220,16 @@ export default function MyActivityPage() {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  // Default Tab langsung ke Form Beta
   const [activeTab, setActiveTab] = useState('beta_form'); 
 
-  // Alarm Pengingat
   const [isAlarmActive, setIsAlarmActive] = useState(false);
   const [alarmTime, setAlarmTime] = useState("20:00");
 
-  // State & Filter Kalender
-  const [betaMonth, setBetaMonth] = useState("8");
+  const [betaMonth, setBetaMonth] = useState("9");
   const [betaYear, setBetaYear] = useState("2026");
   const [betaCalendarMatrix, setBetaCalendarMatrix] = useState([]);
   const [betaCalendarLoading, setBetaCalendarLoading] = useState(false);
-  const [rawReports, setRawReports] = useState([]); // Menyimpan raw data untuk Export Excel
+  const [rawReports, setRawReports] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -223,7 +261,6 @@ export default function MyActivityPage() {
     return () => clearInterval(interval);
   }, [isAlarmActive, alarmTime]);
 
-  // Fetch & Generate Kalender Grid
   const generateBetaCalendar = async () => {
     if (!userData?.name) return;
     setBetaCalendarLoading(true);
@@ -241,7 +278,6 @@ export default function MyActivityPage() {
         if (data.reportDate) {
           reportsMap[data.reportDate] = data;
           
-          // Filter hanya masukkan data bulan/tahun yang dipilih ke array export
           const [rYear, rMonth] = data.reportDate.split('-');
           if (parseInt(rYear, 10) === parseInt(betaYear, 10) && parseInt(rMonth, 10) === parseInt(betaMonth, 10)) {
             fetchedReports.push(data);
@@ -288,33 +324,48 @@ export default function MyActivityPage() {
     }
   };
 
-  // Fungsi Export ke Excel
   const exportToExcel = () => {
     if (rawReports.length === 0) {
       alert("Tidak ada data laporan untuk bulan dan tahun yang dipilih!");
       return;
     }
 
-    // Merapikan format kolom untuk Excel
-    const excelData = rawReports.map((r, index) => ({
-      No: index + 1,
-      Nama: r.userName || '',
-      Role: r.userRole || '',
-      Tanggal: r.reportDate || '',
-      Prospecting: r.propecting || '-',
-      'Janji Temu': r.janjiTemu || '-',
-      Presentasi: r.presentasi || '-',
-      'Follow Up': r.followUp || '-',
-      'Asking Referral': r.askingReferral || '-',
-      'Alasan Tidak Ada Aktivitas': r.noActivityReasons ? r.noActivityReasons.join(', ') : '-',
-      'Alasan Lainnya': r.otherReason || '-'
-    }));
+    const isLeader = userData?.role?.toLowerCase() === 'leader';
+
+    const excelData = rawReports.map((r, index) => {
+      const baseObj = {
+        No: index + 1,
+        Nama: r.userName || '',
+        Role: r.userRole || '',
+        Tanggal: r.reportDate || '',
+      };
+
+      if (!isLeader) {
+        baseObj['Unit (Nama Leader)'] = r.unitLeader || '-';
+      }
+
+      baseObj['Prospecting'] = r.propecting || '-';
+      baseObj['Janji Temu 3 Orang'] = r.janjiTemu || '-';
+      baseObj['Presentasi'] = r.presentasi || '-';
+      baseObj['Follow Up'] = r.followUp || '-';
+
+      if (isLeader) {
+        baseObj['PraBOP / BOP'] = r.praBop || '-';
+        baseObj['Coaching / Training Agent'] = r.coachingAgent || '-';
+        baseObj['Join Field Work'] = r.joinFieldWork || '-';
+      }
+
+      baseObj['Asking Referral'] = r.askingReferral || '-';
+      baseObj['Alasan Tidak Ada Aktivitas'] = r.noActivityReasons ? r.noActivityReasons.join(', ') : '-';
+      baseObj['Alasan Lainnya'] = r.otherReason || '-';
+
+      return baseObj;
+    });
 
     const worksheet = XLSX.utils.json_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Aktivitas");
 
-    // Download File Excel
     const fileName = `Laporan_Aktivitas_${userData.name.replace(/\s+/g, '_')}_${betaMonth}_${betaYear}.xlsx`;
     XLSX.writeFile(workbook, fileName);
   };
@@ -350,7 +401,7 @@ export default function MyActivityPage() {
           </button>
         </div>
 
-        {/* Tab Menu Utama (Hanya Menyisakan Form & Kalender) */}
+        {/* Tab Menu Utama */}
         <div className="flex justify-center mb-8 w-full">
           <div className="inline-flex bg-gray-100 p-1 rounded-xl shadow-sm border border-gray-200 w-full sm:w-auto gap-1">
             <button 
@@ -374,7 +425,6 @@ export default function MyActivityPage() {
         {/* Tab Kalender Laporan */}
         {activeTab === 'beta_calendar' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-fade-in-up w-full">
-            {/* Header Kalender & Opsi Filter + Download */}
             <div className="bg-[#083344] text-white p-4 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4">
               <h2 className="text-xl sm:text-2xl font-bold tracking-wide text-center md:text-left">
                 {userData?.name} Kalender
@@ -411,8 +461,6 @@ export default function MyActivityPage() {
                 >
                   {betaCalendarLoading ? '⏳' : 'Tampilkan'}
                 </button>
-                
-                {/* Tombol Export Excel */}
                 <button 
                   onClick={exportToExcel} 
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 shadow-sm"
@@ -422,7 +470,6 @@ export default function MyActivityPage() {
               </div>
             </div>
 
-            {/* Content Table Kalender */}
             <div className="p-4 overflow-x-auto min-h-[350px]">
               {betaCalendarLoading ? (
                 <div className="flex flex-col items-center justify-center py-20 text-gray-500">
@@ -451,17 +498,17 @@ export default function MyActivityPage() {
                           }
 
                           const r = cell.report;
-                          let bgColor = "#ffff00"; // Default: Kuning (No Report)
+                          let bgColor = "#ffff00";
                           let textColor = "#000000";
 
                           const hasNoActivity = r && r.noActivityReasons && r.noActivityReasons.length > 0;
-                          const hasActivity = r && (r.propecting || r.janjiTemu || r.presentasi || r.followUp || r.askingReferral);
+                          const hasActivity = r && (r.propecting || r.janjiTemu || r.presentasi || r.followUp || r.askingReferral || r.praBop || r.coachingAgent || r.joinFieldWork);
 
                           if (hasNoActivity) {
-                            bgColor = "#ea4335"; // Merah (Tidak Ada Aktivitas)
+                            bgColor = "#ea4335";
                             textColor = "#ffffff";
                           } else if (hasActivity) {
-                            bgColor = "#93c47d"; // Hijau (Ada Aktivitas)
+                            bgColor = "#93c47d";
                             textColor = "#000000";
                           }
 
@@ -472,7 +519,7 @@ export default function MyActivityPage() {
                               </div>
 
                               <div 
-                                className="p-2 h-full text-[11px] leading-tight flex flex-col justify-start"
+                                className="p-2 h-full text-[11px] leading-tight flex flex-col justify-start overflow-y-auto"
                                 style={{ backgroundColor: bgColor, color: textColor }}
                               >
                                 {!r ? (
@@ -485,11 +532,15 @@ export default function MyActivityPage() {
                                   </div>
                                 ) : (
                                   <div className="space-y-1">
+                                    {r.unitLeader && <div>• Unit: {r.unitLeader}</div>}
                                     {r.propecting && <div>• Prospecting: {r.propecting}</div>}
                                     {r.janjiTemu && <div>• Janji Temu: {r.janjiTemu}</div>}
                                     {r.presentasi && <div>• Presentasi: {r.presentasi}</div>}
                                     {r.followUp && <div>• Follow Up: {r.followUp}</div>}
-                                    {r.askingReferral && <div>• Asking Referral: {r.askingReferral}</div>}
+                                    {r.praBop && <div>• PraBOP/BOP: {r.praBop}</div>}
+                                    {r.coachingAgent && <div>• Coaching: {r.coachingAgent}</div>}
+                                    {r.joinFieldWork && <div>• Field Work: {r.joinFieldWork}</div>}
+                                    {r.askingReferral && <div>• Referral: {r.askingReferral}</div>}
                                   </div>
                                 )}
                               </div>

@@ -14,7 +14,7 @@ import {
   deleteDoc 
 } from 'firebase/firestore';
 
-// Sub-component untuk fitur "See More" / "Lihat Selengkapnya" pada deskripsi
+// Sub-komponen untuk fitur "Lihat Selengkapnya" pada teks panjang
 function TruncatedText({ text, maxLength = 120 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -43,7 +43,7 @@ export default function AdminDashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // State pengontrol visibilitas seluruh tampilan tabel
+  // State pengontrol visibilitas seluruh tabel
   const [showTables, setShowTables] = useState(true);
 
   const getDefaultOneMonthLater = () => {
@@ -72,6 +72,31 @@ export default function AdminDashboardPage() {
   const pendingCount = Array.isArray(usersList)
     ? usersList.filter((u) => u?.status === 'pending').length
     : 0;
+
+  // --- PROMO NASABAH STATES & PAGINATION ---
+  const [promosList, setPromosList] = useState([]);
+  const [currentPagePromos, setCurrentPagePromos] = useState(1);
+  const promosPerPage = 5;
+  const indexOfLastPromo = currentPagePromos * promosPerPage;
+  const indexOfFirstPromo = indexOfLastPromo - promosPerPage;
+  const currentPromos = Array.isArray(promosList)
+    ? promosList.slice(indexOfFirstPromo, indexOfLastPromo)
+    : [];
+  const totalPagesPromos = Array.isArray(promosList)
+    ? Math.ceil(promosList.length / promosPerPage) || 1
+    : 1;
+
+  const [editPromoId, setEditPromoId] = useState(null);
+  const [judulPromo, setJudulPromo] = useState('');
+  const [deskripsiPromo, setDeskripsiPromo] = useState('');
+  const [kategoriPromo, setKategoriPromo] = useState('Prudential');
+  const [periodePromo, setPeriodePromo] = useState('');
+  const [startDatePromo, setStartDatePromo] = useState(getTodayDate());
+  const [tanggalSelesaiPromo, setTanggalSelesaiPromo] = useState(getDefaultOneMonthLater());
+  const [posterPromo, setPosterPromo] = useState('');
+  const [badgePromo, setBadgePromo] = useState('');
+  const [isHighlightPromo, setIsHighlightPromo] = useState(false);
+  const [isSubmittingPromo, setIsSubmittingPromo] = useState(false);
 
   // --- CONTEST STATES & PAGINATION ---
   const [contestsList, setContestsList] = useState([]);
@@ -233,7 +258,31 @@ export default function AdminDashboardPage() {
       console.error("Gagal mengambil data user:", e);
     }
   }, []);
-  
+
+  const fetchPromos = useCallback(async () => {
+    try {
+      const snap = await getDocs(collection(db, 'promo_nasabah'));
+      const today = getTodayDate();
+      const activePromos = [];
+      const expiredDeletes = [];
+
+      snap.docs.forEach((docSnap) => {
+        const promoData = docSnap.data();
+        const expDate = promoData.tanggalSelesai || promoData.endDate;
+        if (expDate && expDate < today) {
+          expiredDeletes.push(deleteDoc(doc(db, 'promo_nasabah', docSnap.id)));
+        } else {
+          activePromos.push({ id: docSnap.id, ...promoData });
+        }
+      });
+
+      if (expiredDeletes.length > 0) await Promise.all(expiredDeletes);
+      setPromosList(activePromos);
+    } catch (e) {
+      console.error("Gagal mengambil data promo nasabah:", e);
+    }
+  }, []);
+
   const fetchContestsAndAchievers = useCallback(async () => { 
     try {
       const snap = await getDocs(collection(db, 'agency_contests')); 
@@ -326,6 +375,7 @@ export default function AdminDashboardPage() {
             setUserData(data);
             await Promise.all([
               fetchUsers(), 
+              fetchPromos(),
               fetchContestsAndAchievers(), 
               fetchEvents(), 
               fetchLibrary(), 
@@ -344,7 +394,7 @@ export default function AdminDashboardPage() {
       }
     });
     return () => { isMounted = false; unsubscribe(); };
-  }, [router, fetchUsers, fetchContestsAndAchievers, fetchEvents, fetchLibrary, fetchModules, fetchQuizzes]);
+  }, [router, fetchUsers, fetchPromos, fetchContestsAndAchievers, fetchEvents, fetchLibrary, fetchModules, fetchQuizzes]);
 
   // --- HANDLERS USER ---
   const handleApprove = async (userId, userName) => { 
@@ -355,6 +405,113 @@ export default function AdminDashboardPage() {
       fetchUsers(); 
     } catch (e) {
       alert("Gagal menyetujui user.");
+    }
+  };
+
+  // --- HANDLERS PROMO NASABAH ---
+  const resetPromoForm = () => {
+    setEditPromoId(null);
+    setJudulPromo('');
+    setDeskripsiPromo('');
+    setKategoriPromo('Prudential');
+    setPeriodePromo('');
+    setStartDatePromo(getTodayDate());
+    setTanggalSelesaiPromo(getDefaultOneMonthLater());
+    setPosterPromo('');
+    setBadgePromo('');
+    setIsHighlightPromo(false);
+  };
+
+  const handleSavePromo = async (e) => {
+    e.preventDefault();
+    setIsSubmittingPromo(true);
+
+    const payload = {
+      judul: judulPromo,
+      deskripsi: deskripsiPromo,
+      kategori: kategoriPromo,
+      periode: periodePromo,
+      startDate: startDatePromo,
+      endDate: tanggalSelesaiPromo,
+      tanggalSelesai: tanggalSelesaiPromo,
+      posterUrl: posterPromo,
+      badge: badgePromo || kategoriPromo,
+      isHighlight: isHighlightPromo
+    };
+
+    try {
+      if (editPromoId) {
+        await updateDoc(doc(db, 'promo_nasabah', editPromoId), { ...payload, updatedAt: new Date().toISOString() });
+        alert("Promo Nasabah berhasil diperbarui!");
+      } else {
+        await addDoc(collection(db, 'promo_nasabah'), { ...payload, createdAt: new Date().toISOString() });
+
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            title: `🎁 Promo Nasabah Terbaru: ${judulPromo}`,
+            message: deskripsiPromo || 'Penawaran dan program spesial terbaru untuk nasabah!',
+            type: 'promo',
+            target: 'Semua',
+            link: '/promo-nasabah',
+            createdAt: new Date().toISOString(),
+            isRead: false
+          });
+        } catch (webNotifErr) {
+          console.error("Gagal menyimpan notifikasi web:", webNotifErr);
+        }
+
+        try {
+          await fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'promo',
+              data: {
+                title: judulPromo,
+                period: periodePromo,
+                posterUrl: posterPromo,
+                deskripsi: deskripsiPromo,
+                link: 'https://harvestlms.vercel.app/promo-nasabah',
+                target: 'Semua'
+              }
+            })
+          });
+        } catch (notifyErr) {
+          console.error("Gagal mengirim notifikasi Telegram:", notifyErr);
+        }
+
+        alert("Promo Nasabah berhasil dipublikasikan, Notifikasi Web & Telegram terkirim!");
+      }
+      resetPromoForm();
+      fetchPromos();
+    } catch (err) {
+      console.error("Gagal menyimpan promo:", err);
+      alert("Gagal menyimpan Promo Nasabah.");
+    } finally {
+      setIsSubmittingPromo(false);
+    }
+  };
+
+  const handleEditPromo = (item) => {
+    setEditPromoId(item.id);
+    setJudulPromo(item.judul || '');
+    setDeskripsiPromo(item.deskripsi || '');
+    setKategoriPromo(item.kategori || 'Prudential');
+    setPeriodePromo(item.periode || '');
+    setStartDatePromo(item.startDate || getTodayDate());
+    setTanggalSelesaiPromo(item.tanggalSelesai || item.endDate || getDefaultOneMonthLater());
+    setPosterPromo(item.posterUrl || '');
+    setBadgePromo(item.badge || '');
+    setIsHighlightPromo(item.isHighlight || false);
+
+    const el = document.getElementById("form-promo");
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleDeletePromo = async (id) => {
+    if (window.confirm("Hapus Promo Nasabah ini?")) {
+      await deleteDoc(doc(db, 'promo_nasabah', id));
+      fetchPromos();
     }
   };
   
@@ -419,7 +576,7 @@ export default function AdminDashboardPage() {
                 period: periodeContest,
                 posterUrl: posterContest,
                 deskripsi: deskripsiContest,
-                link: 'https://harvest-system-v2.vercel.app/contests',
+                link: 'https://harvestlms.vercel.app/contests',
                 target: targetContest
               }
             })
@@ -581,7 +738,7 @@ export default function AdminDashboardPage() {
                 linkZoom: linkZoomEvent,
                 posterUrl: posterEvent,
                 deskripsi: deskripsiEvent,
-                link: 'https://harvest-system-v2.vercel.app/events',
+                link: 'https://harvestlms.vercel.app/events',
                 target: targetEvent
               }
             })
@@ -669,7 +826,7 @@ export default function AdminDashboardPage() {
                 title: judulDoc,
                 kategori: kategoriDoc,
                 linkDoc: linkDoc,
-                link: 'https://harvest-system-v2.vercel.app/library',
+                link: 'https://harvestlms.vercel.app/library',
                 target: 'Semua'
               }
             })
@@ -850,14 +1007,13 @@ export default function AdminDashboardPage() {
   return (
     <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 py-8 space-y-10 bg-gray-50 min-h-screen overflow-x-hidden">
       
-      {/* HEADER DASHBOARD DENGAN TOMBOL RESET / TOGGLE TAMPILAN */}
+      {/* HEADER DASHBOARD DENGAN TOMBOL TOGGLE TAMPILAN */}
       <div className="bg-[#083344] p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-white">🛡️ Pusat Kendali Admin</h1>
-          <p className="text-gray-300 text-sm mt-1">Kelola Seluruh Sistem Harvest: Contest, Event, Library, Academy, & Kuis.</p>
+          <p className="text-gray-300 text-sm mt-1">Kelola Seluruh Sistem Harvest: Promo Nasabah, Contest, Event, Library, Academy, & Kuis.</p>
         </div>
         
-        {/* Tombol Bersihkan Tampilan Table */}
         <button 
           type="button"
           onClick={() => setShowTables(!showTables)}
@@ -933,7 +1089,159 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
-      {/* 2. AGENCY CONTEST */}
+      {/* 2. PROMO NASABAH */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div id="form-promo" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="font-bold text-lg text-[#083344]">🎁 {editPromoId ? 'Edit Promo Nasabah' : 'Input Promo Nasabah'}</h2>
+            {editPromoId && <button type="button" onClick={resetPromoForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal Edit</button>}
+          </div>
+          <form onSubmit={handleSavePromo} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Judul Promo Nasabah</label>
+              <input type="text" required value={judulPromo} onChange={(e) => setJudulPromo(e.target.value)} placeholder="Contoh: PROMO NASABAH SPECIAL Q4" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Deskripsi Singkat / Ketentuan</label>
+              <textarea required value={deskripsiPromo} onChange={(e) => setDeskripsiPromo(e.target.value)} placeholder="Masukkan deskripsi promo nasabah di sini..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 h-24"></textarea>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Kategori Promo</label>
+                <select value={kategoriPromo} onChange={(e) => setKategoriPromo(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold">
+                  <option value="Prudential">Prudential</option>
+                  <option value="Prudential Syariah">Prudential Syariah</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Label / Badge Text</label>
+                <input type="text" value={badgePromo} onChange={(e) => setBadgePromo(e.target.value)} placeholder="Misal: Prudential / Special Gift" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Periode (Teks Tampilan)</label>
+              <input type="text" required value={periodePromo} onChange={(e) => setPeriodePromo(e.target.value)} placeholder="Contoh: Periode: 1 Oktober - 31 Desember 2026" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Mulai</label>
+                <input 
+                  type="date" 
+                  required 
+                  value={startDatePromo} 
+                  onChange={(e) => setStartDatePromo(e.target.value)} 
+                  className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Selesai</label>
+                <input 
+                  type="date" 
+                  required 
+                  value={tanggalSelesaiPromo} 
+                  onChange={(e) => setTanggalSelesaiPromo(e.target.value)} 
+                  className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold" 
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Link Gambar Poster Promo</label>
+              <input type="url" required value={posterPromo} onChange={(e) => setPosterPromo(e.target.value)} placeholder="Contoh: https://link-gambar.com/promo.jpg" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
+
+            <div className="flex items-center gap-2 bg-gray-100 p-2.5 rounded-lg">
+              <input 
+                type="checkbox" 
+                id="isHighlightPromo" 
+                checked={isHighlightPromo} 
+                onChange={(e) => setIsHighlightPromo(e.target.checked)}
+                className="w-4 h-4 text-[#083344] rounded border-gray-300"
+              />
+              <label htmlFor="isHighlightPromo" className="text-xs font-bold text-gray-800 cursor-pointer">📌 Tampilkan di Side Panel Highlight Promo</label>
+            </div>
+
+            <div className="flex gap-2">
+              {editPromoId && (
+                <button
+                  type="button"
+                  onClick={resetPromoForm}
+                  className="w-1/3 bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm hover:bg-gray-300 transition"
+                >
+                  Batal Edit
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={isSubmittingPromo}
+                className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${
+                  editPromoId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'
+                }`}
+              >
+                {isSubmittingPromo
+                  ? 'Menyimpan...'
+                  : editPromoId
+                  ? 'Simpan Perubahan Promo'
+                  : 'Publish Promo Nasabah'}
+              </button>
+            </div>
+          </form>
+        </div>
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden flex flex-col justify-between">
+          <div>
+            <h2 className="font-bold text-lg text-[#083344] mb-5">📋 Daftar Promo Nasabah Berlangsung</h2>
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm border-collapse min-w-[400px]">
+                 <thead>
+                   <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                     <th className="py-3 px-4 font-bold">NAMA PROMO NASABAH</th>
+                     <th className="py-3 px-4 font-bold text-center">AKSI</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {showTables && currentPromos.length > 0 ? (
+                     currentPromos.map(item => (
+                       <tr key={item.id} className="border-b hover:bg-gray-50">
+                         <td className="py-4 px-4 font-bold text-[#083344]">
+                           <div className="flex items-center gap-2">
+                             {item.isHighlight && <span className="text-xs">📌</span>}
+                             <span>{item.judul}</span>
+                           </div>
+                           <div className="text-[10px] font-normal text-gray-500 mt-1 flex flex-wrap gap-2">
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Kat: {item.kategori || 'Prudential'}</span>
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Per: {item.periode || '-'}</span>
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Selesai: {item.tanggalSelesai || item.endDate || '-'}</span>
+                           </div>
+                         </td>
+                         <td className="py-4 px-4 text-center whitespace-nowrap">
+                           <button onClick={() => handleEditPromo(item)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                           <button onClick={() => handleDeletePromo(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
+                         </td>
+                       </tr>
+                     ))
+                   ) : (
+                     <tr>
+                       <td colSpan="2" className="p-6 text-center text-gray-400 font-medium">
+                         {showTables ? 'Tidak ada data promo nasabah.' : 'Tampilan disembunyikan. Klik "Tampilkan Kembali Table" untuk membuka.'}
+                       </td>
+                     </tr>
+                   )}
+                 </tbody>
+              </table>
+            </div>
+          </div>
+          {showTables && totalPagesPromos > 1 && (
+            <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 rounded-b-xl mt-4">
+              <button onClick={() => setCurrentPagePromos(p => Math.max(p - 1, 1))} disabled={currentPagePromos === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">← Sebelumnya</button>
+              <span className="text-xs font-bold text-gray-600">Hal {currentPagePromos} dari {totalPagesPromos}</span>
+              <button onClick={() => setCurrentPagePromos(p => Math.min(p + 1, totalPagesPromos))} disabled={currentPagePromos === totalPagesPromos} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">Selanjutnya →</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 3. AGENCY CONTEST */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-contest" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
           <div className="flex justify-between items-center mb-5">
@@ -1076,7 +1384,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 3. TOP ACHIEVER */}
+      {/* 4. TOP ACHIEVER */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-achiever" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
           <div className="flex justify-between items-center mb-5">
@@ -1272,7 +1580,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 4. EVENT / TRAINING */}
+      {/* 5. EVENT / TRAINING */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-event" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden h-fit">
           <div className="flex justify-between items-center mb-4">
@@ -1467,7 +1775,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 5. TAMBAH DOKUMEN / LIBRARY */}
+      {/* 6. TAMBAH DOKUMEN / LIBRARY */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-doc" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden h-fit">
           <div className="flex justify-between items-center mb-5">
@@ -1588,7 +1896,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 6. LEARNING PATH (ACADEMY MODUL) */}
+      {/* 7. LEARNING PATH (ACADEMY MODUL) */}
       <div id="form-modul" className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 w-full overflow-hidden">
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-bold text-xl text-[#083344]">🎓 {editModuleId ? 'Edit Modul Pembelajaran' : 'Manajemen Learning Path'}</h2>
@@ -1671,22 +1979,24 @@ export default function AdminDashboardPage() {
                      <tr key={modul.id} className="border-b hover:bg-gray-50">
                        <td className="py-4 px-4">
                          <div className="flex gap-2 mb-2">
-                           <span className="bg-[#A8C338] text-[#083344] px-2 py-0.5 rounded-full text-[10px] font-black">SESI {modul.sesi ?? modul.level}</span>
-                           <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-[10px] font-black">URUTAN {modul.urutan ?? 1}</span>
+                           <span className="bg-[#A8C338]/20 text-[#083344] px-2 py-0.5 rounded text-xs font-bold">Sesi {modul.sesi}</span>
+                           <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-bold">Urutan {modul.urutan}</span>
                          </div>
-                         <span className="font-bold text-[#083344]">{modul.judul}</span>
+                         <p className="font-bold text-[#083344]">{modul.judul}</p>
                        </td>
-                       <td className="py-4 px-4 text-gray-500 text-xs line-clamp-2 max-w-xs">{modul.deskripsi}</td>
+                       <td className="py-4 px-4 text-xs text-gray-600">
+                         {modul.deskripsi || '-'}
+                       </td>
                        <td className="py-4 px-4 text-center whitespace-nowrap">
-                         <button onClick={() => handleEditModule(modul)} className="text-blue-500 hover:bg-blue-50 font-bold px-3 py-1 rounded text-xs mr-2 border border-blue-100 transition">Edit</button>
-                         <button onClick={() => handleDeleteModule(modul.id)} className="text-red-500 hover:bg-red-50 font-bold px-3 py-1 rounded text-xs border border-red-100 transition">Hapus</button>
+                         <button onClick={() => handleEditModule(modul)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                         <button onClick={() => handleDeleteModule(modul.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
                        </td>
                      </tr>
                    ))
                  ) : (
                    <tr>
                      <td colSpan="3" className="p-6 text-center text-gray-400 font-medium">
-                       {showTables ? 'Tidak ada modul pembelajaran.' : 'Tampilan disembunyikan. Klik "Tampilkan Kembali Table" untuk membuka.'}
+                       {showTables ? 'Tidak ada modul pembelajaran tersimpan.' : 'Tampilan disembunyikan. Klik "Tampilkan Kembali Table" untuk membuka.'}
                      </td>
                    </tr>
                  )}
@@ -1694,7 +2004,7 @@ export default function AdminDashboardPage() {
             </table>
           </div>
           {showTables && totalPagesMods > 1 && (
-            <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 mt-4 rounded-b-xl">
+            <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 rounded-b-xl mt-4">
               <button onClick={() => setCurrentPageMods(p => Math.max(p - 1, 1))} disabled={currentPageMods === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">← Sebelumnya</button>
               <span className="text-xs font-bold text-gray-600">Hal {currentPageMods} dari {totalPagesMods}</span>
               <button onClick={() => setCurrentPageMods(p => Math.min(p + 1, totalPagesMods))} disabled={currentPageMods === totalPagesMods} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">Selanjutnya →</button>
@@ -1703,111 +2013,113 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 7. BANK SOAL (KUIS) */}
-      <div id="form-kuis" className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 w-full overflow-hidden">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="font-bold text-xl text-[#083344]">📝 Manajemen Bank Soal (Kuis)</h2>
-          {editQuizId && (
-            <button type="button" onClick={resetQuizForm} className="text-xs bg-gray-200 text-gray-600 px-3 py-1 rounded-md font-bold hover:bg-gray-300 transition">
-              Batal Edit
-            </button>
-          )}
+      {/* 8. QUIZZES MANAGEMENT */}
+      <div id="form-kuis" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="font-bold text-lg text-[#083344]">📝 {editQuizId ? 'Edit Soal Kuis' : 'Input Soal Kuis'}</h2>
+            {editQuizId && <button type="button" onClick={resetQuizForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal Edit</button>}
+          </div>
+          <form onSubmit={handleSaveQuiz} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Level / Sesi Kuis</label>
+              <input type="number" min="1" required value={kuisLevel} onChange={(e) => setKuisLevel(e.target.value)} placeholder="Contoh: 1" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Pertanyaan Kuis</label>
+              <textarea required value={kuisPertanyaan} onChange={(e) => setKuisPertanyaan(e.target.value)} placeholder="Masukkan soal kuis di sini..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 h-20"></textarea>
+            </div>
+            <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-200">
+              <label className="block text-xs font-bold text-gray-700 mb-1">Pilihan Jawaban</label>
+              <input type="text" required value={kuisA} onChange={(e) => setKuisA(e.target.value)} placeholder="A. Jawaban A" className="w-full px-3 py-1.5 border rounded-lg text-xs bg-white" />
+              <input type="text" required value={kuisB} onChange={(e) => setKuisB(e.target.value)} placeholder="B. Jawaban B" className="w-full px-3 py-1.5 border rounded-lg text-xs bg-white" />
+              <input type="text" required value={kuisC} onChange={(e) => setKuisC(e.target.value)} placeholder="C. Jawaban C" className="w-full px-3 py-1.5 border rounded-lg text-xs bg-white" />
+              <input type="text" required value={kuisD} onChange={(e) => setKuisD(e.target.value)} placeholder="D. Jawaban D" className="w-full px-3 py-1.5 border rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Kunci Jawaban Benar</label>
+              <select value={kuisJawabanBenar} onChange={(e) => setKuisJawabanBenar(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold">
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+              </select>
+            </div>
+            <div className="flex gap-2">
+              {editQuizId && (
+                <button
+                  type="button"
+                  onClick={resetQuizForm}
+                  className="w-1/3 bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm hover:bg-gray-300 transition"
+                >
+                  Batal Edit
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={isSubmittingKuis}
+                className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${
+                  editQuizId ? 'bg-blue-600 text-white' : 'bg-[#083344] text-white'
+                }`}
+              >
+                {isSubmittingKuis
+                  ? 'Menyimpan...'
+                  : editQuizId
+                  ? 'Simpan Perubahan Soal'
+                  : 'Publish Soal Kuis'}
+              </button>
+            </div>
+          </form>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1 bg-gray-50 p-5 rounded-xl border border-gray-200">
-            <h3 className="font-bold mb-4">{editQuizId ? 'Edit Pertanyaan' : 'Buat Pertanyaan'}</h3>
-            <form onSubmit={handleSaveQuiz} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold">Level Kuis</label>
-                <input type="number" min="1" required value={kuisLevel} onChange={(e) => setKuisLevel(e.target.value)} placeholder="Contoh: 1" className="w-full px-3 py-2 border rounded-lg text-sm bg-white" />
-              </div>
-              <div>
-                <label className="text-xs font-bold">Pertanyaan</label>
-                <textarea required value={kuisPertanyaan} onChange={(e) => setKuisPertanyaan(e.target.value)} placeholder="Tuliskan soal ujian kuis di sini..." className="w-full px-3 py-2 border rounded-lg text-sm bg-white h-20"></textarea>
-              </div>
-              <div className="space-y-2">
-                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1 flex items-center">A</span><input type="text" required value={kuisA} onChange={(e) => setKuisA(e.target.value)} placeholder="Jawaban A" className="w-full px-2 py-1 border text-xs rounded" /></div>
-                <div className="flex gap-2"><span className="text-xs font-bold bg-[#A8C338] text-[#083344] px-2 py-1 flex items-center">B</span><input type="text" required value={kuisB} onChange={(e) => setKuisB(e.target.value)} placeholder="Jawaban B" className="w-full px-2 py-1 border text-xs rounded" /></div>
-                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1 flex items-center">C</span><input type="text" required value={kuisC} onChange={(e) => setKuisC(e.target.value)} placeholder="Jawaban C" className="w-full px-2 py-1 border text-xs rounded" /></div>
-                <div className="flex gap-2"><span className="text-xs font-bold bg-gray-200 px-2 py-1 flex items-center">D</span><input type="text" required value={kuisD} onChange={(e) => setKuisD(e.target.value)} placeholder="Jawaban D" className="w-full px-2 py-1 border text-xs rounded" /></div>
-              </div>
-              <div>
-                <label className="text-xs font-bold">Jawaban Benar</label>
-                <select value={kuisJawabanBenar} onChange={(e) => setKuisJawabanBenar(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-white font-bold">
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                  <option value="D">D</option>
-                </select>
-              </div>
-              <div className="flex gap-2">
-                {editQuizId && (
-                  <button
-                    type="button"
-                    onClick={resetQuizForm}
-                    className="w-1/3 bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm hover:bg-gray-300 transition"
-                  >
-                    Batal Edit
-                  </button>
-                )}
-                <button 
-                  type="submit" 
-                  disabled={isSubmittingKuis} 
-                  className={`w-full text-white font-bold py-2.5 rounded-lg text-sm transition ${editQuizId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#083344] hover:bg-[#0c4a60]'}`}
-                >
-                  {isSubmittingKuis ? 'Menyimpan...' : (editQuizId ? 'Simpan Soal' : 'Tambah Soal')}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <div className="lg:col-span-2 w-full overflow-hidden flex flex-col justify-between">
-            <div>
-              <h3 className="font-bold mb-4">Daftar Soal Tersimpan</h3>
-              <div className="overflow-x-auto w-full">
-                <table className="w-full text-left text-sm border-collapse min-w-[500px]">
-                   <thead>
-                     <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
-                       <th className="py-2 px-3 font-bold w-16 text-center">LVL</th>
-                       <th className="py-2 px-3 font-bold">PERTANYAAN & JAWABAN</th>
-                       <th className="py-2 px-3 font-bold text-center">AKSI</th>
-                     </tr>
-                   </thead>
-                   <tbody>
-                     {showTables && currentQuizzes.length > 0 ? (
-                       currentQuizzes.map((kuis) => (
-                         <tr key={kuis.id} className="border-b hover:bg-gray-50">
-                           <td className="py-3 px-3 font-black text-[#A8C338] text-center">{kuis.level}</td>
-                           <td className="py-3 px-3">
-                             <p className="font-bold text-[#083344] text-sm mb-1">{kuis.pertanyaan}</p>
-                             <p className="text-[10px] text-green-600 font-bold">Benar: {kuis.jawabanBenar}</p>
-                           </td>
-                           <td className="py-3 px-3 text-center whitespace-nowrap">
-                             <button onClick={() => handleEditQuiz(kuis)} className="text-blue-500 hover:bg-blue-50 font-bold px-2 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
-                             <button onClick={() => handleDeleteQuiz(kuis.id)} className="text-red-500 hover:bg-red-50 font-bold px-2 py-1 rounded text-xs border border-red-100">Hapus</button>
-                           </td>
-                         </tr>
-                       ))
-                     ) : (
-                       <tr>
-                         <td colSpan="3" className="p-6 text-center text-gray-400 font-medium">
-                           {showTables ? 'Tidak ada soal tersimpan.' : 'Tampilan disembunyikan. Klik "Tampilkan Kembali Table" untuk membuka.'}
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden flex flex-col justify-between">
+          <div>
+            <h2 className="font-bold text-lg text-[#083344] mb-5">❓ Bank Soal Kuis</h2>
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm border-collapse min-w-[500px]">
+                 <thead>
+                   <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                     <th className="py-3 px-4 font-bold">SOAL & LEVEL</th>
+                     <th className="py-3 px-4 font-bold">KUNCI</th>
+                     <th className="py-3 px-4 font-bold text-center">AKSI</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {showTables && currentQuizzes.length > 0 ? (
+                     currentQuizzes.map((quiz) => (
+                       <tr key={quiz.id} className="border-b hover:bg-gray-50">
+                         <td className="py-4 px-4">
+                           <span className="bg-blue-100 text-blue-800 text-[10px] font-black px-2 py-0.5 rounded uppercase">Level {quiz.level || 1}</span>
+                           <p className="font-bold text-[#083344] mt-1">{quiz.pertanyaan}</p>
+                         </td>
+                         <td className="py-4 px-4 font-black text-[#A8C338]">
+                           {quiz.jawabanBenar}
+                         </td>
+                         <td className="py-4 px-4 text-center whitespace-nowrap">
+                           <button onClick={() => handleEditQuiz(quiz)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                           <button onClick={() => handleDeleteQuiz(quiz.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
                          </td>
                        </tr>
-                     )}
-                   </tbody>
-                </table>
-              </div>
+                     ))
+                   ) : (
+                     <tr>
+                       <td colSpan="3" className="p-6 text-center text-gray-400 font-medium">
+                         {showTables ? 'Tidak ada soal kuis tersimpan.' : 'Tampilan disembunyikan. Klik "Tampilkan Kembali Table" untuk membuka.'}
+                       </td>
+                     </tr>
+                   )}
+                 </tbody>
+              </table>
             </div>
-            {showTables && totalPagesQuizzes > 1 && (
-              <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 rounded-b-xl mt-4">
-                <button onClick={() => setCurrentPageQuizzes(p => Math.max(p - 1, 1))} disabled={currentPageQuizzes === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">← Sebelumnya</button>
-                <span className="text-xs font-bold text-gray-600">Hal {currentPageQuizzes} dari {totalPagesQuizzes}</span>
-                <button onClick={() => setCurrentPageQuizzes(p => Math.min(p + 1, totalPagesQuizzes))} disabled={currentPageQuizzes === totalPagesQuizzes} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">Selanjutnya →</button>
-              </div>
-            )}
           </div>
+
+          {showTables && totalPagesQuizzes > 1 && (
+            <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 rounded-b-xl mt-4">
+              <button onClick={() => setCurrentPageQuizzes(p => Math.max(p - 1, 1))} disabled={currentPageQuizzes === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">← Sebelumnya</button>
+              <span className="text-xs font-bold text-gray-600">Hal {currentPageQuizzes} dari {totalPagesQuizzes}</span>
+              <button onClick={() => setCurrentPageQuizzes(p => Math.min(p + 1, totalPagesQuizzes))} disabled={currentPageQuizzes === totalPagesQuizzes} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">Selanjutnya →</button>
+            </div>
+          )}
         </div>
       </div>
 

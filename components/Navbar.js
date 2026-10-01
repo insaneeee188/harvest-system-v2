@@ -86,11 +86,8 @@ export default function Navbar() {
               <Link href="/academy" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Harvest Academy</Link>
               <Link href="/events" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Event</Link>
               <Link href="/contest" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Contest</Link>
-              
-              {/* LINK PRODUCTION REPORT */}
-              <Link href="/production-report" className="text-white hover:text-[#A8C338] text-sm font-bold transition">
-                Production Report
-              </Link>
+              <Link href="/promo-nasabah" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Promo Nasabah</Link>
+              <Link href="/production-report" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Production Report</Link>
               
               <div className="flex items-center gap-4 ml-4 border-l border-white/20 pl-6">
                 
@@ -205,7 +202,7 @@ export default function Navbar() {
                   </button>
                   {isProfileDropdownOpen && (
                     <div className="absolute right-0 mt-3 w-52 bg-white rounded-xl shadow-xl py-2 border border-gray-100 z-50">
-                      <Link href="/production-report" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">📊 Production Report</Link>
+                      {/* Dihapus Production Report dari sini agar tidak ganda dengan yang ada di burger menu */}
                       {userData?.role === 'admin' && (
                         <>
                           <Link href="/admin" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">
@@ -237,12 +234,10 @@ export default function Navbar() {
               aria-label="Toggle Navigation Menu"
             >
               {isMobileMenuOpen ? (
-                /* Ikon Silang (Close) */
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               ) : (
-                /* Ikon Burger (Three lines) */
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
@@ -274,6 +269,10 @@ export default function Navbar() {
                 </Link>
                 <Link href="/production-report" onClick={closeAll} className="block px-4 py-2.5 rounded-xl text-white hover:bg-white/10 hover:text-[#A8C338] transition">
                   📊 Production Report
+                </Link>
+                {/* MENU PROMO NASABAH MOBILE */}
+                <Link href="/promo-nasabah" onClick={closeAll} className="block px-4 py-2.5 rounded-xl text-white hover:bg-white/10 hover:text-[#A8C338] transition">
+                  🏷️ Promo Nasabah
                 </Link>
               </>
             ) : (

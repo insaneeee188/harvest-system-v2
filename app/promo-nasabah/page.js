@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { auth, db } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -47,90 +47,94 @@ export default function PromoNasabahPage() {
         if (isMounted) router.push('/login');
         return;
       }
-      
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists() && isMounted) {
-        setUserData(userDoc.data());
 
-        // Fetch Data Promo/Contest dari Firestore
-        const snapPromos = await getDocs(collection(db, 'agency_contests'));
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists() && isMounted) {
+          setUserData(userDoc.data());
 
-        if (isMounted) {
-          // KHUSUS: Filter hanya mengambil tipe 'promo'
-          const rawPromos = snapPromos.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(i => i.type === 'promo');
+          // PERBAIKAN: Fetch Data Promo langsung dari collection 'promo_nasabah'
+          const snapPromos = await getDocs(collection(db, 'promo_nasabah'));
 
-          // LOGIKA PENGURUTAN PRIORITAS PROMO (DURASI SINGKAT & MENDEKATI HARI INI)
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
+          if (isMounted) {
+            const rawPromos = snapPromos.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-          const sortedPromos = rawPromos.sort((a, b) => {
-            const startA = a.startDate ? new Date(`${a.startDate}T00:00:00`) : new Date(a.createdAt || 0);
-            const endA = a.endDate || a.tanggalSelesai ? new Date(`${a.endDate || a.tanggalSelesai}T23:59:59`) : new Date(8640000000000000);
+            // LOGIKA PENGURUTAN PRIORITAS PROMO
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
-            const startB = b.startDate ? new Date(`${b.startDate}T00:00:00`) : new Date(b.createdAt || 0);
-            const endB = b.endDate || b.tanggalSelesai ? new Date(`${b.endDate || b.tanggalSelesai}T23:59:59`) : new Date(8640000000000000);
+            const sortedPromos = rawPromos.sort((a, b) => {
+              const startA = a.startDate ? new Date(`${a.startDate}T00:00:00`) : new Date(a.createdAt || 0);
+              const endA = a.endDate || a.tanggalSelesai ? new Date(`${a.endDate || a.tanggalSelesai}T23:59:59`) : new Date(8640000000000000);
 
-            const isRunningA = today >= startA && today <= endA;
-            const isRunningB = today >= startB && today <= endB;
+              const startB = b.startDate ? new Date(`${b.startDate}T00:00:00`) : new Date(b.createdAt || 0);
+              const endB = b.endDate || b.tanggalSelesai ? new Date(`${b.endDate || b.tanggalSelesai}T23:59:59`) : new Date(8640000000000000);
 
-            const isUpcomingA = today < startA;
-            const isUpcomingB = today < startB;
+              const isRunningA = today >= startA && today <= endA;
+              const isRunningB = today >= startB && today <= endB;
 
-            // 1. DAHULUKAN PROMO YANG SEDANG BERLANGSUNG
-            if (isRunningA && isRunningB) {
-              const remainingA = endA - today;
-              const remainingB = endB - today;
-              
-              const durationA = endA - startA;
-              const durationB = endB - startB;
+              const isUpcomingA = today < startA;
+              const isUpcomingB = today < startB;
 
-              if (remainingA !== remainingB) return remainingA - remainingB;
-              if (durationA !== durationB) return durationA - durationB;
+              // 1. DAHULUKAN PROMO YANG SEDANG BERLANGSUNG
+              if (isRunningA && isRunningB) {
+                const remainingA = endA - today;
+                const remainingB = endB - today;
+                const durationA = endA - startA;
+                const durationB = endB - startB;
 
+                if (remainingA !== remainingB) return remainingA - remainingB;
+                if (durationA !== durationB) return durationA - durationB;
+
+                return (a.judul || '').localeCompare(b.judul || '');
+              }
+              if (isRunningA) return -1;
+              if (isRunningB) return 1;
+
+              // 2. PROMO AKAN DATANG (UPCOMING)
+              if (isUpcomingA && isUpcomingB) {
+                const diffStart = startA - startB;
+                if (diffStart !== 0) return diffStart;
+
+                const durationA = endA - startA;
+                const durationB = endB - startB;
+                if (durationA !== durationB) return durationA - durationB;
+
+                return (a.judul || '').localeCompare(b.judul || '');
+              }
+              if (isUpcomingA) return -1;
+              if (isUpcomingB) return 1;
+
+              // 3. PROMO SUDAH BERAKHIR
+              const endDiff = endB - endA;
+              if (endDiff !== 0) return endDiff;
               return (a.judul || '').localeCompare(b.judul || '');
-            }
-            if (isRunningA) return -1;
-            if (isRunningB) return 1;
+            });
 
-            // 2. PROMO AKAN DATANG (UPCOMING)
-            if (isUpcomingA && isUpcomingB) {
-              const diffStart = startA - startB;
-              if (diffStart !== 0) return diffStart;
+            setPromosList(sortedPromos);
 
-              const durationA = endA - startA;
-              const durationB = endB - startB;
-              if (durationA !== durationB) return durationA - durationB;
+            const uniqueTargets = Array.from(
+              new Set(['Semua', ...sortedPromos.map(c => c.target).filter(Boolean)])
+            );
+            const uniqueKategoris = Array.from(
+              new Set(['Semua', ...sortedPromos.map(c => c.kategori).filter(Boolean)])
+            );
 
-              return (a.judul || '').localeCompare(b.judul || '');
-            }
-            if (isUpcomingA) return -1;
-            if (isUpcomingB) return 1;
-
-            // 3. PROMO SUDAH BERAKHIR
-            const endDiff = endB - endA;
-            if (endDiff !== 0) return endDiff;
-            return (a.judul || '').localeCompare(b.judul || '');
-          });
-
-          setPromosList(sortedPromos);
-
-          const uniqueTargets = Array.from(
-            new Set(['Semua', ...sortedPromos.map(c => c.target).filter(Boolean)])
-          );
-          const uniqueKategoris = Array.from(
-            new Set(['Semua', ...sortedPromos.map(c => c.kategori).filter(Boolean)])
-          );
-
-          setAvailableTargets(uniqueTargets);
-          setAvailableKategori(uniqueKategoris);
+            setAvailableTargets(uniqueTargets);
+            setAvailableKategori(uniqueKategoris);
+          }
         }
+      } catch (error) {
+        console.error("Error fetching promo data:", error);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      if (isMounted) setLoading(false);
     });
 
-    return () => { isMounted = false; unsubscribe(); };
+    return () => { 
+      isMounted = false; 
+      unsubscribe(); 
+    };
   }, [router]);
 
   // LOGIKA FILTER
@@ -139,6 +143,11 @@ export default function PromoNasabahPage() {
     const matchTarget = filterTarget === 'Semua' || (pro.target || '').toLowerCase() === filterTarget.toLowerCase();
     return matchKategori && matchTarget;
   });
+
+  // Filter khusus untuk panel Side Highlight (Prioritaskan promo yang dicentang isHighlight oleh Admin)
+  const highlightPromos = filteredPromos.filter(pro => pro.isHighlight).length > 0
+    ? filteredPromos.filter(pro => pro.isHighlight)
+    : filteredPromos;
 
   // LOGIKA PAGINATION GRID UTAMA (KIRI)
   const indexOfLastPromo = currentPage * promosPerPage;
@@ -149,8 +158,8 @@ export default function PromoNasabahPage() {
   // LOGIKA PAGINATION HIGHLIGHT (KANAN)
   const indexOfLastHighlight = highlightPage * highlightsPerPage;
   const indexOfFirstHighlight = indexOfLastHighlight - highlightsPerPage;
-  const currentHighlights = filteredPromos.slice(indexOfFirstHighlight, indexOfLastHighlight);
-  const totalHighlightPages = Math.ceil(filteredPromos.length / highlightsPerPage);
+  const currentHighlights = highlightPromos.slice(indexOfFirstHighlight, indexOfLastHighlight);
+  const totalHighlightPages = Math.ceil(highlightPromos.length / highlightsPerPage);
 
   // Reset Halaman saat Filter Berubah
   useEffect(() => {
@@ -170,6 +179,7 @@ export default function PromoNasabahPage() {
     setSelectedPromo(null);
     setZoomScale(1);
     setDragPos({ x: 0, y: 0 });
+    setIsDragging(false);
   };
 
   // KONTROL ZOOM & PANNING
@@ -186,20 +196,42 @@ export default function PromoNasabahPage() {
     setDragPos({ x: 0, y: 0 });
   };
 
+  // EVENT LISTENER GLOBAL UNTUK MENCEGAH MOUSE/TOUCH STUCK
+  const handleMouseMoveGlobal = useCallback((e) => {
+    if (isDragging && zoomScale > 1) {
+      setDragPos({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+    }
+  }, [isDragging, zoomScale, dragStart]);
+
+  const handleMouseUpGlobal = useCallback(() => {
+    setIsDragging(false);
+    touchStartDist.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMoveGlobal);
+      window.addEventListener('mouseup', handleMouseUpGlobal);
+      window.addEventListener('touchend', handleMouseUpGlobal);
+    } else {
+      window.removeEventListener('mousemove', handleMouseMoveGlobal);
+      window.removeEventListener('mouseup', handleMouseUpGlobal);
+      window.removeEventListener('touchend', handleMouseUpGlobal);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMoveGlobal);
+      window.removeEventListener('mouseup', handleMouseUpGlobal);
+      window.removeEventListener('touchend', handleMouseUpGlobal);
+    };
+  }, [isDragging, handleMouseMoveGlobal, handleMouseUpGlobal]);
+
   const handleMouseDown = (e) => {
     if (zoomScale > 1) {
       setIsDragging(true);
       setDragStart({ x: e.clientX - dragPos.x, y: e.clientY - dragPos.y });
     }
   };
-
-  const handleMouseMove = (e) => {
-    if (isDragging && zoomScale > 1) {
-      setDragPos({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
-    }
-  };
-
-  const handleMouseUp = () => setIsDragging(false);
 
   const handleTouchStart = (e) => {
     if (e.touches.length === 2) {
@@ -249,14 +281,14 @@ export default function PromoNasabahPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans">
-      
+
       {/* BANNER UTAMA */}
       <div className="max-w-[1400px] mx-auto px-4 pt-8">
         <div className="bg-[#083344] rounded-3xl p-8 md:p-10 text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
           <div className="z-10 flex-1">
             <h1 className="text-3xl md:text-5xl font-black mb-2 flex items-center gap-3">🏷️ PROMO NASABAH</h1>
           </div>
-          
+
           <div className="z-10 flex flex-col items-end gap-3 w-full md:w-auto">
             {/* Filter Target */}
             {availableTargets.length > 1 && (
@@ -293,7 +325,7 @@ export default function PromoNasabahPage() {
 
       <div className="max-w-[1400px] mx-auto px-4 mt-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          
+
           {/* KIRI: GRID PROMO */}
           <div className="lg:col-span-2 space-y-6">
             {filteredPromos.length > 0 ? (
@@ -308,7 +340,7 @@ export default function PromoNasabahPage() {
                       <div className="h-48 bg-gray-100 relative overflow-hidden border-b border-gray-100">
                         {promo.posterUrl ? <img src={promo.posterUrl} alt={promo.judul} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center text-gray-400">Gambar Promo</div>}
                       </div>
-                      
+
                       <div className="p-6 text-center flex flex-col flex-grow">
                         <h3 className="font-black text-[#083344] text-xl leading-tight mb-4 uppercase">{promo.judul}</h3>
                         <div className="text-left space-y-2 mb-6 text-xs text-gray-600 font-bold px-2">
@@ -370,7 +402,7 @@ export default function PromoNasabahPage() {
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-4 pb-3 border-b">
                 <h3 className="font-black text-[#083344] text-lg">📌 Highlight Promo</h3>
-                
+
                 {totalHighlightPages > 1 && (
                   <div className="flex items-center gap-1">
                     <button
@@ -428,7 +460,7 @@ export default function PromoNasabahPage() {
       {isModalOpen && selectedPromo && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-[#083344]/80 backdrop-blur-md animate-fade-in">
           <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl relative flex flex-col overflow-hidden max-h-[90vh]">
-            
+
             <button
               onClick={closeModal}
               className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white w-10 h-10 rounded-full font-black flex items-center justify-center shadow-2xl z-50 transition-transform hover:scale-110"
@@ -439,17 +471,13 @@ export default function PromoNasabahPage() {
             <div
               className="relative w-full h-[50vh] sm:h-[55vh] bg-black overflow-hidden flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
               onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
-              onTouchEnd={handleMouseUp}
             >
               <img
                 src={selectedPromo.posterUrl || 'https://placehold.co/800x600/083344/ffffff?text=Poster'}
                 alt="Poster Promo"
-                className="max-h-full max-w-full object-contain transition-transform duration-100 ease-out pointer-events-none"
+                className="max-h-full max-w-full object-contain transition-transform duration-75 ease-out pointer-events-none"
                 style={{
                   transform: `translate(${dragPos.x}px, ${dragPos.y}px) scale(${zoomScale})`
                 }}
@@ -472,11 +500,11 @@ export default function PromoNasabahPage() {
                   {selectedPromo.kategori || 'Nasabah'}
                 </span>
               </div>
-              
+
               <div className="text-gray-600 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-justify">
                 {selectedPromo.deskripsi || 'Saksikan dan nikmati promo menarik ini!'}
               </div>
-              
+
               <div className="bg-gray-50 border border-gray-100 p-3.5 rounded-2xl space-y-1 text-xs font-bold text-gray-700">
                 <p>🗓️ Periode Promo: <span className="font-semibold text-gray-500">{selectedPromo.periode || 'Sesuai ketentuan'}</span></p>
                 <p>🎯 Target Peserta: <span className="font-semibold text-gray-500">{selectedPromo.target || 'Semua Nasabah'}</span></p>

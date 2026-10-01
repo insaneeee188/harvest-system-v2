@@ -32,6 +32,13 @@ export async function POST(req) {
         rawData.unit
       ) {
         notificationType = 'approval'; // Deteksi otomatis pendaftaran user/agen baru
+      } else if (
+        rawData.isPromo || 
+        rawData.promo || 
+        rawData.promoName || 
+        rawData.promo_title
+      ) {
+        notificationType = 'promo'; // Deteksi otomatis promo nasabah
       } else {
         notificationType = 'event';
       }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase'; // Sesuaikan lokasi penyiapan Firebase kamu
+import { db } from '../../../firebase'; // Sesuaikan lokasi penyiapan Firebase kamu
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export async function POST(request) {

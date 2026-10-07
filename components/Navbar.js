@@ -87,6 +87,7 @@ export default function Navbar() {
               <Link href="/events" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Event</Link>
               <Link href="/contest" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Contest</Link>
               <Link href="/promo-nasabah" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Promo Nasabah</Link>
+              <Link href="/extra-komisi" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Extra Komisi</Link>
               <Link href="/production-report" className="text-white hover:text-[#A8C338] text-sm font-bold transition">Production Report</Link>
               
               <div className="flex items-center gap-4 ml-4 border-l border-white/20 pl-6">
@@ -202,7 +203,6 @@ export default function Navbar() {
                   </button>
                   {isProfileDropdownOpen && (
                     <div className="absolute right-0 mt-3 w-52 bg-white rounded-xl shadow-xl py-2 border border-gray-100 z-50">
-                      {/* Dihapus Production Report dari sini agar tidak ganda dengan yang ada di burger menu */}
                       {userData?.role === 'admin' && (
                         <>
                           <Link href="/admin" onClick={closeAll} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 font-bold">
@@ -267,12 +267,15 @@ export default function Navbar() {
                 <Link href="/contest" onClick={closeAll} className="block px-4 py-2.5 rounded-xl text-white hover:bg-white/10 hover:text-[#A8C338] transition">
                   🏆 Contest
                 </Link>
-                <Link href="/production-report" onClick={closeAll} className="block px-4 py-2.5 rounded-xl text-white hover:bg-white/10 hover:text-[#A8C338] transition">
-                  📊 Production Report
-                </Link>
-                {/* MENU PROMO NASABAH MOBILE */}
                 <Link href="/promo-nasabah" onClick={closeAll} className="block px-4 py-2.5 rounded-xl text-white hover:bg-white/10 hover:text-[#A8C338] transition">
                   🏷️ Promo Nasabah
+                </Link>
+                {/* MENU EXTRA KOMISI MOBILE */}
+                <Link href="/extra-komisi" onClick={closeAll} className="block px-4 py-2.5 rounded-xl text-white hover:bg-white/10 hover:text-[#A8C338] transition">
+                  💸 Extra Komisi
+                </Link>
+                <Link href="/production-report" onClick={closeAll} className="block px-4 py-2.5 rounded-xl text-white hover:bg-white/10 hover:text-[#A8C338] transition">
+                  📊 Production Report
                 </Link>
               </>
             ) : (

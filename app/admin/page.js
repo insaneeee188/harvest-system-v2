@@ -56,6 +56,14 @@ export default function AdminDashboardPage() {
     return new Date().toISOString().split('T')[0];
   };
 
+  // Helper Smooth Scroll
+  const scrollToSection = (id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   // --- USERS STATES & PAGINATION ---
   const [usersList, setUsersList] = useState([]);
   const [currentPageUsers, setCurrentPageUsers] = useState(1);
@@ -121,6 +129,30 @@ export default function AdminDashboardPage() {
   const [periodeContest, setPeriodeContest] = useState('');
   const [tanggalSelesaiContest, setTanggalSelesaiContest] = useState(getDefaultOneMonthLater());
   const [isSubmittingContest, setIsSubmittingContest] = useState(false);
+
+  // --- EXTRA KOMISI STATES & PAGINATION ---
+  const [extraKomisiList, setExtraKomisiList] = useState([]);
+  const [currentPageExtra, setCurrentPageExtra] = useState(1);
+  const extraPerPage = 5;
+  const indexOfLastExtra = currentPageExtra * extraPerPage;
+  const indexOfFirstExtra = indexOfLastExtra - extraPerPage;
+  const currentExtra = Array.isArray(extraKomisiList)
+    ? extraKomisiList.slice(indexOfFirstExtra, indexOfLastExtra)
+    : [];
+  const totalPagesExtra = Array.isArray(extraKomisiList)
+    ? Math.ceil(extraKomisiList.length / extraPerPage) || 1
+    : 1;
+
+  const [editExtraId, setEditExtraId] = useState(null);
+  const [judulExtra, setJudulExtra] = useState('');
+  const [deskripsiExtra, setDeskripsiExtra] = useState('');
+  const [posterExtra, setPosterExtra] = useState('');
+  const [kategoriExtra, setKategoriExtra] = useState('Agency'); 
+  const [targetExtra, setTargetExtra] = useState('Semua');
+  const [startDateExtra, setStartDateExtra] = useState(getTodayDate());
+  const [periodeExtra, setPeriodeExtra] = useState('');
+  const [tanggalSelesaiExtra, setTanggalSelesaiExtra] = useState(getDefaultOneMonthLater());
+  const [isSubmittingExtra, setIsSubmittingExtra] = useState(false);
 
   // --- ACHIEVER STATES & PAGINATION ---
   const [achieversList, setAchieversList] = useState([]);
@@ -289,9 +321,10 @@ export default function AdminDashboardPage() {
       const data = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
 
       setContestsList(data.filter(i => i.type === 'contest'));
+      setExtraKomisiList(data.filter(i => i.type === 'extra_komisi'));
       setAchieversList(data.filter(i => i.type === 'achiever'));
     } catch (e) {
-      console.error("Gagal mengambil data kontes:", e);
+      console.error("Gagal mengambil data kontes & extra komisi:", e);
     }
   }, []);
 
@@ -504,8 +537,7 @@ export default function AdminDashboardPage() {
     setBadgePromo(item.badge || '');
     setIsHighlightPromo(item.isHighlight || false);
 
-    const el = document.getElementById("form-promo");
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    scrollToSection("form-promo");
   };
 
   const handleDeletePromo = async (id) => {
@@ -557,7 +589,7 @@ export default function AdminDashboardPage() {
             message: deskripsiContest || 'Ayo ikuti contest terbaru dari Harvest!',
             type: 'contest',
             target: targetContest,
-            link: '/contests',
+            link: '/contest',
             createdAt: new Date().toISOString(),
             isRead: false
           });
@@ -576,7 +608,7 @@ export default function AdminDashboardPage() {
                 period: periodeContest,
                 posterUrl: posterContest,
                 deskripsi: deskripsiContest,
-                link: 'https://harvestlms.vercel.app/contests',
+                link: 'https://harvestlms.vercel.app/contest',
                 target: targetContest
               }
             })
@@ -607,8 +639,102 @@ export default function AdminDashboardPage() {
     setPeriodeContest(item.periode || '');
     setTanggalSelesaiContest(item.tanggalSelesai || item.endDate || getDefaultOneMonthLater());
     
-    const el = document.getElementById("form-contest");
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    scrollToSection("form-contest");
+  };
+
+  // --- HANDLERS EXTRA KOMISI ---
+  const resetExtraForm = () => {
+    setEditExtraId(null);
+    setJudulExtra('');
+    setDeskripsiExtra('');
+    setPosterExtra('');
+    setKategoriExtra('Agency');
+    setTargetExtra('Semua');
+    setStartDateExtra(getTodayDate());
+    setPeriodeExtra('');
+    setTanggalSelesaiExtra(getDefaultOneMonthLater());
+  };
+
+  const handleSaveExtra = async (e) => {
+    e.preventDefault();
+    setIsSubmittingExtra(true);
+    const payload = {
+      type: 'extra_komisi',
+      judul: judulExtra,
+      deskripsi: deskripsiExtra,
+      posterUrl: posterExtra,
+      kategori: kategoriExtra,
+      target: targetExtra,
+      startDate: startDateExtra,
+      endDate: tanggalSelesaiExtra,
+      tanggalSelesai: tanggalSelesaiExtra,
+      periode: periodeExtra
+    };
+
+    try {
+      if (editExtraId) {
+        await updateDoc(doc(db, 'agency_contests', editExtraId), { ...payload, updatedAt: new Date().toISOString() });
+        alert("Extra Komisi berhasil diperbarui!");
+      } else {
+        await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
+
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            title: `💰 Promo Extra Komisi: ${judulExtra}`,
+            message: deskripsiExtra || 'Kesempatan ekstra komisi baru!',
+            type: 'extra_komisi',
+            target: targetExtra,
+            link: '/extra-komisi',
+            createdAt: new Date().toISOString(),
+            isRead: false
+          });
+        } catch (webNotifErr) {
+          console.error("Gagal menyimpan notifikasi web:", webNotifErr);
+        }
+
+        try {
+          await fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'extra_komisi',
+              data: {
+                title: judulExtra,
+                period: periodeExtra,
+                posterUrl: posterExtra,
+                deskripsi: deskripsiExtra,
+                link: 'https://harvestlms.vercel.app/extra-komisi',
+                target: targetExtra
+              }
+            })
+          });
+        } catch (notifyErr) {
+          console.error("Gagal mengirim notifikasi Telegram:", notifyErr);
+        }
+
+        alert("Extra Komisi berhasil ditambahkan!");
+      }
+      resetExtraForm();
+      fetchContestsAndAchievers();
+    } catch (err) {
+      alert("Gagal menyimpan Extra Komisi.");
+    } finally {
+      setIsSubmittingExtra(false);
+    }
+  };
+
+  const handleEditExtra = (item) => {
+    setEditExtraId(item.id);
+    setJudulExtra(item.judul || '');
+    setDeskripsiExtra(item.deskripsi || '');
+    setPosterExtra(item.posterUrl || '');
+    setKategoriExtra(item.kategori || 'Agency');
+    setTargetExtra(item.target || 'Semua');
+    setStartDateExtra(item.startDate || getTodayDate());
+    setPeriodeExtra(item.periode || '');
+    setTanggalSelesaiExtra(item.tanggalSelesai || item.endDate || getDefaultOneMonthLater());
+
+    scrollToSection("form-extra-komisi");
   };
 
   // --- HANDLERS ACHIEVER ---
@@ -667,8 +793,7 @@ export default function AdminDashboardPage() {
     setFoto3(item.foto3 || ''); setNama3(item.nama3 || '');
     setScale3(item.scale3 ?? 1); setOffsetY3(item.offsetY3 ?? 0);
     
-    const el = document.getElementById("form-achiever");
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    scrollToSection("form-achiever");
   };
   
   // --- HANDLERS EVENT / TRAINING ---
@@ -772,8 +897,7 @@ export default function AdminDashboardPage() {
     setLinkZoomEvent(item.linkZoom || '');
     setPosterEvent(item.posterUrl || '');
     
-    const el = document.getElementById("form-event");
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    scrollToSection("form-event");
   };
 
   // --- HANDLERS DOKUMEN ---
@@ -853,8 +977,7 @@ export default function AdminDashboardPage() {
     setTipeDoc(item.tipe || 'video');
     setLinkDoc(item.link || '');
     
-    const el = document.getElementById("form-doc");
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    scrollToSection("form-doc");
   };
 
   // --- HANDLERS MODULES & QUIZZES ---
@@ -909,8 +1032,7 @@ export default function AdminDashboardPage() {
     setListMateri(modul.materi ? modul.materi.join('\n') : ''); 
     setListVideo(modul.video ? modul.video.join('\n') : '');
 
-    const el = document.getElementById("form-modul"); 
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    scrollToSection("form-modul"); 
   };
 
   const resetQuizForm = () => {
@@ -958,8 +1080,7 @@ export default function AdminDashboardPage() {
     setKuisD(kuis.pilihan?.D || '');
     setKuisJawabanBenar(kuis.jawabanBenar || 'A');
 
-    const el = document.getElementById("form-kuis");
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    scrollToSection("form-kuis");
   };
 
   // --- DELETE HANDLERS ---
@@ -1008,23 +1129,102 @@ export default function AdminDashboardPage() {
     <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 py-8 space-y-10 bg-gray-50 min-h-screen overflow-x-hidden">
       
       {/* HEADER DASHBOARD DENGAN TOMBOL TOGGLE TAMPILAN */}
-      <div className="bg-[#083344] p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="bg-[#083344] p-6 sm:p-8 rounded-3xl shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white">🛡️ Pusat Kendali Admin</h1>
-          <p className="text-gray-300 text-sm mt-1">Kelola Seluruh Sistem Harvest: Promo Nasabah, Contest, Event, Library, Academy, & Kuis.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
+            🛡️ Pusat Kendali Admin
+          </h1>
+          <p className="text-gray-300 text-xs sm:text-sm mt-1">
+            Kelola Seluruh Sistem Harvest: Promo Nasabah, Contest, Event, Library, Academy, & Kuis.
+          </p>
         </div>
         
         <button 
           type="button"
           onClick={() => setShowTables(!showTables)}
-          className="bg-white/10 text-white border border-white/20 px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/20 transition whitespace-nowrap"
+          className="bg-white/10 text-white border border-white/20 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-white/20 transition whitespace-nowrap shadow-sm"
         >
-          {showTables ? '🧹 Bersihkan Tampilan Table' : '👁️ Tampilkan Kembali Table'}
+          {showTables ? '✏️ Bersihkan Tampilan Table' : '👁️ Tampilkan Kembali Table'}
+        </button>
+      </div>
+
+      {/* GRID TOMBOL SHORTCUT NAVIGASI ADMIN PANEL (DESAIN PERSIS GAMBAR USER) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <button 
+          onClick={() => scrollToSection('approval-section')} 
+          className="bg-white hover:bg-gray-50 border-2 border-gray-800 text-gray-900 font-black text-lg py-5 px-6 rounded-2xl shadow-sm transition-transform active:scale-95 text-center flex items-center justify-center min-h-[70px]"
+        >
+          Persetujuan Agen
+        </button>
+
+        <button 
+          onClick={() => scrollToSection('form-doc')} 
+          className="bg-white hover:bg-gray-50 border-2 border-gray-800 text-gray-900 font-black text-lg py-5 px-6 rounded-2xl shadow-sm transition-transform active:scale-95 text-center flex items-center justify-center min-h-[70px]"
+        >
+          Dokumen /Training
+        </button>
+
+        <button 
+          onClick={() => scrollToSection('form-contest')} 
+          className="bg-white hover:bg-gray-50 border-2 border-gray-800 text-gray-900 font-black text-lg py-5 px-6 rounded-2xl shadow-sm transition-transform active:scale-95 text-center flex items-center justify-center min-h-[70px]"
+        >
+          Input Contest
+        </button>
+
+        <button 
+          onClick={() => scrollToSection('form-promo')} 
+          className="bg-white hover:bg-gray-50 border-2 border-gray-800 text-gray-900 font-black text-lg py-5 px-6 rounded-2xl shadow-sm transition-transform active:scale-95 text-center flex items-center justify-center min-h-[70px]"
+        >
+          Input Promo Nasabah
+        </button>
+
+        <button 
+          onClick={() => scrollToSection('form-modul')} 
+          className="bg-white hover:bg-gray-50 border-2 border-gray-800 text-gray-900 font-black text-lg py-5 px-6 rounded-2xl shadow-sm transition-transform active:scale-95 text-center flex items-center justify-center min-h-[70px]"
+        >
+          Manajemen Learning Path
+        </button>
+
+        <button 
+          onClick={() => scrollToSection('form-extra-komisi')} 
+          className="bg-white hover:bg-gray-50 border-2 border-gray-800 text-gray-900 font-black text-lg py-5 px-6 rounded-2xl shadow-sm transition-transform active:scale-95 text-center flex items-center justify-center min-h-[70px]"
+        >
+          Extra Komisi
+        </button>
+
+        <button 
+          onClick={() => scrollToSection('form-achiever')} 
+          className="bg-white hover:bg-gray-50 border-2 border-gray-800 text-gray-900 font-black text-lg py-5 px-6 rounded-2xl shadow-sm transition-transform active:scale-95 text-center flex items-center justify-center min-h-[70px]"
+        >
+          Input Top Achiever
+        </button>
+
+        <button 
+          onClick={() => scrollToSection('form-modul')} 
+          className="bg-white hover:bg-gray-50 border-2 border-gray-800 text-gray-900 font-black text-lg py-5 px-6 rounded-2xl shadow-sm transition-transform active:scale-95 text-center flex items-center justify-center min-h-[70px]"
+        >
+          Daftar Modul
+        </button>
+
+        <div className="hidden lg:block"></div>
+
+        <button 
+          onClick={() => scrollToSection('form-event')} 
+          className="bg-white hover:bg-gray-50 border-2 border-gray-800 text-gray-900 font-black text-lg py-5 px-6 rounded-2xl shadow-sm transition-transform active:scale-95 text-center flex items-center justify-center min-h-[70px]"
+        >
+          Tambahkan Kegiatan
+        </button>
+
+        <button 
+          onClick={() => scrollToSection('form-kuis')} 
+          className="bg-white hover:bg-gray-50 border-2 border-gray-800 text-gray-900 font-black text-lg py-5 px-6 rounded-2xl shadow-sm transition-transform active:scale-95 text-center flex items-center justify-center min-h-[70px]"
+        >
+          Input Kuis
         </button>
       </div>
 
       {/* 1. APPROVAL USER */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm w-full overflow-hidden">
+      <div id="approval-section" className="bg-white rounded-2xl border border-gray-200 shadow-sm w-full overflow-hidden">
         <div className="p-4 sm:p-6 border-b border-gray-200 flex justify-between items-center flex-wrap gap-2">
           <h2 className="text-lg font-bold text-[#083344] flex items-center gap-2">
             🔐 Persetujuan Agen Baru
@@ -1241,7 +1441,150 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 3. AGENCY CONTEST */}
+      {/* 3. EXTRA KOMISI (FORM & TABEL BARU) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div id="form-extra-komisi" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="font-bold text-lg text-[#083344]">💸 {editExtraId ? 'Edit Extra Komisi' : 'Input Extra Komisi'}</h2>
+            {editExtraId && <button type="button" onClick={resetExtraForm} className="text-xs bg-gray-200 px-2.5 py-1 rounded-md font-bold">Batal Edit</button>}
+          </div>
+          <form onSubmit={handleSaveExtra} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Judul Extra Komisi</label>
+              <input type="text" required value={judulExtra} onChange={(e) => setJudulExtra(e.target.value)} placeholder="Contoh: EXTRA KOMISI 10% ALL PRODUCT" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Deskripsi / Ketentuan</label>
+              <textarea required value={deskripsiExtra} onChange={(e) => setDeskripsiExtra(e.target.value)} placeholder="Masukkan deskripsi promo ekstra komisi di sini..." className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 h-24"></textarea>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Kategori</label>
+                <select value={kategoriExtra} onChange={(e) => setKategoriExtra(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50">
+                  <option value="Agency">Agency</option>
+                  <option value="Prudential">Prudential</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Target</label>
+                <select value={targetExtra} onChange={(e) => setTargetExtra(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50">
+                  <option value="Semua">Semua</option>
+                  <option value="Agent">Agent</option>
+                  <option value="Leader">Leader</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Periode (Teks Tampilan)</label>
+              <input type="text" value={periodeExtra} onChange={(e) => setPeriodeExtra(e.target.value)} placeholder="Contoh: 1 - 31 Oktober 2026" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Mulai</label>
+                <input 
+                  type="date" 
+                  required 
+                  value={startDateExtra} 
+                  onChange={(e) => setStartDateExtra(e.target.value)} 
+                  className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Selesai</label>
+                <input 
+                  type="date" 
+                  required 
+                  value={tanggalSelesaiExtra} 
+                  onChange={(e) => setTanggalSelesaiExtra(e.target.value)} 
+                  className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 font-bold" 
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Link Gambar Poster</label>
+              <input type="url" required value={posterExtra} onChange={(e) => setPosterExtra(e.target.value)} placeholder="Contoh: https://link-gambar.com/poster-komisi.jpg" className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50" />
+            </div>
+            <div className="flex gap-2">
+              {editExtraId && (
+                <button
+                  type="button"
+                  onClick={resetExtraForm}
+                  className="w-1/3 bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm hover:bg-gray-300 transition"
+                >
+                  Batal Edit
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={isSubmittingExtra}
+                className={`w-full font-bold py-2.5 rounded-lg text-sm transition ${
+                  editExtraId ? 'bg-blue-600 text-white' : 'bg-[#A8C338] text-[#083344]'
+                }`}
+              >
+                {isSubmittingExtra
+                  ? 'Menyimpan...'
+                  : editExtraId
+                  ? 'Simpan Perubahan Extra Komisi'
+                  : 'Publish Extra Komisi'}
+              </button>
+            </div>
+          </form>
+        </div>
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-2 w-full overflow-hidden flex flex-col justify-between">
+          <div>
+            <h2 className="font-bold text-lg text-[#083344] mb-5">📋 Daftar Promo Extra Komisi</h2>
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm border-collapse min-w-[400px]">
+                 <thead>
+                   <tr className="bg-gray-50 border-y border-gray-200 text-gray-500">
+                     <th className="py-3 px-4 font-bold">NAMA EXTRA KOMISI</th>
+                     <th className="py-3 px-4 font-bold text-center">AKSI</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {showTables && currentExtra.length > 0 ? (
+                     currentExtra.map(item => (
+                       <tr key={item.id} className="border-b hover:bg-gray-50">
+                         <td className="py-4 px-4 font-bold text-[#083344]">
+                           {item.judul}
+                           <div className="text-[10px] font-normal text-gray-500 mt-1 flex flex-wrap gap-2">
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Kat: {item.kategori || 'Agency'}</span>
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Trg: {item.target || 'Semua'}</span>
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Per: {item.periode || '-'}</span>
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Mulai: {item.startDate || '-'}</span>
+                             <span className="bg-gray-100 px-2 py-0.5 rounded">Selesai: {item.tanggalSelesai || item.endDate || '-'}</span>
+                           </div>
+                         </td>
+                         <td className="py-4 px-4 text-center whitespace-nowrap">
+                           <button onClick={() => handleEditExtra(item)} className="text-blue-500 hover:bg-blue-50 font-bold px-2.5 py-1 rounded text-xs mr-1 border border-blue-100">Edit</button>
+                           <button onClick={() => handleDeleteContestOrAchiever(item.id)} className="text-red-500 hover:bg-red-50 font-bold px-2.5 py-1 rounded text-xs border border-red-100">Hapus</button>
+                         </td>
+                       </tr>
+                     ))
+                   ) : (
+                     <tr>
+                       <td colSpan="2" className="p-6 text-center text-gray-400 font-medium">
+                         {showTables ? 'Tidak ada data extra komisi.' : 'Tampilan disembunyikan. Klik "Tampilkan Kembali Table" untuk membuka.'}
+                       </td>
+                     </tr>
+                   )}
+                 </tbody>
+              </table>
+            </div>
+          </div>
+          {showTables && totalPagesExtra > 1 && (
+            <div className="p-4 border-t border-gray-200 flex justify-between items-center bg-gray-50 rounded-b-xl mt-4">
+              <button onClick={() => setCurrentPageExtra(p => Math.max(p - 1, 1))} disabled={currentPageExtra === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">← Sebelumnya</button>
+              <span className="text-xs font-bold text-gray-600">Hal {currentPageExtra} dari {totalPagesExtra}</span>
+              <button onClick={() => setCurrentPageExtra(p => Math.min(p + 1, totalPagesExtra))} disabled={currentPageExtra === totalPagesExtra} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-gray-100 transition">Selanjutnya →</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 4. AGENCY CONTEST */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-contest" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
           <div className="flex justify-between items-center mb-5">
@@ -1384,7 +1727,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 4. TOP ACHIEVER */}
+      {/* 5. TOP ACHIEVER */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-achiever" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
           <div className="flex justify-between items-center mb-5">
@@ -1580,7 +1923,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 5. EVENT / TRAINING */}
+      {/* 6. EVENT / TRAINING */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-event" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden h-fit">
           <div className="flex justify-between items-center mb-4">
@@ -1775,7 +2118,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 6. TAMBAH DOKUMEN / LIBRARY */}
+      {/* 7. TAMBAH DOKUMEN / LIBRARY */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-doc" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden h-fit">
           <div className="flex justify-between items-center mb-5">
@@ -1896,7 +2239,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 7. LEARNING PATH (ACADEMY MODUL) */}
+      {/* 8. LEARNING PATH (ACADEMY MODUL) */}
       <div id="form-modul" className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200 w-full overflow-hidden">
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-bold text-xl text-[#083344]">🎓 {editModuleId ? 'Edit Modul Pembelajaran' : 'Manajemen Learning Path'}</h2>
@@ -2013,7 +2356,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 8. QUIZZES MANAGEMENT */}
+      {/* 9. QUIZZES MANAGEMENT */}
       <div id="form-kuis" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
           <div className="flex justify-between items-center mb-5">

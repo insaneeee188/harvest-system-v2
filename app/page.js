@@ -765,12 +765,13 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* QUICK MENU */}
+     {/* QUICK MENU */}
       <div className="max-w-[1400px] mx-auto px-4 mt-8">
         <div className="flex items-center justify-between mb-4 px-1">
           <h2 className="text-sm font-black tracking-wider uppercase text-gray-400">Quick Navigation</h2>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-5">
+        {/* Diubah menjadi 8 kolom di layar besar (lg:grid-cols-8) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-5">
           
           <a
             href="#top-achievers"
@@ -830,7 +831,6 @@ export default function HomePage() {
             <p className="text-[11px] text-gray-400 mt-1">Laporan Produksi</p>
           </Link>
 
-          {/* MENU QUICK NAVIGATION BARU: PROMO NASABAH */}
           <Link href="/promo-nasabah" className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="w-14 h-14 rounded-2xl bg-lime-50 flex items-center justify-center text-3xl mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
@@ -838,6 +838,16 @@ export default function HomePage() {
             </div>
             <h3 className="font-extrabold text-[#083344] text-sm group-hover:text-lime-600 transition-colors">Promo Nasabah</h3>
             <p className="text-[11px] text-gray-400 mt-1">Penawaran Spesial</p>
+          </Link>
+
+          {/* MENU QUICK NAVIGATION BARU: EXTRA KOMISI */}
+          <Link href="/extra-komisi" className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-3xl mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+              💸
+            </div>
+            <h3 className="font-extrabold text-[#083344] text-sm group-hover:text-amber-600 transition-colors">Extra Komisi</h3>
+            <p className="text-[11px] text-gray-400 mt-1">Ekstra Komisi</p>
           </Link>
 
         </div>

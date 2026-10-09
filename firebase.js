@@ -3,7 +3,6 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// PASTE FIREBASE CONFIG ANDA DI SINI
 const firebaseConfig = {
   apiKey: "AIzaSyBupajx6eWGfbkG8-zSAgdfbGHVmOir9XI",
   authDomain: "harvest-nation-abb3f.firebaseapp.com",
@@ -14,7 +13,7 @@ const firebaseConfig = {
 };
 
 // Inisialisasi Firebase (Mencegah inisialisasi ganda di Next.js)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
 // Inisialisasi Autentikasi dan Database
 export const auth = getAuth(app);

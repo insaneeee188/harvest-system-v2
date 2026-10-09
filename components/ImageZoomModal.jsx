@@ -34,7 +34,6 @@ export default function ImageZoomModal({ isOpen, onClose, src, title, badge, des
   };
 
   const handleWheel = (e) => {
-    e.preventDefault();
     if (e.deltaY < 0) handleZoomIn();
     else handleZoomOut();
   };
@@ -99,9 +98,9 @@ export default function ImageZoomModal({ isOpen, onClose, src, title, badge, des
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md transition-opacity animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md transition-opacity">
       
-      {/* Tombol Close Bintang / Silang Merah */}
+      {/* Tombol Close */}
       <button 
         onClick={onClose}
         className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 bg-red-600 hover:bg-red-700 text-white w-10 h-10 sm:w-12 sm:h-12 rounded-full font-black text-xl sm:text-2xl flex items-center justify-center shadow-lg transition transform hover:scale-110 active:scale-95"
@@ -112,7 +111,7 @@ export default function ImageZoomModal({ isOpen, onClose, src, title, badge, des
 
       <div className="bg-white w-full max-w-4xl max-h-[92vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-gray-100 relative">
         
-        {/* AREA TAMPILAN POSTER DENGAN FITUR ZOOM & DRAG */}
+        {/* AREA POSTER DENGAN FITUR ZOOM & DRAG */}
         <div 
           className="relative flex-1 bg-black overflow-hidden flex items-center justify-center min-h-[350px] sm:min-h-[480px] cursor-grab active:cursor-grabbing select-none"
           onWheel={handleWheel}
@@ -133,24 +132,24 @@ export default function ImageZoomModal({ isOpen, onClose, src, title, badge, des
             }}
           />
 
-          {/* FLOATING CONTROLS (ZOOM IN, ZOOM OUT, RESET) */}
+          {/* FLOATING CONTROLS */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-md text-white px-4 py-2 rounded-full flex items-center gap-3 shadow-xl border border-white/20 z-20">
             <button 
               onClick={handleZoomOut} 
-              className="hover:bg-white/20 p-1.5 rounded-full text-lg font-bold transition w-8 h-8 flex items-center justify-center"
+              className="hover:bg-white/20 p-1.5 rounded-full text-sm font-bold transition flex items-center justify-center"
               title="Zoom Out (-)"
             >
-              🔍-
+              ➖
             </button>
             <span className="text-xs font-mono font-bold min-w-[45px] text-center">
               {Math.round(scale * 100)}%
             </span>
             <button 
               onClick={handleZoomIn} 
-              className="hover:bg-white/20 p-1.5 rounded-full text-lg font-bold transition w-8 h-8 flex items-center justify-center"
+              className="hover:bg-white/20 p-1.5 rounded-full text-sm font-bold transition flex items-center justify-center"
               title="Zoom In (+)"
             >
-              🔍+
+              ➕
             </button>
             {scale > 1 && (
               <button 
@@ -163,7 +162,7 @@ export default function ImageZoomModal({ isOpen, onClose, src, title, badge, des
           </div>
         </div>
 
-        {/* DETAILS PANEL DI BAWAH POSTER */}
+        {/* DETAILS PANEL (HANYA MUNCUL JIKA DATA TERSEDIA) */}
         {(title || description || details) && (
           <div className="p-4 sm:p-6 bg-white overflow-y-auto max-h-[25vh] space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">

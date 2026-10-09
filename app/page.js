@@ -321,7 +321,6 @@ export default function HomePage() {
   for (let i = 0; i < startDay; i++) calendarDays.push(null);
   for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
 
-  // Pencarian list item kegiatan pada tanggal kalender yang dipilih
   const getItemsByDate = (day) => {
     if (!day) return [];
     const targetDate = new Date(year, month, day);
@@ -347,7 +346,6 @@ export default function HomePage() {
     month === todayDate.getMonth() &&
     year === todayDate.getFullYear();
 
-  // Buka modal dengan mendukung array/list event untuk paginasi & swipe
   const openModalWithList = (list, initialIndex = 0) => {
     if (!list || list.length === 0) return;
     setModalEventsList(list);
@@ -356,7 +354,6 @@ export default function HomePage() {
     setIsModalOpen(true);
   };
 
-  // Handler Paginasi Modal
   const handlePrevModalEvent = () => {
     if (currentEventIndex > 0) {
       setCurrentEventIndex((prev) => prev - 1);
@@ -371,7 +368,6 @@ export default function HomePage() {
     }
   };
 
-  // Handler Touch Swipe Gesture
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
   };
@@ -405,7 +401,7 @@ export default function HomePage() {
     );
   }
 
-  // ================= GUEST VIEW =================
+  // ================= GUEST VIEW (WITH APP DOWNLOAD BUTTONS) =================
   if (!user) {
     return (
       <>
@@ -415,29 +411,31 @@ export default function HomePage() {
           }
         `}</style>
         
-        <div className="min-h-screen w-full bg-gradient-to-br from-[#0a3543] via-[#072c38] to-[#041c25] font-sans flex flex-col justify-between p-6 sm:p-10 lg:p-12 relative overflow-hidden">
+        <div className="min-h-screen w-full bg-gradient-to-br from-[#0a3543] via-[#072c38] to-[#041c25] font-sans flex flex-col justify-between p-4 sm:p-8 lg:p-12 relative overflow-hidden">
           
-          <div className="absolute top-1/4 -left-32 w-[500px] h-[500px] bg-[#a8c338]/10 rounded-full blur-[120px] pointer-events-none" />
-          <div className="absolute bottom-10 right-10 w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute top-1/4 -left-32 w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-[#a8c338]/10 rounded-full blur-[120px] pointer-events-none" />
+          <div className="absolute bottom-10 right-10 w-[250px] sm:w-[400px] h-[250px] sm:h-[400px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none" />
 
-          <div className="w-full max-w-7xl mx-auto my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10">
+          <div className="w-full max-w-6xl mx-auto my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10 py-6">
             
-            <div className="lg:col-span-7 flex flex-col justify-start items-center text-center space-y-5 -mt-6 lg:-mt-12">
+          {/* KIRI: BRANDING & HEADLINE (CENTERED IN DESKTOP & MOBILE) */}
+            <div className="lg:col-span-7 flex flex-col justify-center items-center text-center space-y-4">
               <img
                 src="/harvest-logo.png"
                 alt="Harvest Powerful Community Logo"
-                className="h-48 sm:h-64 lg:h-72 w-auto object-contain drop-shadow-2xl mx-auto"
+                className="h-28 sm:h-44 lg:h-52 w-auto object-contain drop-shadow-2xl mx-auto"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
-              
-              <div className="space-y-3 w-full flex flex-col items-center">
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight whitespace-nowrap">
+  
+              <div className="space-y-2 w-full">
+                <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
                   Welcome to Harvest Agency
                 </h1>
               </div>
             </div>
 
-            <div className="lg:col-span-5 w-full max-w-md mx-auto lg:ml-auto bg-[#07232d]/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 border border-white/10 shadow-2xl">
+            {/* KANAN: FORM CARD & DOWNLOAD BUTTONS */}
+            <div className="lg:col-span-5 w-full max-w-md mx-auto lg:ml-auto bg-[#07232d]/90 backdrop-blur-md rounded-3xl p-5 sm:p-8 border border-white/10 shadow-2xl">
               
               <div className="flex bg-[#04161c] p-1 rounded-2xl mb-6 border border-white/5">
                 <button
@@ -714,6 +712,32 @@ export default function HomePage() {
                 </div>
               )}
 
+              {/* TOMBOL DOWNLOAD APK & GUIDE IOS */}
+              <div className="flex flex-col sm:flex-row gap-3 mt-6 w-full max-w-sm mx-auto pt-4 border-t border-white/10">
+                {/* Tombol Download APK Android */}
+                <a
+                  href="/downloads/Harvest-LMS.apk"
+                  download="Harvest-LMS.apk"
+                  className="flex-1 flex items-center justify-center gap-2 bg-[#A8C338] hover:bg-[#96b02f] text-slate-900 font-bold py-3 px-4 rounded-xl transition shadow-md active:scale-95"
+                >
+                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M17.52 0c-.3 0-.58.15-.74.41l-1.67 2.88C13.88 2.87 12.47 2.67 11 2.67s-2.88.2-4.11.62L5.22.41C5.06.15 4.78 0 4.48 0 3.86 0 3.42.64 3.7 1.19l1.45 2.51C2.12 5.57.13 8.89 0 12.82h22c-.13-3.93-2.12-7.25-5.15-9.12l1.45-2.51c.28-.55-.16-1.19-.78-1.19zm-11.2 8.35c-.63 0-1.14-.51-1.14-1.14s.51-1.14 1.14-1.14 1.14.51 1.14 1.14-.51 1.14-1.14 1.14zm11.36 0c-.63 0-1.14-.51-1.14-1.14s.51-1.14 1.14-1.14 1.14.51 1.14 1.14-.51 1.14-1.14 1.14z"/>
+                  </svg>
+                  <span className="text-xs sm:text-sm">Download Android </span>
+                </a>
+
+                {/* Tombol Petunjuk PWA iOS */}
+                <button
+                  onClick={() => alert("Untuk iOS/iPhone: Buka web di Safari -> Klik Share -> Tambahkan ke Home Screen")}
+                  className="flex-1 flex items-center justify-center gap-2 bg-[#A8C338] hover:bg-[#96b02f] text-slate-900 font-bold py-3 px-4 rounded-xl transition shadow-md active:scale-95"
+                >
+                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.67-.82 1.13-1.96.99-3.11-.97.04-2.17.65-2.86 1.46-.62.72-1.16 1.88-.99 3.01 1.09.08 2.21-.55 2.86-1.36z"/>
+                  </svg>
+                  <span className="text-xs sm:text-sm">Install iOS / Apple</span>
+                </button>
+              </div>
+
             </div>
 
           </div>
@@ -746,18 +770,18 @@ export default function HomePage() {
 
   // ================= LOGGED IN USER VIEW =================
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-gray-50 to-slate-100/50 pb-24 font-sans">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-gray-50 to-slate-100/50 pb-24 font-sans overflow-x-hidden">
       
       {/* BANNER UTAMA */}
       <div className="max-w-[1400px] mx-auto px-4 pt-6">
         <div className="bg-[#072c38] rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col justify-center items-start gap-4">
           
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+          <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
             Semangat Pagi, <span className="text-[#a8c338]">{userData?.name?.split(' ')[0] || userData?.nama || 'rifqy'}!</span>
           </h1>
 
           <div className="px-6 py-2 rounded-full border-2 border-[#a8c338]/60 bg-[#123e4a]/70 inline-flex items-center justify-center shadow-md">
-            <span className="text-sm font-black text-[#a8c338] uppercase tracking-widest">
+            <span className="text-xs sm:text-sm font-black text-[#a8c338] uppercase tracking-widest">
               {userData?.role || 'ADMIN'}
             </span>
           </div>
@@ -768,86 +792,85 @@ export default function HomePage() {
      {/* QUICK MENU */}
       <div className="max-w-[1400px] mx-auto px-4 mt-8">
         <div className="flex items-center justify-between mb-4 px-1">
-          <h2 className="text-sm font-black tracking-wider uppercase text-gray-400">Quick Navigation</h2>
+          <h2 className="text-xs sm:text-sm font-black tracking-wider uppercase text-gray-400">Quick Navigation</h2>
         </div>
-        {/* Diubah menjadi 8 kolom di layar besar (lg:grid-cols-8) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-5">
+        
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-5">
           
           <a
             href="#top-achievers"
             onClick={scrollToAchievers}
-            className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group cursor-pointer relative overflow-hidden"
+            className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group cursor-pointer relative overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-3xl mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
               🏆
             </div>
-            <h3 className="font-extrabold text-[#083344] text-sm group-hover:text-amber-600 transition-colors">Top Achiever</h3>
-            <p className="text-[11px] text-gray-400 mt-1">Peringkat Terbaik</p>
+            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-amber-600 transition-colors">Top Achiever</h3>
+            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Peringkat Terbaik</p>
           </a>
 
-          <Link href="/daily-activity" className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
+          <Link href="/daily-activity" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-3xl mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
               📝
             </div>
-            <h3 className="font-extrabold text-[#083344] text-sm group-hover:text-blue-600 transition-colors">Activity</h3>
-            <p className="text-[11px] text-gray-400 mt-1">Isi Form Harian</p>
+            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-blue-600 transition-colors">Activity</h3>
+            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Isi Form Harian</p>
           </Link>
 
-          <Link href="/academy" className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
+          <Link href="/academy" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-3xl mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
               🎓
             </div>
-            <h3 className="font-extrabold text-[#083344] text-sm group-hover:text-emerald-600 transition-colors">Academy</h3>
-            <p className="text-[11px] text-gray-400 mt-1">Modul & Bank File</p>
+            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-emerald-600 transition-colors">Academy</h3>
+            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Modul & Bank File</p>
           </Link>
 
-          <Link href="/events" className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
+          <Link href="/events" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-3xl mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
               🗓️
             </div>
-            <h3 className="font-extrabold text-[#083344] text-sm group-hover:text-purple-600 transition-colors">Events</h3>
-            <p className="text-[11px] text-gray-400 mt-1">Jadwal Training</p>
+            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-purple-600 transition-colors">Events</h3>
+            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Jadwal Training</p>
           </Link>
 
-          <Link href="/contest" className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
+          <Link href="/contest" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center text-3xl mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-rose-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
               🏅
             </div>
-            <h3 className="font-extrabold text-[#083344] text-sm group-hover:text-rose-600 transition-colors">Contest</h3>
-            <p className="text-[11px] text-gray-400 mt-1">Lihat Kontes</p>
+            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-rose-600 transition-colors">Contest</h3>
+            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Lihat Kontes</p>
           </Link>
 
-          <Link href="/production-report" className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
+          <Link href="/production-report" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-14 h-14 rounded-2xl bg-cyan-50 flex items-center justify-center text-3xl mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-cyan-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
               📊
             </div>
-            <h3 className="font-extrabold text-[#083344] text-sm group-hover:text-cyan-600 transition-colors">Production</h3>
-            <p className="text-[11px] text-gray-400 mt-1">Laporan Produksi</p>
+            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-cyan-600 transition-colors">Production</h3>
+            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Laporan Produksi</p>
           </Link>
 
-          <Link href="/promo-nasabah" className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
+          <Link href="/promo-nasabah" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-14 h-14 rounded-2xl bg-lime-50 flex items-center justify-center text-3xl mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-lime-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
               🏷️
             </div>
-            <h3 className="font-extrabold text-[#083344] text-sm group-hover:text-lime-600 transition-colors">Promo Nasabah</h3>
-            <p className="text-[11px] text-gray-400 mt-1">Penawaran Spesial</p>
+            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-lime-600 transition-colors">Promo Nasabah</h3>
+            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Penawaran Spesial</p>
           </Link>
 
-          {/* MENU QUICK NAVIGATION BARU: EXTRA KOMISI */}
-          <Link href="/extra-komisi" className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
+          <Link href="/extra-komisi" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-3xl mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
               💸
             </div>
-            <h3 className="font-extrabold text-[#083344] text-sm group-hover:text-amber-600 transition-colors">Extra Komisi</h3>
-            <p className="text-[11px] text-gray-400 mt-1">Ekstra Komisi</p>
+            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-amber-600 transition-colors">Extra Komisi</h3>
+            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Ekstra Komisi</p>
           </Link>
 
         </div>
@@ -857,16 +880,16 @@ export default function HomePage() {
       <div className="max-w-[1400px] mx-auto px-4 mt-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           
-          <div className="lg:col-span-2 bg-white rounded-[2rem] p-6 md:p-8 shadow-sm border border-gray-100/80">
+          <div className="lg:col-span-2 bg-white rounded-[2rem] p-5 md:p-8 shadow-sm border border-gray-100/80">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#083344]/10 flex items-center justify-center text-xl">🚀</div>
                 <div>
-                  <h2 className="text-xl font-black text-[#083344]">Training & Kegiatan Mendatang</h2>
+                  <h2 className="text-lg md:text-xl font-black text-[#083344]">Training & Kegiatan Mendatang</h2>
                   <p className="text-xs text-gray-400">Ikuti sesi pelatihan dan tingkatkan kapabilitas Anda</p>
                 </div>
               </div>
-              <span className="text-xs font-bold bg-[#A8C338]/20 text-[#083344] px-3 py-1 rounded-full">
+              <span className="text-[10px] sm:text-xs font-bold bg-[#A8C338]/20 text-[#083344] px-3 py-1 rounded-full">
                 {eventsList.length} Agenda Aktif
               </span>
             </div>
@@ -951,7 +974,7 @@ export default function HomePage() {
           </div>
 
           {/* Kalender Kegiatan */}
-          <div className="lg:col-span-1 bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100/80">
+          <div className="lg:col-span-1 bg-white rounded-[2rem] p-5 shadow-sm border border-gray-100/80">
             <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
               <h3 className="font-black text-[#083344] flex items-center gap-2 text-base">📅 Kalender Kegiatan</h3>
             </div>
@@ -972,7 +995,7 @@ export default function HomePage() {
                   <div
                     key={idx}
                     onClick={() => { if (isEvt) openModalWithList(dayItems, 0); }}
-                    className={`w-9 h-9 flex items-center justify-center rounded-2xl mx-auto transition-all ${
+                    className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-2xl mx-auto transition-all ${
                       !d
                         ? ''
                         : isEvt
@@ -992,91 +1015,92 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* PODIUM TOP ACHIEVER */}
-      <div id="top-achievers" className="max-w-[1400px] mx-auto px-4 mt-16 space-y-10 scroll-mt-8">
+      {/* PODIUM TOP ACHIEVER (MOBILE AUTO-FIT FIX) */}
+      <div id="top-achievers" className="max-w-[1400px] mx-auto px-2 sm:px-4 mt-16 space-y-10 scroll-mt-8">
         {achieversList.length > 0 ? (
           achieversList.map((item, idx) => (
             <div 
               key={item.id || idx} 
-              className="bg-gradient-to-b from-white via-white to-gray-50/80 rounded-[2.5rem] p-8 md:p-12 shadow-xl border border-gray-100 text-center relative overflow-hidden"
+              className="bg-gradient-to-b from-white via-white to-gray-50/80 rounded-[2rem] sm:rounded-[2.5rem] p-4 sm:p-8 md:p-12 shadow-xl border border-gray-100 text-center relative overflow-hidden"
             >
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-32 bg-amber-400/5 rounded-full blur-3xl pointer-events-none" />
 
-              <span className="text-[11px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 px-4 py-1.5 rounded-full border border-amber-200/50 inline-block mb-3">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200/50 inline-block mb-2 sm:mb-3">
                 Hall of Fame • {item.periode || 'JULY'}
               </span>
-              <h2 className="text-3xl md:text-5xl font-serif font-black text-[#083344] tracking-wider uppercase">
+              <h2 className="text-2xl sm:text-4xl md:text-5xl font-serif font-black text-[#083344] tracking-wider uppercase">
                 TOP ACHIEVER
               </h2>
-              <p className="text-xs md:text-sm font-black text-gray-400 tracking-widest uppercase mt-2 mb-10">
+              <p className="text-[11px] sm:text-xs md:text-sm font-black text-gray-400 tracking-widest uppercase mt-1 sm:mt-2 mb-6 sm:mb-10 px-2 break-words">
                 {item.judul || 'TOP PRODUCER'}
               </p>
 
-              <div className="flex justify-center items-end gap-3 sm:gap-8 max-w-3xl mx-auto pt-6 pb-4">
+              {/* GRID PODIUM RESPONSIVE - AUTO FIT */}
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-6 items-end justify-items-center max-w-3xl mx-auto pt-4 pb-2">
                 
                 {/* Juara 2 */}
                 {(item.foto2 || item.nama2) && (
-                  <div className="flex flex-col items-center flex-1 group">
-                    <div className="relative mb-3">
-                      <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full p-1.5 bg-gradient-to-tr from-slate-300 via-slate-100 to-slate-400 shadow-lg group-hover:scale-105 transition-transform">
+                  <div className="flex flex-col items-center w-full group">
+                    <div className="relative mb-2 sm:mb-3">
+                      <div className="w-16 h-16 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full p-1 bg-gradient-to-tr from-slate-300 via-slate-100 to-slate-400 shadow-md group-hover:scale-105 transition-transform">
                         <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-gray-100">
                           <img src={item.foto2 || 'https://via.placeholder.com/150'} alt={item.nama2 || 'Juara 2'} className="w-full h-full object-cover" />
                         </div>
                       </div>
-                      <span className="absolute -bottom-1 -right-1 bg-slate-700 text-white font-black text-xs sm:text-sm w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center border-2 border-white shadow-md">
+                      <span className="absolute -bottom-1 -right-1 bg-slate-700 text-white font-black text-[10px] sm:text-xs w-5 h-5 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center border-2 border-white shadow-md">
                         2
                       </span>
                     </div>
-                    <div className="bg-white px-3 py-2 rounded-2xl shadow-sm border border-gray-100 w-full">
-                      <p className="text-[11px] sm:text-xs font-black text-[#083344] leading-tight uppercase truncate">
+                    <div className="bg-white px-1.5 py-1.5 sm:px-3 sm:py-2 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 w-full overflow-hidden">
+                      <p className="text-[9px] sm:text-xs font-black text-[#083344] leading-tight uppercase truncate w-full">
                         {item.nama2}
                       </p>
-                      <span className="text-[9px] text-gray-400 font-bold block mt-0.5">Runner Up</span>
+                      <span className="text-[8px] sm:text-[9px] text-gray-400 font-bold block mt-0.5 truncate">Runner Up</span>
                     </div>
                   </div>
                 )}
 
                 {/* Juara 1 */}
                 {(item.foto1 || item.nama1) && (
-                  <div className="flex flex-col items-center flex-1 -translate-y-6 sm:-translate-y-8 group z-10">
-                    <div className="relative mb-3">
-                      <div className="absolute -inset-2 bg-gradient-to-r from-amber-400 to-yellow-300 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-300"></div>
-                      <div className="relative w-32 h-32 sm:w-44 sm:h-44 rounded-full p-2 bg-gradient-to-tr from-amber-500 via-yellow-200 to-amber-600 shadow-2xl group-hover:scale-105 transition-transform">
-                        <div className="w-full h-full rounded-full border-4 border-white overflow-hidden bg-gray-100">
+                  <div className="flex flex-col items-center w-full -translate-y-3 sm:-translate-y-6 group z-10">
+                    <div className="relative mb-2 sm:mb-3">
+                      <div className="absolute -inset-1.5 sm:-inset-2 bg-gradient-to-r from-amber-400 to-yellow-300 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-300"></div>
+                      <div className="relative w-22 h-22 sm:w-36 sm:h-36 md:w-44 md:h-44 rounded-full p-1.5 sm:p-2 bg-gradient-to-tr from-amber-500 via-yellow-200 to-amber-600 shadow-xl group-hover:scale-105 transition-transform">
+                        <div className="w-full h-full rounded-full border-2 sm:border-4 border-white overflow-hidden bg-gray-100">
                           <img src={item.foto1 || 'https://via.placeholder.com/150'} alt={item.nama1 || 'Juara 1'} className="w-full h-full object-cover" />
                         </div>
                       </div>
-                      <span className="absolute bottom-0 right-2 bg-amber-500 text-white font-black text-sm sm:text-base w-8 h-8 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center border-2 border-white shadow-xl">
+                      <span className="absolute bottom-0 right-0 sm:right-2 bg-amber-500 text-white font-black text-xs sm:text-base w-6 h-6 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl flex items-center justify-center border-2 border-white shadow-xl">
                         👑
                       </span>
                     </div>
-                    <div className="bg-gradient-to-b from-amber-50 to-white px-4 py-3 rounded-2xl shadow-md border border-amber-200/60 w-full">
-                      <p className="text-xs sm:text-sm font-black text-[#083344] leading-tight uppercase truncate">
+                    <div className="bg-gradient-to-b from-amber-50 to-white px-2 py-1.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl shadow-md border border-amber-200/60 w-full overflow-hidden">
+                      <p className="text-[10px] sm:text-sm font-black text-[#083344] leading-tight uppercase truncate w-full">
                         {item.nama1}
                       </p>
-                      <span className="text-[10px] text-amber-600 font-extrabold block mt-0.5 uppercase tracking-wider">Champion #1</span>
+                      <span className="text-[8px] sm:text-[10px] text-amber-600 font-extrabold block mt-0.5 uppercase tracking-wider truncate">Champion #1</span>
                     </div>
                   </div>
                 )}
 
                 {/* Juara 3 */}
                 {(item.foto3 || item.nama3) && (
-                  <div className="flex flex-col items-center flex-1 group">
-                    <div className="relative mb-3">
-                      <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full p-1.5 bg-gradient-to-tr from-amber-700 via-amber-500 to-amber-800 shadow-lg group-hover:scale-105 transition-transform">
+                  <div className="flex flex-col items-center w-full group">
+                    <div className="relative mb-2 sm:mb-3">
+                      <div className="w-16 h-16 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full p-1 bg-gradient-to-tr from-amber-700 via-amber-500 to-amber-800 shadow-md group-hover:scale-105 transition-transform">
                         <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-gray-100">
                           <img src={item.foto3 || 'https://via.placeholder.com/150'} alt={item.nama3 || 'Juara 3'} className="w-full h-full object-cover" />
                         </div>
                       </div>
-                      <span className="absolute -bottom-1 -right-1 bg-amber-800 text-white font-black text-xs sm:text-sm w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center border-2 border-white shadow-md">
+                      <span className="absolute -bottom-1 -right-1 bg-amber-800 text-white font-black text-[10px] sm:text-xs w-5 h-5 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center border-2 border-white shadow-md">
                         3
                       </span>
                     </div>
-                    <div className="bg-white px-3 py-2 rounded-2xl shadow-sm border border-gray-100 w-full">
-                      <p className="text-[11px] sm:text-xs font-black text-[#083344] leading-tight uppercase truncate">
+                    <div className="bg-white px-1.5 py-1.5 sm:px-3 sm:py-2 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 w-full overflow-hidden">
+                      <p className="text-[9px] sm:text-xs font-black text-[#083344] leading-tight uppercase truncate w-full">
                         {item.nama3}
                       </p>
-                      <span className="text-[9px] text-gray-400 font-bold block mt-0.5">Second Runner Up</span>
+                      <span className="text-[8px] sm:text-[9px] text-gray-400 font-bold block mt-0.5 truncate">Second Runner</span>
                     </div>
                   </div>
                 )}
@@ -1091,27 +1115,27 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* MODAL DETAIL EVENT DENGAN DUKUNGAN PAGINASI DAN SWIPE GESTURE */}
+      {/* MODAL DETAIL EVENT DENGAN DUKUNGAN FULLSCREEN IMAGE & ZOOM */}
       {isModalOpen && selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white w-full max-w-xl rounded-3xl overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white w-full max-w-xl rounded-3xl overflow-hidden relative shadow-2xl flex flex-col max-h-[92vh]">
             
             <button
               onClick={() => {
                 setIsModalOpen(false);
                 setZoomScale(1);
               }}
-              className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white w-9 h-9 rounded-full font-black flex items-center justify-center shadow-lg z-20 transition-transform transform hover:scale-110"
+              className="absolute top-3 right-3 bg-red-500 hover:bg-red-600 text-white w-8 h-8 sm:w-9 sm:h-9 rounded-full font-black flex items-center justify-center shadow-lg z-20 transition-transform transform hover:scale-110"
             >
               ✕
             </button>
 
-            {/* AREA GAMBAR DENGAN TOUCH SWIPE */}
+            {/* AREA GAMBAR LIGHTBOX DENGAN TOUCH SWIPE & SCALING */}
             <div 
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="w-full bg-black relative flex items-center justify-center min-h-[300px] max-h-[50vh] overflow-hidden group select-none cursor-grab active:cursor-grabbing"
+              className="w-full bg-black relative flex items-center justify-center min-h-[250px] max-h-[50vh] overflow-hidden group select-none cursor-grab active:cursor-grabbing"
             >
               <img
                 src={
@@ -1123,10 +1147,10 @@ export default function HomePage() {
                 }
                 alt={selectedItem.judul || selectedItem.title || 'Poster Event'}
                 style={{ transform: `scale(${zoomScale})` }}
-                className="max-h-[50vh] w-auto object-contain transition-transform duration-200 ease-out"
+                className="max-h-[50vh] max-w-full w-auto object-contain transition-transform duration-200 ease-out"
               />
 
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full flex items-center gap-4 text-white text-xs z-10 border border-white/20">
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-3 text-white text-xs z-10 border border-white/20">
                 <button
                   onClick={() => setZoomScale((prev) => Math.max(0.8, prev - 0.2))}
                   className="hover:text-[#A8C338] font-black text-sm px-1"
@@ -1134,30 +1158,37 @@ export default function HomePage() {
                 >
                   ➖
                 </button>
-                <span className="font-mono text-[11px] min-w-[40px] text-center">
+                <span className="font-mono text-[10px] min-w-[35px] text-center">
                   {Math.round(zoomScale * 100)}%
                 </span>
                 <button
+                  onClick={() => setZoomScale((prev) => Math.min(2.5, prev + 0.2))}
+                  className="hover:text-[#A8C338] font-black text-sm px-1"
+                  title="Zoom In"
+                >
+                  ➕
+                </button>
+                <button
                   onClick={() => setZoomScale(1)}
-                  className="text-[10px] bg-[#A8C338] text-[#083344] font-bold px-2 py-0.5 rounded shadow"
+                  className="text-[9px] bg-[#A8C338] text-[#083344] font-bold px-2 py-0.5 rounded shadow"
                 >
                   Reset
                 </button>
               </div>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-4">
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
               <div className="text-center">
-                <span className="text-[10px] bg-[#083344] text-[#A8C338] font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                <span className="text-[9px] sm:text-[10px] bg-[#083344] text-[#A8C338] font-black px-3 py-1 rounded-full uppercase tracking-wider">
                   {selectedItem.categoryType || selectedItem.kategori || 'EVENT'}
                 </span>
-                <h2 className="text-2xl font-black text-[#083344] mt-2 leading-snug">
+                <h2 className="text-lg sm:text-2xl font-black text-[#083344] mt-2 leading-snug">
                   "{selectedItem.judul || selectedItem.title || selectedItem.namaEvent}"
                 </h2>
               </div>
 
-              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                <p className="text-gray-600 text-xs md:text-sm leading-relaxed whitespace-pre-line">
+              <div className="bg-gray-50 p-3 sm:p-4 rounded-2xl border border-gray-100">
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed whitespace-pre-line">
                   {selectedItem.deskripsi ||
                     selectedItem.deskripsiEvent ||
                     selectedItem.keterangan ||
@@ -1200,19 +1231,19 @@ export default function HomePage() {
                   <button
                     onClick={handlePrevModalEvent}
                     disabled={currentEventIndex === 0}
-                    className="px-4 py-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl disabled:opacity-40 transition-colors"
+                    className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl disabled:opacity-40 transition-colors"
                   >
                     ← Prev
                   </button>
 
-                  <span className="text-xs font-bold text-gray-500">
-                    Kegiatan {currentEventIndex + 1} dari {modalEventsList.length}
+                  <span className="text-[11px] sm:text-xs font-bold text-gray-500">
+                    {currentEventIndex + 1} dari {modalEventsList.length}
                   </span>
 
                   <button
                     onClick={handleNextModalEvent}
                     disabled={currentEventIndex === modalEventsList.length - 1}
-                    className="px-4 py-2 text-xs font-bold bg-[#083344] hover:bg-[#072c38] text-white rounded-xl disabled:opacity-40 transition-colors"
+                    className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs font-bold bg-[#083344] hover:bg-[#072c38] text-white rounded-xl disabled:opacity-40 transition-colors"
                   >
                     Next →
                   </button>

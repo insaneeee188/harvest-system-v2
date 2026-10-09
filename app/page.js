@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { auth, db, app } from '../firebase'; // Pastikan app di-export dari firebase.js
+import { auth, db, app } from '../firebase';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
@@ -10,7 +10,6 @@ import {
   sendPasswordResetEmail 
 } from 'firebase/auth';
 import { doc, collection, onSnapshot, setDoc } from 'firebase/firestore';
-import { getMessaging, getToken } from 'firebase/messaging';
 
 export default function HomePage() {
   const [user, setUser] = useState(null);
@@ -76,52 +75,62 @@ export default function HomePage() {
   const [regSuccess, setRegSuccess] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
 
-// Ganti fungsi handleEnableNotification dengan versi aman dari SSR ini:
-const handleEnableNotification = async () => {
-  if (typeof window === 'undefined' || !('Notification' in window)) {
-    alert('Browser Anda tidak mendukung fitur Notifikasi Push.');
-    return;
-  }
-
-  try {
-    const permission = await Notification.requestPermission();
-    setNotifPermission(permission);
-    
-    if (permission === 'granted') {
-      try {
-        // Inisialisasi messaging secara aman hanya di sisi client
-        const { getMessaging, getToken } = await import('firebase/messaging');
-        const messaging = getMessaging(app);
-        
-        const currentToken = await getToken(messaging, {
-          vapidKey: 'BMyflZUFceyZu7I1D__ZSht9d7VRxfdVMPARRy7rQmbxWV79wiQT7spkaUwOXfWWuPHBcbjACm2f26Rpm2B8RJs'
-        });
-
-        if (currentToken && user) {
-          await setDoc(
-            doc(db, 'users', user.uid),
-            { 
-              fcmToken: currentToken, 
-              fcmTokenUpdatedAt: new Date().toISOString() 
-            },
-            { merge: true }
-          );
-          alert('Notifikasi berhasil diaktifkan! Perangkat Anda telah terhubung.');
-        } else {
-          alert('Izin diberikan, tetapi tidak dapat mengambil token perangkat.');
-        }
-      } catch (tokenErr) {
-        console.error('Error saat mengambil FCM token:', tokenErr);
-        alert('Gagal meregistrasikan token notifikasi.');
-      }
-    } else if (permission === 'denied') {
-      alert('Izin notifikasi ditolak. Silakan izinkan melalui Pengaturan Browser/HP Anda.');
+  // ================= FUNGSI REQUEST NOTIFIKASI & GENERATE FCM TOKEN =================
+  const handleEnableNotification = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      alert('Browser Anda tidak mendukung fitur Notifikasi Push.');
+      return;
     }
-  } catch (error) {
-    console.error('Gagal meminta izin notifikasi:', error);
-    alert('Gagal mengaktifkan notifikasi.');
-  }
-};
+
+    try {
+      const permission = await Notification.requestPermission();
+      setNotifPermission(permission);
+      
+      if (permission === 'granted') {
+        try {
+          // Inisialisasi messaging secara aman hanya di sisi client
+          const { getMessaging, getToken } = await import('firebase/messaging');
+          const messaging = getMessaging(app);
+          
+          const currentToken = await getToken(messaging, {
+            vapidKey: 'BMyflZUFceyZu7I1D__ZSht9d7VRxfdVMPARRy7rQmbxWV79wiQT7spkaUwOXfWWuPHBcbjACm2f26Rpm2B8RJs'
+          });
+
+          if (currentToken && user) {
+            await setDoc(
+              doc(db, 'users', user.uid),
+              { 
+                fcmToken: currentToken, 
+                fcmTokenUpdatedAt: new Date().toISOString() 
+              },
+              { merge: true }
+            );
+            alert('Notifikasi berhasil diaktifkan! Perangkat Anda telah terhubung.');
+          } else {
+            alert('Izin diberikan, tetapi tidak dapat mengambil token perangkat.');
+          }
+        } catch (tokenErr) {
+          console.error('Error saat mengambil FCM token:', tokenErr);
+          alert('Gagal meregistrasikan token notifikasi.');
+        }
+      } else if (permission === 'denied') {
+        alert('Izin notifikasi ditolak. Silakan izinkan melalui Pengaturan Browser/HP Anda.');
+      }
+    } catch (error) {
+      console.error('Gagal meminta izin notifikasi:', error);
+      alert('Gagal mengaktifkan notifikasi.');
+    }
+  };
+
+  const handleIOSInstallGuide = () => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    
+    if (isStandalone) {
+      handleEnableNotification();
+    } else {
+      alert('Khusus iPhone/iOS:\n1. Klik ikon Share (kotak panah ke atas) di Safari.\n2. Pilih "Tambahkan ke Home Screen" / "Add to Home Screen".\n3. Buka aplikasi dari Home Screen untuk mengaktifkan notifikasi.');
+    }
+  };
 
   // ================= FUNGSI UTILS PARSING TANGGAL =================
   const parseDateOnly = useCallback((dateStr) => {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { auth, db } from '../firebase';
+import { auth, db, app } from '../firebase'; // Pastikan app di-export dari firebase.js
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
@@ -10,11 +10,22 @@ import {
   sendPasswordResetEmail 
 } from 'firebase/auth';
 import { doc, collection, onSnapshot, setDoc } from 'firebase/firestore';
+import { getMessaging, getToken } from 'firebase/messaging';
 
 export default function HomePage() {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // ================= STATE PERMISSION NOTIFIKASI =================
+  const [notifPermission, setNotifPermission] = useState('default');
+
+  // Cek status izin notifikasi saat komponen pertama kali dimuat
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotifPermission(Notification.permission);
+    }
+  }, []);
 
   // ================= STATE SWITCH TAB LOGIN / REGISTER =================
   const [isLoginTab, setIsLoginTab] = useState(true);
@@ -65,7 +76,7 @@ export default function HomePage() {
   const [regSuccess, setRegSuccess] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
 
-  // ================= FUNGSI REQUEST NOTIFIKASI (ANDROID & IOS PWA) =================
+  // ================= FUNGSI REQUEST NOTIFIKASI & GENERATE FCM TOKEN =================
   const handleEnableNotification = async () => {
     if (!('Notification' in window)) {
       alert('Browser Anda tidak mendukung fitur Notifikasi Push.');
@@ -74,8 +85,32 @@ export default function HomePage() {
 
     try {
       const permission = await Notification.requestPermission();
+      setNotifPermission(permission);
+      
       if (permission === 'granted') {
-        alert('Notifikasi berhasil diaktifkan! Anda akan menerima update event dan pengumuman terbaru.');
+        try {
+          const messaging = getMessaging(app);
+          const currentToken = await getToken(messaging, {
+            vapidKey: 'BMyflZUFceyZu7I1D__ZSht9d7VRxfdVMPARRy7rQmbxWV79wiQT7spkaUwOXfWWuPHBcbjACm2f26Rpm2B8RJs'
+          });
+
+          if (currentToken && user) {
+            await setDoc(
+              doc(db, 'users', user.uid),
+              { 
+                fcmToken: currentToken, 
+                fcmTokenUpdatedAt: new Date().toISOString() 
+              },
+              { merge: true }
+            );
+            alert('Notifikasi berhasil diaktifkan! Perangkat Anda telah terhubung.');
+          } else {
+            alert('Izin diberikan, tetapi tidak dapat mengambil token perangkat.');
+          }
+        } catch (tokenErr) {
+          console.error('Error saat mengambil FCM token:', tokenErr);
+          alert('Gagal meregistrasikan token notifikasi.');
+        }
       } else if (permission === 'denied') {
         alert('Izin notifikasi ditolak. Silakan izinkan melalui Pengaturan Browser/HP Anda.');
       }
@@ -89,10 +124,8 @@ export default function HomePage() {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     
     if (isStandalone) {
-      // Jika dibuka lewat PWA Home Screen iPhone, jalankan izin notifikasi
       handleEnableNotification();
     } else {
-      // Jika dibuka lewat Safari biasa
       alert('Khusus iPhone/iOS:\n1. Klik ikon Share (kotak panah ke atas) di Safari.\n2. Pilih "Tambahkan ke Home Screen" / "Add to Home Screen".\n3. Buka aplikasi dari Home Screen untuk mengaktifkan notifikasi.');
     }
   };
@@ -433,7 +466,7 @@ export default function HomePage() {
     );
   }
 
-  // ================= GUEST VIEW (WITH APP DOWNLOAD & NOTIFICATION BUTTONS) =================
+  // ================= GUEST VIEW =================
   if (!user) {
     return (
       <>
@@ -450,7 +483,7 @@ export default function HomePage() {
 
           <div className="w-full max-w-6xl mx-auto my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10 py-6">
             
-            {/* KIRI: BRANDING & HEADLINE (CENTERED IN DESKTOP & MOBILE) */}
+            {/* KIRI: BRANDING & HEADLINE */}
             <div className="lg:col-span-7 flex flex-col justify-center items-center text-center space-y-4">
               <img
                 src="/harvest-logo.png"
@@ -822,18 +855,20 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* TOMBOL AKTIFKAN NOTIFIKASI DI DASHBOARD UTAMA */}
-          <button
-            onClick={handleEnableNotification}
-            className="flex items-center gap-2 bg-[#a8c338] text-[#072c38] font-bold px-4 py-2.5 rounded-xl hover:bg-[#96af31] transition shadow-md text-xs sm:text-sm"
-          >
-            🔔 Aktifkan Notifikasi Web
-          </button>
+          {/* TOMBOL HANYA TAMPIL JIKA NOTIFIKASI BELUM DIIZINKAN */}
+          {notifPermission !== 'granted' && (
+            <button
+              onClick={handleEnableNotification}
+              className="flex items-center justify-center gap-2 bg-[#a8c338] text-[#072c38] font-bold px-4 py-2.5 rounded-xl hover:bg-[#96af31] transition shadow-md text-xs sm:text-sm"
+            >
+              🔔 Aktifkan Notifikasi Web
+            </button>
+          )}
 
         </div>
       </div>
 
-     {/* QUICK MENU */}
+     {/* QUICK NAVIGATION */}
       <div className="max-w-[1400px] mx-auto px-4 mt-8">
         <div className="flex items-center justify-between mb-4 px-1">
           <h2 className="text-xs sm:text-sm font-black tracking-wider uppercase text-gray-400">Quick Navigation</h2>
@@ -1205,13 +1240,6 @@ export default function HomePage() {
                 <span className="font-mono text-[10px] min-w-[35px] text-center">
                   {Math.round(zoomScale * 100)}%
                 </span>
-                <button
-                  onClick={() => setZoomScale((prev) => Math.min(2.5, prev + 0.2))}
-                  className="hover:text-[#A8C338] font-black text-sm px-1"
-                  title="Zoom In"
-                >
-                  ➕
-                </button>
                 <button
                   onClick={() => setZoomScale(1)}
                   className="text-[9px] bg-[#A8C338] text-[#083344] font-bold px-2 py-0.5 rounded shadow"

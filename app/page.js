@@ -65,6 +65,38 @@ export default function HomePage() {
   const [regSuccess, setRegSuccess] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
 
+  // ================= FUNGSI REQUEST NOTIFIKASI (ANDROID & IOS PWA) =================
+  const handleEnableNotification = async () => {
+    if (!('Notification' in window)) {
+      alert('Browser Anda tidak mendukung fitur Notifikasi Push.');
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        alert('Notifikasi berhasil diaktifkan! Anda akan menerima update event dan pengumuman terbaru.');
+      } else if (permission === 'denied') {
+        alert('Izin notifikasi ditolak. Silakan izinkan melalui Pengaturan Browser/HP Anda.');
+      }
+    } catch (error) {
+      console.error('Gagal meminta izin notifikasi:', error);
+      alert('Gagal mengaktifkan notifikasi.');
+    }
+  };
+
+  const handleIOSInstallGuide = () => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    
+    if (isStandalone) {
+      // Jika dibuka lewat PWA Home Screen iPhone, jalankan izin notifikasi
+      handleEnableNotification();
+    } else {
+      // Jika dibuka lewat Safari biasa
+      alert('Khusus iPhone/iOS:\n1. Klik ikon Share (kotak panah ke atas) di Safari.\n2. Pilih "Tambahkan ke Home Screen" / "Add to Home Screen".\n3. Buka aplikasi dari Home Screen untuk mengaktifkan notifikasi.');
+    }
+  };
+
   // ================= FUNGSI UTILS PARSING TANGGAL =================
   const parseDateOnly = useCallback((dateStr) => {
     if (!dateStr) return null;
@@ -401,7 +433,7 @@ export default function HomePage() {
     );
   }
 
-  // ================= GUEST VIEW (WITH APP DOWNLOAD BUTTONS) =================
+  // ================= GUEST VIEW (WITH APP DOWNLOAD & NOTIFICATION BUTTONS) =================
   if (!user) {
     return (
       <>
@@ -418,7 +450,7 @@ export default function HomePage() {
 
           <div className="w-full max-w-6xl mx-auto my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10 py-6">
             
-          {/* KIRI: BRANDING & HEADLINE (CENTERED IN DESKTOP & MOBILE) */}
+            {/* KIRI: BRANDING & HEADLINE (CENTERED IN DESKTOP & MOBILE) */}
             <div className="lg:col-span-7 flex flex-col justify-center items-center text-center space-y-4">
               <img
                 src="/harvest-logo.png"
@@ -712,26 +744,28 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* TOMBOL DOWNLOAD APK & GUIDE IOS */}
+              {/* TOMBOL DOWNLOAD APK & NOTIFIKASI IPHONE/ANDROID */}
               <div className="flex flex-col sm:flex-row gap-3 mt-6 w-full max-w-sm mx-auto pt-4 border-t border-white/10">
                 {/* Tombol Download APK Android */}
                 <a
                   href="/downloads/Harvest-LMS.apk"
                   download="Harvest-LMS.apk"
-                  className="flex-1 flex items-center justify-center gap-2 bg-[#A8C338] hover:bg-[#96b02f] text-slate-900 font-bold py-3 px-4 rounded-xl transition shadow-md active:scale-95"
+                  onClick={handleEnableNotification}
+                  className="flex-1 flex items-center justify-center gap-2 bg-[#A8C338] hover:bg-[#96b02f] text-slate-900 font-bold py-3 px-4 rounded-xl transition shadow-md active:scale-95 text-center"
                 >
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 24 24">
                     <path d="M17.52 0c-.3 0-.58.15-.74.41l-1.67 2.88C13.88 2.87 12.47 2.67 11 2.67s-2.88.2-4.11.62L5.22.41C5.06.15 4.78 0 4.48 0 3.86 0 3.42.64 3.7 1.19l1.45 2.51C2.12 5.57.13 8.89 0 12.82h22c-.13-3.93-2.12-7.25-5.15-9.12l1.45-2.51c.28-.55-.16-1.19-.78-1.19zm-11.2 8.35c-.63 0-1.14-.51-1.14-1.14s.51-1.14 1.14-1.14 1.14.51 1.14 1.14-.51 1.14-1.14 1.14zm11.36 0c-.63 0-1.14-.51-1.14-1.14s.51-1.14 1.14-1.14 1.14.51 1.14 1.14-.51 1.14-1.14 1.14z"/>
                   </svg>
-                  <span className="text-xs sm:text-sm">Download Android </span>
+                  <span className="text-xs sm:text-sm">Download Android</span>
                 </a>
 
-                {/* Tombol Petunjuk PWA iOS */}
+                {/* Tombol Petunjuk PWA / Notifikasi iOS */}
                 <button
-                  onClick={() => alert("Untuk iOS/iPhone: Buka web di Safari -> Klik Share -> Tambahkan ke Home Screen")}
-                  className="flex-1 flex items-center justify-center gap-2 bg-[#A8C338] hover:bg-[#96b02f] text-slate-900 font-bold py-3 px-4 rounded-xl transition shadow-md active:scale-95"
+                  type="button"
+                  onClick={handleIOSInstallGuide}
+                  className="flex-1 flex items-center justify-center gap-2 bg-[#A8C338] hover:bg-[#96b02f] text-slate-900 font-bold py-3 px-4 rounded-xl transition shadow-md active:scale-95 text-center"
                 >
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 24 24">
                     <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.67-.82 1.13-1.96.99-3.11-.97.04-2.17.65-2.86 1.46-.62.72-1.16 1.88-.99 3.01 1.09.08 2.21-.55 2.86-1.36z"/>
                   </svg>
                   <span className="text-xs sm:text-sm">Install iOS / Apple</span>
@@ -774,17 +808,27 @@ export default function HomePage() {
       
       {/* BANNER UTAMA */}
       <div className="max-w-[1400px] mx-auto px-4 pt-6">
-        <div className="bg-[#072c38] rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col justify-center items-start gap-4">
+        <div className="bg-[#072c38] rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
           
-          <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
-            Semangat Pagi, <span className="text-[#a8c338]">{userData?.name?.split(' ')[0] || userData?.nama || 'rifqy'}!</span>
-          </h1>
+          <div className="space-y-3">
+            <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
+              Semangat Pagi, <span className="text-[#a8c338]">{userData?.name?.split(' ')[0] || userData?.nama || 'rifqy'}!</span>
+            </h1>
 
-          <div className="px-6 py-2 rounded-full border-2 border-[#a8c338]/60 bg-[#123e4a]/70 inline-flex items-center justify-center shadow-md">
-            <span className="text-xs sm:text-sm font-black text-[#a8c338] uppercase tracking-widest">
-              {userData?.role || 'ADMIN'}
-            </span>
+            <div className="px-6 py-2 rounded-full border-2 border-[#a8c338]/60 bg-[#123e4a]/70 inline-flex items-center justify-center shadow-md">
+              <span className="text-xs sm:text-sm font-black text-[#a8c338] uppercase tracking-widest">
+                {userData?.role || 'ADMIN'}
+              </span>
+            </div>
           </div>
+
+          {/* TOMBOL AKTIFKAN NOTIFIKASI DI DASHBOARD UTAMA */}
+          <button
+            onClick={handleEnableNotification}
+            className="flex items-center gap-2 bg-[#a8c338] text-[#072c38] font-bold px-4 py-2.5 rounded-xl hover:bg-[#96af31] transition shadow-md text-xs sm:text-sm"
+          >
+            🔔 Aktifkan Notifikasi Web
+          </button>
 
         </div>
       </div>
@@ -1015,7 +1059,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* PODIUM TOP ACHIEVER (MOBILE AUTO-FIT FIX) */}
+      {/* PODIUM TOP ACHIEVER */}
       <div id="top-achievers" className="max-w-[1400px] mx-auto px-2 sm:px-4 mt-16 space-y-10 scroll-mt-8">
         {achieversList.length > 0 ? (
           achieversList.map((item, idx) => (
@@ -1225,7 +1269,7 @@ export default function HomePage() {
                 </a>
               )}
 
-              {/* FOOTER NAVIGASI MODAL (PREV / NEXT & INDEX) */}
+              {/* FOOTER NAVIGASI MODAL */}
               {modalEventsList.length > 1 && (
                 <div className="flex justify-between items-center pt-4 border-t border-gray-100 mt-4">
                   <button

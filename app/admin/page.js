@@ -513,7 +513,22 @@ export default function AdminDashboardPage() {
           console.error("Gagal mengirim notifikasi Telegram:", notifyErr);
         }
 
-        alert("Promo Nasabah berhasil dipublikasikan, Notifikasi Web & Telegram terkirim!");
+        // Panggil Push Notification FCM ke HP User
+        try {
+          await fetch('/api/send-push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: `🎁 Promo Nasabah: ${judulPromo}`,
+              body: deskripsiPromo || 'Penawaran dan program spesial terbaru untuk nasabah!',
+              targetUrl: '/promo-nasabah'
+            })
+          });
+        } catch (fcmErr) {
+          console.error("Gagal mengirim Push Notification FCM:", fcmErr);
+        }
+
+        alert("Promo Nasabah berhasil dipublikasikan, Notifikasi Web, Telegram & HP terkirim!");
       }
       resetPromoForm();
       fetchPromos();
@@ -617,7 +632,22 @@ export default function AdminDashboardPage() {
           console.error("Gagal mengirim notifikasi Telegram:", notifyErr);
         }
 
-        alert("Kontes berhasil ditambahkan, serta Notifikasi Web & Telegram terkirim!"); 
+        // Panggil Push Notification FCM ke HP User
+        try {
+          await fetch('/api/send-push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: `🏆 Contest Baru: ${judulContest}`,
+              body: deskripsiContest || 'Ayo ikuti contest terbaru dari Harvest!',
+              targetUrl: '/contest'
+            })
+          });
+        } catch (fcmErr) {
+          console.error("Gagal mengirim Push Notification FCM:", fcmErr);
+        }
+
+        alert("Kontes berhasil ditambahkan, serta Notifikasi Web, Telegram & HP terkirim!"); 
       }
       resetContestForm();
       fetchContestsAndAchievers(); 
@@ -712,7 +742,22 @@ export default function AdminDashboardPage() {
           console.error("Gagal mengirim notifikasi Telegram:", notifyErr);
         }
 
-        alert("Extra Komisi berhasil ditambahkan!");
+        // Panggil Push Notification FCM ke HP User
+        try {
+          await fetch('/api/send-push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: `💰 Extra Komisi: ${judulExtra}`,
+              body: deskripsiExtra || 'Kesempatan ekstra komisi baru!',
+              targetUrl: '/extra-komisi'
+            })
+          });
+        } catch (fcmErr) {
+          console.error("Gagal mengirim Push Notification FCM:", fcmErr);
+        }
+
+        alert("Extra Komisi berhasil ditambahkan & Notifikasi terkirim!");
       }
       resetExtraForm();
       fetchContestsAndAchievers();
@@ -872,7 +917,22 @@ export default function AdminDashboardPage() {
           console.error("Gagal mengirim notifikasi Telegram:", notifyErr);
         }
 
-        alert(`${modeKegiatan === 'training' ? 'Training' : 'Event'} berhasil ditambahkan, Notifikasi Web & Telegram terkirim!`);
+        // Panggil Push Notification FCM ke HP User
+        try {
+          await fetch('/api/send-push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: `${modeKegiatan === 'training' ? '📚 Training Baru' : '🎉 Event Baru'}: ${judulEvent}`,
+              body: deskripsiEvent || `📅 Tanggal: ${tanggalEvent} | Lokasi: ${lokasiEvent || 'Online'}`,
+              targetUrl: '/events'
+            })
+          });
+        } catch (fcmErr) {
+          console.error("Gagal mengirim Push Notification FCM:", fcmErr);
+        }
+
+        alert(`${modeKegiatan === 'training' ? 'Training' : 'Event'} berhasil ditambahkan, Notifikasi Web, Telegram & HP terkirim!`);
       }
       resetEventForm();
       fetchEvents(); 
@@ -959,7 +1019,22 @@ export default function AdminDashboardPage() {
           console.error("Gagal mengirim notifikasi Telegram:", notifyErr);
         }
 
-        alert("Dokumen berhasil ditambah, Notifikasi Web & Telegram terkirim!"); 
+        // Panggil Push Notification FCM ke HP User
+        try {
+          await fetch('/api/send-push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: `${tipeDoc === 'video' ? '🎥 Video' : '📄 File'} Baru: ${judulDoc}`,
+              body: `Materi kualifikasi ${kategoriDoc} baru telah ditambahkan ke Library.`,
+              targetUrl: '/library'
+            })
+          });
+        } catch (fcmErr) {
+          console.error("Gagal mengirim Push Notification FCM:", fcmErr);
+        }
+
+        alert("Dokumen berhasil ditambah, Notifikasi Web, Telegram & HP terkirim!"); 
       }
       resetDocForm();
       fetchLibrary(); 
@@ -1148,7 +1223,7 @@ export default function AdminDashboardPage() {
         </button>
       </div>
 
-      {/* GRID TOMBOL SHORTCUT NAVIGASI ADMIN PANEL (DESAIN PERSIS GAMBAR USER) */}
+      {/* GRID TOMBOL SHORTCUT NAVIGASI ADMIN PANEL */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <button 
           onClick={() => scrollToSection('approval-section')} 
@@ -1441,7 +1516,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 3. EXTRA KOMISI (FORM & TABEL BARU) */}
+      {/* 3. EXTRA KOMISI */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-extra-komisi" className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 lg:col-span-1 w-full overflow-hidden">
           <div className="flex justify-between items-center mb-5">

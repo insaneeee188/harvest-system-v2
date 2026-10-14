@@ -43,12 +43,6 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showTables, setShowTables] = useState(true);
 
-  const getDefaultOneMonthLater = () => {
-    const date = new Date();
-    date.setMonth(date.getMonth() + 1);
-    return date.toISOString().split('T')[0];
-  };
-
   const getTodayDate = () => {
     return new Date().toISOString().split('T')[0];
   };
@@ -83,7 +77,7 @@ export default function AdminDashboardPage() {
   const [kategoriPromo, setKategoriPromo] = useState('Prudential');
   const [periodePromo, setPeriodePromo] = useState('');
   const [startDatePromo, setStartDatePromo] = useState(getTodayDate());
-  const [tanggalSelesaiPromo, setTanggalSelesaiPromo] = useState(getDefaultOneMonthLater());
+  const [tanggalSelesaiPromo, setTanggalSelesaiPromo] = useState(getTodayDate());
   const [posterPromo, setPosterPromo] = useState('');
   const [badgePromo, setBadgePromo] = useState('');
   const [isHighlightPromo, setIsHighlightPromo] = useState(false);
@@ -104,7 +98,7 @@ export default function AdminDashboardPage() {
   const [targetContest, setTargetContest] = useState('Semua');
   const [startDateContest, setStartDateContest] = useState(getTodayDate());
   const [periodeContest, setPeriodeContest] = useState('');
-  const [tanggalSelesaiContest, setTanggalSelesaiContest] = useState(getDefaultOneMonthLater());
+  const [tanggalSelesaiContest, setTanggalSelesaiContest] = useState(getTodayDate());
   const [isSubmittingContest, setIsSubmittingContest] = useState(false);
 
   // --- EXTRA KOMISI STATES ---
@@ -122,7 +116,7 @@ export default function AdminDashboardPage() {
   const [targetExtra, setTargetExtra] = useState('Semua');
   const [startDateExtra, setStartDateExtra] = useState(getTodayDate());
   const [periodeExtra, setPeriodeExtra] = useState('');
-  const [tanggalSelesaiExtra, setTanggalSelesaiExtra] = useState(getDefaultOneMonthLater());
+  const [tanggalSelesaiExtra, setTanggalSelesaiExtra] = useState(getTodayDate());
   const [isSubmittingExtra, setIsSubmittingExtra] = useState(false);
 
   // --- ACHIEVER STATES ---
@@ -135,7 +129,7 @@ export default function AdminDashboardPage() {
   const [editAchieverId, setEditAchieverId] = useState(null);
   const [judulAchiever, setJudulAchiever] = useState('TOP LEADER');
   const [periodeAchiever, setPeriodeAchiever] = useState('');
-  const [tanggalSelesaiAchiever, setTanggalSelesaiAchiever] = useState(getDefaultOneMonthLater());
+  const [tanggalSelesaiAchiever, setTanggalSelesaiAchiever] = useState(getTodayDate());
   
   const [foto1, setFoto1] = useState('');
   const [nama1, setNama1] = useState('');
@@ -167,14 +161,14 @@ export default function AdminDashboardPage() {
   const [targetEvent, setTargetEvent] = useState('Semua'); 
   const [kategoriEvent, setKategoriEvent] = useState('Agency');
   const [tanggalEvent, setTanggalEvent] = useState(getTodayDate());
-  const [tanggalSelesaiEvent, setTanggalSelesaiEvent] = useState(getDefaultOneMonthLater());
+  const [tanggalSelesaiEvent, setTanggalSelesaiEvent] = useState(getTodayDate());
   const [waktuEvent, setWaktuEvent] = useState('');
   const [lokasiEvent, setLokasiEvent] = useState('');
   const [linkZoomEvent, setLinkZoomEvent] = useState(''); 
   const [posterEvent, setPosterEvent] = useState(''); 
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
 
-  // --- TOOLS STATES (UNTUK /tools) ---
+  // --- TOOLS STATES ---
   const [toolsList, setToolsList] = useState([]);
   const [currentPageTools, setCurrentPageTools] = useState(1);
   const toolsPerPage = 5;
@@ -188,7 +182,7 @@ export default function AdminDashboardPage() {
   const [linkTool, setLinkTool] = useState('');
   const [isSubmittingTool, setIsSubmittingTool] = useState(false);
 
-  // --- LIBRARY / MATERI ACADEMY STATES (UNTUK HARVEST ACADEMY) ---
+  // --- LIBRARY / MATERI ACADEMY STATES ---
   const [libraryList, setLibraryList] = useState([]);
   const [currentPageDocs, setCurrentPageDocs] = useState(1);
   const docsPerPage = 5;
@@ -404,7 +398,7 @@ export default function AdminDashboardPage() {
   };
 
   const resetPromoForm = () => {
-    setEditPromoId(null); setJudulPromo(''); setDeskripsiPromo(''); setKategoriPromo('Prudential'); setPeriodePromo(''); setStartDatePromo(getTodayDate()); setTanggalSelesaiPromo(getDefaultOneMonthLater()); setPosterPromo(''); setBadgePromo(''); setIsHighlightPromo(false);
+    setEditPromoId(null); setJudulPromo(''); setDeskripsiPromo(''); setKategoriPromo('Prudential'); setPeriodePromo(''); setStartDatePromo(getTodayDate()); setTanggalSelesaiPromo(getTodayDate()); setPosterPromo(''); setBadgePromo(''); setIsHighlightPromo(false);
   };
 
   const handleSavePromo = async (e) => {
@@ -431,7 +425,7 @@ export default function AdminDashboardPage() {
   };
 
   const resetContestForm = () => {
-    setEditContestId(null); setJudulContest(''); setDeskripsiContest(''); setPosterContest(''); setKategoriContest('Agency'); setTargetContest('Semua'); setStartDateContest(getTodayDate()); setPeriodeContest(''); setTanggalSelesaiContest(getDefaultOneMonthLater());
+    setEditContestId(null); setJudulContest(''); setDeskripsiContest(''); setPosterContest(''); setKategoriContest('Agency'); setTargetContest('Semua'); setStartDateContest(getTodayDate()); setPeriodeContest(''); setTanggalSelesaiContest(getTodayDate());
   };
 
   const handleSaveContest = async (e) => { 
@@ -440,21 +434,21 @@ export default function AdminDashboardPage() {
     try {
       if (editContestId) {
         await updateDoc(doc(db, 'agency_contests', editContestId), { ...payload, updatedAt: new Date().toISOString() });
-        alert("Kontes berhasil diperbarui!"); 
+        alert("Contest berhasil diperbarui!"); 
       } else {
         await addDoc(collection(db, 'agency_contests'), { ...payload, createdAt: new Date().toISOString() });
         try {
           await addDoc(collection(db, 'notifications'), { title: `🏆 Contest Baru: ${judulContest}`, message: deskripsiContest || 'Ayo ikuti contest terbaru!', type: 'contest', target: targetContest, link: '/contest', createdAt: new Date().toISOString(), isRead: false });
         } catch (e) { console.error(e); }
         await broadcastPushNotification(`🏆 Contest Baru: ${judulContest}`, deskripsiContest || 'Ayo ikuti contest terbaru!', '/contest');
-        alert("Kontes berhasil ditambahkan & Notifikasi terkirim!"); 
+        alert("Contest berhasil ditambahkan & Notifikasi terkirim!"); 
       }
       resetContestForm(); fetchContestsAndAchievers(); 
-    } catch (err) { alert("Gagal menyimpan kontes."); } finally { setIsSubmittingContest(false); }
+    } catch (err) { alert("Gagal menyimpan contest."); } finally { setIsSubmittingContest(false); }
   };
 
   const resetExtraForm = () => {
-    setEditExtraId(null); setJudulExtra(''); setDeskripsiExtra(''); setPosterExtra(''); setKategoriExtra('Agency'); setTargetExtra('Semua'); setStartDateExtra(getTodayDate()); setPeriodeExtra(''); setTanggalSelesaiExtra(getDefaultOneMonthLater());
+    setEditExtraId(null); setJudulExtra(''); setDeskripsiExtra(''); setPosterExtra(''); setKategoriExtra('Agency'); setTargetExtra('Semua'); setStartDateExtra(getTodayDate()); setPeriodeExtra(''); setTanggalSelesaiExtra(getTodayDate());
   };
 
   const handleSaveExtra = async (e) => {
@@ -477,7 +471,7 @@ export default function AdminDashboardPage() {
   };
 
   const resetAchieverForm = () => {
-    setEditAchieverId(null); setJudulAchiever('TOP LEADER'); setPeriodeAchiever(''); setTanggalSelesaiAchiever(getDefaultOneMonthLater()); setFoto1(''); setNama1(''); setScale1(1); setOffsetY1(0); setFoto2(''); setNama2(''); setScale2(1); setOffsetY2(0); setFoto3(''); setNama3(''); setScale3(1); setOffsetY3(0);
+    setEditAchieverId(null); setJudulAchiever('TOP LEADER'); setPeriodeAchiever(''); setTanggalSelesaiAchiever(getTodayDate()); setFoto1(''); setNama1(''); setScale1(1); setOffsetY1(0); setFoto2(''); setNama2(''); setScale2(1); setOffsetY2(0); setFoto3(''); setNama3(''); setScale3(1); setOffsetY3(0);
   };
 
   const handleSaveAchiever = async (e) => { 
@@ -496,7 +490,7 @@ export default function AdminDashboardPage() {
   };
 
   const resetEventForm = () => {
-    setEditEventId(null); setJudulEvent(''); setDeskripsiEvent(''); setTanggalEvent(getTodayDate()); setTanggalSelesaiEvent(getDefaultOneMonthLater()); setWaktuEvent(''); setLokasiEvent(''); setLinkZoomEvent(''); setPosterEvent(''); setKategoriEvent('Agency'); setTargetEvent('Semua');
+    setEditEventId(null); setJudulEvent(''); setDeskripsiEvent(''); setTanggalEvent(getTodayDate()); setTanggalSelesaiEvent(getTodayDate()); setWaktuEvent(''); setLokasiEvent(''); setLinkZoomEvent(''); setPosterEvent(''); setKategoriEvent('Agency'); setTargetEvent('Semua');
   };
 
   const handleSaveEvent = async (e) => { 
@@ -518,7 +512,6 @@ export default function AdminDashboardPage() {
     } catch (err) { alert("Gagal menyimpan kegiatan."); } finally { setIsSubmittingEvent(false); }
   };
 
-  // --- HANDLER TOOLS (/tools) ---
   const resetToolForm = () => {
     setEditToolId(null); setJudulTool(''); setLinkTool(''); setKategoriTool('Selling'); setTipeTool('video');
   };
@@ -542,7 +535,6 @@ export default function AdminDashboardPage() {
     } catch (err) { alert("Gagal menyimpan tools."); } finally { setIsSubmittingTool(false); }
   };
 
-  // --- HANDLER MATERI ACADEMY (LIBRARY & RESOURCE) ---
   const resetDocForm = () => {
     setEditDocId(null); setJudulDoc(''); setLinkDoc(''); setKategoriDoc('Selling'); setTipeDoc('video');
   };
@@ -941,7 +933,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-contest" className="bg-white p-6 rounded-3xl shadow-xl border border-slate-200/80 lg:col-span-1">
           <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
-            <h2 className="font-bold text-lg text-slate-900">🏆 {editContestId ? 'Edit Contest' : 'Input Agency Contest'}</h2>
+            <h2 className="font-bold text-lg text-slate-900">🏆 {editContestId ? 'Edit Contest' : 'Input Contest'}</h2>
             {editContestId && <button type="button" onClick={resetContestForm} className="text-xs bg-slate-200 px-3 py-1 rounded-lg font-bold">Batal</button>}
           </div>
           <form onSubmit={handleSaveContest} className="space-y-4">
@@ -996,7 +988,7 @@ export default function AdminDashboardPage() {
 
         <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-200/80 lg:col-span-2 flex flex-col justify-between">
           <div>
-            <h2 className="font-bold text-lg text-slate-900 mb-5">📋 Daftar Agency Contest</h2>
+            <h2 className="font-bold text-lg text-slate-900 mb-5">📋 Daftar Contest</h2>
             <div className="overflow-x-auto w-full">
               <table className="w-full text-left text-sm border-collapse min-w-[400px]">
                  <thead>
@@ -1296,7 +1288,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 7. INPUT TOOLS SECTION (UNTUK HALAMAN /tools) */}
+      {/* 7. INPUT TOOLS SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-tool" className="bg-white p-6 rounded-3xl shadow-xl border border-slate-200/80 lg:col-span-1 h-fit">
           <div className="flex justify-between items-center mb-5 pb-4 border-b border-slate-100">
@@ -1386,7 +1378,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 8. INPUT MATERI ACADEMY SECTION (UNTUK HARVEST ACADEMY / LIBRARY) */}
+      {/* 8. INPUT MATERI ACADEMY SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-doc" className="bg-white p-6 rounded-3xl shadow-xl border border-slate-200/80 lg:col-span-1 h-fit">
           <div className="flex justify-between items-center mb-5 pb-4 border-b border-slate-100">

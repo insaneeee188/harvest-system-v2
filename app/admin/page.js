@@ -174,7 +174,21 @@ export default function AdminDashboardPage() {
   const [posterEvent, setPosterEvent] = useState(''); 
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
 
-  // --- TOOLS & LIBRARY STATES ---
+  // --- TOOLS STATES (UNTUK /tools) ---
+  const [toolsList, setToolsList] = useState([]);
+  const [currentPageTools, setCurrentPageTools] = useState(1);
+  const toolsPerPage = 5;
+  const currentTools = Array.isArray(toolsList) ? toolsList.slice((currentPageTools - 1) * toolsPerPage, currentPageTools * toolsPerPage) : [];
+  const totalPagesTools = Array.isArray(toolsList) ? Math.ceil(toolsList.length / toolsPerPage) || 1 : 1;
+
+  const [editToolId, setEditToolId] = useState(null);
+  const [judulTool, setJudulTool] = useState('');
+  const [kategoriTool, setKategoriTool] = useState('Selling'); 
+  const [tipeTool, setTipeTool] = useState('video'); 
+  const [linkTool, setLinkTool] = useState('');
+  const [isSubmittingTool, setIsSubmittingTool] = useState(false);
+
+  // --- LIBRARY / MATERI ACADEMY STATES (UNTUK HARVEST ACADEMY) ---
   const [libraryList, setLibraryList] = useState([]);
   const [currentPageDocs, setCurrentPageDocs] = useState(1);
   const docsPerPage = 5;
@@ -314,6 +328,13 @@ export default function AdminDashboardPage() {
     } catch (e) { console.error(e); }
   }, []);
 
+  const fetchTools = useCallback(async () => { 
+    try {
+      const snap = await getDocs(collection(db, 'sales_tools')); 
+      setToolsList(snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))); 
+    } catch (e) { console.error(e); }
+  }, []);
+
   const fetchLibrary = useCallback(async () => { 
     try {
       const snap = await getDocs(collection(db, 'library_docs')); 
@@ -352,7 +373,16 @@ export default function AdminDashboardPage() {
           if (data.role?.toLowerCase() === 'admin') {
             setIsAdmin(true); 
             setUserData(data);
-            await Promise.all([fetchUsers(), fetchPromos(), fetchContestsAndAchievers(), fetchEvents(), fetchLibrary(), fetchModules(), fetchQuizzes()]);
+            await Promise.all([
+              fetchUsers(), 
+              fetchPromos(), 
+              fetchContestsAndAchievers(), 
+              fetchEvents(), 
+              fetchTools(), 
+              fetchLibrary(), 
+              fetchModules(), 
+              fetchQuizzes()
+            ]);
           } else {
             alert('Akses Ditolak! Anda bukan Admin.'); 
             router.push('/');
@@ -361,7 +391,7 @@ export default function AdminDashboardPage() {
       } catch (err) { console.error(err); } finally { if (isMounted) setLoading(false); }
     });
     return () => { isMounted = false; unsubscribe(); };
-  }, [router, fetchUsers, fetchPromos, fetchContestsAndAchievers, fetchEvents, fetchLibrary, fetchModules, fetchQuizzes]);
+  }, [router, fetchUsers, fetchPromos, fetchContestsAndAchievers, fetchEvents, fetchTools, fetchLibrary, fetchModules, fetchQuizzes]);
 
   // --- HANDLERS ---
   const handleApprove = async (userId, userName) => { 
@@ -390,7 +420,7 @@ export default function AdminDashboardPage() {
           await addDoc(collection(db, 'notifications'), { title: `🎁 Promo Nasabah Terbaru: ${judulPromo}`, message: deskripsiPromo || 'Penawaran spesial terbaru!', type: 'promo', target: 'Semua', link: '/promo-nasabah', createdAt: new Date().toISOString(), isRead: false });
         } catch (e) { console.error(e); }
         await broadcastPushNotification(`🎁 Promo Nasabah: ${judulPromo}`, deskripsiPromo || 'Penawaran spesial terbaru!', '/promo-nasabah');
-        alert("Promo Nasabah berhasil dipublikasikan & Notifikasi terkirim[cite: 12]!");
+        alert("Promo Nasabah berhasil dipublikasikan & Notifikasi terkirim!");
       }
       resetPromoForm(); fetchPromos();
     } catch (err) { alert("Gagal menyimpan promo."); } finally { setIsSubmittingPromo(false); }
@@ -417,7 +447,7 @@ export default function AdminDashboardPage() {
           await addDoc(collection(db, 'notifications'), { title: `🏆 Contest Baru: ${judulContest}`, message: deskripsiContest || 'Ayo ikuti contest terbaru!', type: 'contest', target: targetContest, link: '/contest', createdAt: new Date().toISOString(), isRead: false });
         } catch (e) { console.error(e); }
         await broadcastPushNotification(`🏆 Contest Baru: ${judulContest}`, deskripsiContest || 'Ayo ikuti contest terbaru!', '/contest');
-        alert("Kontes berhasil ditambahkan & Notifikasi terkirim[cite: 12]!"); 
+        alert("Kontes berhasil ditambahkan & Notifikasi terkirim!"); 
       }
       resetContestForm(); fetchContestsAndAchievers(); 
     } catch (err) { alert("Gagal menyimpan kontes."); } finally { setIsSubmittingContest(false); }
@@ -440,7 +470,7 @@ export default function AdminDashboardPage() {
           await addDoc(collection(db, 'notifications'), { title: `💰 Extra Komisi: ${judulExtra}`, message: deskripsiExtra || 'Kesempatan ekstra komisi baru!', type: 'extra_komisi', target: targetExtra, link: '/extra-komisi', createdAt: new Date().toISOString(), isRead: false });
         } catch (e) { console.error(e); }
         await broadcastPushNotification(`💰 Extra Komisi: ${judulExtra}`, deskripsiExtra || 'Kesempatan ekstra komisi baru!', '/extra-komisi');
-        alert("Extra Komisi berhasil ditambahkan & Notifikasi terkirim[cite: 12]!");
+        alert("Extra Komisi berhasil ditambahkan & Notifikasi terkirim!");
       }
       resetExtraForm(); fetchContestsAndAchievers();
     } catch (err) { alert("Gagal menyimpan Extra Komisi."); } finally { setIsSubmittingExtra(false); }
@@ -482,12 +512,37 @@ export default function AdminDashboardPage() {
           await addDoc(collection(db, 'notifications'), { title: `${modeKegiatan === 'training' ? '📚 Training Baru' : '🎉 Event Baru'}: ${judulEvent}`, message: deskripsiEvent || 'Agenda baru!', type: modeKegiatan, target: targetEvent, link: '/events', createdAt: new Date().toISOString(), isRead: false });
         } catch (e) { console.error(e); }
         await broadcastPushNotification(`${modeKegiatan === 'training' ? '📚 Training Baru' : '🎉 Event Baru'}: ${judulEvent}`, deskripsiEvent || 'Agenda baru!', '/events');
-        alert(`${modeKegiatan === 'training' ? 'Training' : 'Event'} berhasil ditambahkan & Notifikasi terkirim[cite: 12]!`);
+        alert(`${modeKegiatan === 'training' ? 'Training' : 'Event'} berhasil ditambahkan & Notifikasi terkirim!`);
       }
       resetEventForm(); fetchEvents(); 
     } catch (err) { alert("Gagal menyimpan kegiatan."); } finally { setIsSubmittingEvent(false); }
   };
 
+  // --- HANDLER TOOLS (/tools) ---
+  const resetToolForm = () => {
+    setEditToolId(null); setJudulTool(''); setLinkTool(''); setKategoriTool('Selling'); setTipeTool('video');
+  };
+
+  const handleSaveTool = async (e) => { 
+    e.preventDefault(); setIsSubmittingTool(true); 
+    const payload = { judul: judulTool, kategori: kategoriTool, tipe: tipeTool, link: linkTool };
+    try {
+      if (editToolId) {
+        await updateDoc(doc(db, 'sales_tools', editToolId), { ...payload, updatedAt: new Date().toISOString() });
+        alert("Tools berhasil diperbarui!"); 
+      } else {
+        await addDoc(collection(db, 'sales_tools'), { ...payload, createdAt: new Date().toISOString() });
+        try {
+          await addDoc(collection(db, 'notifications'), { title: `🧰 Tools Baru: ${judulTool}`, message: `Materi ${kategoriTool} baru ditambahkan ke Tools.`, type: tipeTool, target: 'Semua', link: '/tools', createdAt: new Date().toISOString(), isRead: false });
+        } catch (e) { console.error(e); }
+        await broadcastPushNotification(`🧰 Tools Baru: ${judulTool}`, `Materi ${kategoriTool} baru tersedia di Tools.`, '/tools');
+        alert("Tools berhasil dipublikasikan ke halaman /tools & Notifikasi terkirim!"); 
+      }
+      resetToolForm(); fetchTools(); 
+    } catch (err) { alert("Gagal menyimpan tools."); } finally { setIsSubmittingTool(false); }
+  };
+
+  // --- HANDLER MATERI ACADEMY (LIBRARY & RESOURCE) ---
   const resetDocForm = () => {
     setEditDocId(null); setJudulDoc(''); setLinkDoc(''); setKategoriDoc('Selling'); setTipeDoc('video');
   };
@@ -498,17 +553,13 @@ export default function AdminDashboardPage() {
     try {
       if (editDocId) {
         await updateDoc(doc(db, 'library_docs', editDocId), { ...payload, updatedAt: new Date().toISOString() });
-        alert("Tools / Dokumen berhasil diperbarui!"); 
+        alert("Materi Academy berhasil diperbarui!"); 
       } else {
         await addDoc(collection(db, 'library_docs'), { ...payload, createdAt: new Date().toISOString() });
-        try {
-          await addDoc(collection(db, 'notifications'), { title: `${tipeDoc === 'video' ? '🎥 Video Tools' : '📄 File Tools'} Baru: ${judulDoc}`, message: `Materi ${kategoriDoc} baru ditambahkan ke Tools.`, type: tipeDoc, target: 'Semua', link: '/tools', createdAt: new Date().toISOString(), isRead: false });
-        } catch (e) { console.error(e); }
-        await broadcastPushNotification(`${tipeDoc === 'video' ? '🎥 Video Tools' : '📄 File Tools'}: ${judulDoc}`, `Materi ${kategoriDoc} baru tersedia di Tools.`, '/tools');
-        alert("Tools / Dokumen berhasil dipublikasikan & Notifikasi terkirim[cite: 12]!"); 
+        alert("Materi Academy berhasil ditambahkan!"); 
       }
       resetDocForm(); fetchLibrary(); 
-    } catch (err) { alert("Gagal menyimpan tools."); } finally { setIsSubmittingDoc(false); }
+    } catch (err) { alert("Gagal menyimpan materi academy."); } finally { setIsSubmittingDoc(false); }
   };
 
   const resetModuleForm = () => {
@@ -570,24 +621,27 @@ export default function AdminDashboardPage() {
             🛡️ Pusat Kendali Admin
           </h1>
           <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-2xl leading-relaxed">
-            Kelola seluruh modul, promo, contest, event, dan persetujuan agen dengan mudah dan terpusat.
+            Kelola seluruh modul, promo, contest, event, tools, dan persetujuan agen dengan mudah dan terpusat.
           </p>
         </div>
         
-        <button 
-          type="button"
-          onClick={() => setShowTables(!showTables)}
-          className="relative z-10 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-5 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all backdrop-blur-md shadow-lg active:scale-95 whitespace-nowrap"
-        >
-          {showTables ? '✏️ Sembunyikan Tabel' : '👁️ Tampilkan Tabel'}
-        </button>
+        <div className="flex flex-wrap items-center gap-3 relative z-10">
+          <button 
+            type="button"
+            onClick={() => setShowTables(!showTables)}
+            className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-5 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all backdrop-blur-md shadow-lg active:scale-95 whitespace-nowrap"
+          >
+            {showTables ? '✏️ Sembunyikan Tabel' : '👁️ Tampilkan Tabel'}
+          </button>
+        </div>
       </div>
 
       {/* QUICK SHORTCUT NAVIGATION */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
           { label: 'Persetujuan Agen', id: 'approval-section', icon: '🔐' },
-          { label: 'Tools / Library', id: 'form-doc', icon: '🧰' },
+          { label: 'Input Tools', id: 'form-tool', icon: '🧰' },
+          { label: 'Input Materi Academy', id: 'form-doc', icon: '📚' },
           { label: 'Contest', id: 'form-contest', icon: '🏆' },
           { label: 'Promo Nasabah', id: 'form-promo', icon: '🎁' },
           { label: 'Learning Path', id: 'form-modul', icon: '🎓' },
@@ -1242,11 +1296,101 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 7. TOOLS / LIBRARY SECTION */}
+      {/* 7. INPUT TOOLS SECTION (UNTUK HALAMAN /tools) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div id="form-tool" className="bg-white p-6 rounded-3xl shadow-xl border border-slate-200/80 lg:col-span-1 h-fit">
+          <div className="flex justify-between items-center mb-5 pb-4 border-b border-slate-100">
+            <h2 className="font-bold text-lg text-slate-900">🧰 {editToolId ? 'Edit Tools' : 'Input Tools Baru'}</h2>
+            {editToolId && <button type="button" onClick={resetToolForm} className="text-xs bg-slate-200 px-3 py-1 rounded-lg font-bold">Batal</button>}
+          </div>
+          <form onSubmit={handleSaveTool} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Judul Tools</label>
+              <input type="text" value={judulTool} onChange={(e) => setJudulTool(e.target.value)} required placeholder="Contoh: Brosur Katalog 2026" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Tipe</label>
+                <select value={tipeTool} onChange={(e) => setTipeTool(e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 font-bold">
+                  <option value="video">🎥 Video</option>
+                  <option value="file">📄 File / PDF</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Kategori</label>
+                <select value={kategoriTool} onChange={(e) => setKategoriTool(e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 font-bold">
+                  <option value="Selling">Selling</option>
+                  <option value="Product Knowledge">Product Knowledge</option>
+                  <option value="Recruiting Skill">Recruiting Skill</option>
+                  <option value="Soft Skill">Soft Skill</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Link URL (Akses / Unduh)</label>
+              <input type="url" value={linkTool} onChange={(e) => setLinkTool(e.target.value)} required placeholder="https://..." className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50" />
+            </div>
+            <button type="submit" disabled={isSubmittingTool} className={`w-full font-bold py-3 rounded-xl text-sm transition shadow-lg ${editToolId ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-cyan-600 hover:bg-cyan-700 text-white'}`}>
+              {isSubmittingTool ? 'Menyimpan...' : editToolId ? 'Simpan Perubahan' : 'Publish ke Halaman Tools'}
+            </button>
+          </form>
+        </div>
+
+        <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-200/80 lg:col-span-2 flex flex-col justify-between">
+          <div>
+            <h2 className="font-bold text-lg text-slate-900 mb-5">🧰 Daftar Tools Berlangsung</h2>
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left text-sm border-collapse min-w-[400px]">
+                 <thead>
+                   <tr className="bg-slate-100/70 border-y border-slate-200 text-slate-600 text-xs font-bold">
+                     <th className="py-3 px-4">JUDUL TOOLS</th>
+                     <th className="py-3 px-4">TIPE & KATEGORI</th>
+                     <th className="py-3 px-4 text-center">AKSI</th>
+                   </tr>
+                 </thead>
+                 <tbody className="divide-y divide-slate-100">
+                   {showTables && currentTools.length > 0 ? (
+                     currentTools.map((item) => (
+                       <tr key={item.id} className="hover:bg-slate-50">
+                         <td className="py-4 px-4 font-bold text-slate-900">{item.judul}</td>
+                         <td className="py-4 px-4">
+                           <div className="flex flex-wrap items-center gap-1.5">
+                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${item.tipe === 'video' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                               {item.tipe === 'video' ? '🎥 Video' : '📄 File'}
+                             </span>
+                             <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                               {item.kategori}
+                             </span>
+                           </div>
+                         </td>
+                         <td className="py-4 px-4 text-center whitespace-nowrap">
+                           <button onClick={() => { setEditToolId(item.id); setJudulTool(item.judul); setKategoriTool(item.kategori); setTipeTool(item.tipe); setLinkTool(item.link); scrollToSection('form-tool'); }} className="text-cyan-600 hover:bg-cyan-50 font-bold px-3 py-1.5 rounded-lg text-xs mr-2 border border-cyan-200 transition">Edit</button>
+                           <button onClick={async () => { if(window.confirm('Hapus tools ini?')) { await deleteDoc(doc(db, 'sales_tools', item.id)); fetchTools(); } }} className="text-rose-600 hover:bg-rose-50 font-bold px-3 py-1.5 rounded-lg text-xs border border-rose-200 transition">Hapus</button>
+                         </td>
+                       </tr>
+                     ))
+                   ) : (
+                     <tr><td colSpan="3" className="p-8 text-center text-slate-400 font-medium">{showTables ? 'Tidak ada data tools tersimpan.' : 'Tabel disembunyikan.'}</td></tr>
+                   )}
+                 </tbody>
+              </table>
+            </div>
+          </div>
+          {showTables && totalPagesTools > 1 && (
+            <div className="p-4 border-t border-slate-200 flex justify-between items-center bg-slate-50 rounded-2xl mt-4">
+              <button onClick={() => setCurrentPageTools(p => Math.max(p - 1, 1))} disabled={currentPageTools === 1} className="px-4 py-2 bg-white border rounded-xl text-xs font-bold disabled:opacity-50">← Sebelumnya</button>
+              <span className="text-xs font-bold text-slate-600">Hal {currentPageTools} dari {totalPagesTools}</span>
+              <button onClick={() => setCurrentPageTools(p => Math.min(p + 1, totalPagesTools))} disabled={currentPageTools === totalPagesTools} className="px-4 py-2 bg-white border rounded-xl text-xs font-bold disabled:opacity-50">Selanjutnya →</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 8. INPUT MATERI ACADEMY SECTION (UNTUK HARVEST ACADEMY / LIBRARY) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div id="form-doc" className="bg-white p-6 rounded-3xl shadow-xl border border-slate-200/80 lg:col-span-1 h-fit">
           <div className="flex justify-between items-center mb-5 pb-4 border-b border-slate-100">
-            <h2 className="font-bold text-lg text-slate-900">🧰 {editDocId ? 'Edit Tools / Library' : 'Input Tools Baru'}</h2>
+            <h2 className="font-bold text-lg text-slate-900">📚 {editDocId ? 'Edit Materi Academy' : 'Input Materi Academy'}</h2>
             {editDocId && <button type="button" onClick={resetDocForm} className="text-xs bg-slate-200 px-3 py-1 rounded-lg font-bold">Batal</button>}
           </div>
           <form onSubmit={handleSaveDoc} className="space-y-4">
@@ -1277,19 +1421,19 @@ export default function AdminDashboardPage() {
               <input type="url" value={linkDoc} onChange={(e) => setLinkDoc(e.target.value)} required placeholder="https://..." className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50" />
             </div>
             <button type="submit" disabled={isSubmittingDoc} className={`w-full font-bold py-3 rounded-xl text-sm transition shadow-lg ${editDocId ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-cyan-600 hover:bg-cyan-700 text-white'}`}>
-              {isSubmittingDoc ? 'Menyimpan...' : editDocId ? 'Simpan Perubahan' : 'Publish Tools & Notif'}
+              {isSubmittingDoc ? 'Menyimpan...' : editDocId ? 'Simpan Perubahan' : 'Publish Materi Academy'}
             </button>
           </form>
         </div>
 
         <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-200/80 lg:col-span-2 flex flex-col justify-between">
           <div>
-            <h2 className="font-bold text-lg text-slate-900 mb-5">📂 Daftar Tools & Library Berlangsung</h2>
+            <h2 className="font-bold text-lg text-slate-900 mb-5">📚 Daftar Materi Library Academy</h2>
             <div className="overflow-x-auto w-full">
               <table className="w-full text-left text-sm border-collapse min-w-[400px]">
                  <thead>
                    <tr className="bg-slate-100/70 border-y border-slate-200 text-slate-600 text-xs font-bold">
-                     <th className="py-3 px-4">JUDUL TOOLS</th>
+                     <th className="py-3 px-4">JUDUL MATERI</th>
                      <th className="py-3 px-4">TIPE & KATEGORI</th>
                      <th className="py-3 px-4 text-center">AKSI</th>
                    </tr>
@@ -1311,12 +1455,12 @@ export default function AdminDashboardPage() {
                          </td>
                          <td className="py-4 px-4 text-center whitespace-nowrap">
                            <button onClick={() => { setEditDocId(docItem.id); setJudulDoc(docItem.judul); setKategoriDoc(docItem.kategori); setTipeDoc(docItem.tipe); setLinkDoc(docItem.link); scrollToSection('form-doc'); }} className="text-cyan-600 hover:bg-cyan-50 font-bold px-3 py-1.5 rounded-lg text-xs mr-2 border border-cyan-200 transition">Edit</button>
-                           <button onClick={async () => { if(window.confirm('Hapus tools ini?')) { await deleteDoc(doc(db, 'library_docs', docItem.id)); fetchLibrary(); } }} className="text-rose-600 hover:bg-rose-50 font-bold px-3 py-1.5 rounded-lg text-xs border border-rose-200 transition">Hapus</button>
+                           <button onClick={async () => { if(window.confirm('Hapus materi ini?')) { await deleteDoc(doc(db, 'library_docs', docItem.id)); fetchLibrary(); } }} className="text-rose-600 hover:bg-rose-50 font-bold px-3 py-1.5 rounded-lg text-xs border border-rose-200 transition">Hapus</button>
                          </td>
                        </tr>
                      ))
                    ) : (
-                     <tr><td colSpan="3" className="p-8 text-center text-slate-400 font-medium">{showTables ? 'Tidak ada data tools tersimpan.' : 'Tabel disembunyikan.'}</td></tr>
+                     <tr><td colSpan="3" className="p-8 text-center text-slate-400 font-medium">{showTables ? 'Tidak ada data materi tersimpan.' : 'Tabel disembunyikan.'}</td></tr>
                    )}
                  </tbody>
               </table>
@@ -1332,7 +1476,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 8. LEARNING PATH / ACADEMY MODUL SECTION */}
+      {/* 9. LEARNING PATH / ACADEMY MODUL SECTION */}
       <div id="form-modul" className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl border border-slate-200/80 w-full">
         <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
           <h2 className="font-bold text-xl text-slate-900">🎓 {editModuleId ? 'Edit Modul Pembelajaran' : 'Manajemen Learning Path'}</h2>
@@ -1420,7 +1564,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 9. BANK SOAL KUIS SECTION */}
+      {/* 10. BANK SOAL KUIS SECTION */}
       <div id="form-kuis" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-200/80 lg:col-span-1">
           <div className="flex justify-between items-center mb-5 pb-4 border-b border-slate-100">
@@ -1445,7 +1589,7 @@ export default function AdminDashboardPage() {
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Kunci Jawaban Benar</label>
-              <select value={kuisJawabanBenar} onChange={(e) => setKuisJawabanBenar(e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 font-bold">
+              <select value={kuisJawabanBenar} onChange={(e) => setKunciJawabanBenar(e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 font-bold">
                 <option value="A">A</option>
                 <option value="B">B</option>
                 <option value="C">C</option>

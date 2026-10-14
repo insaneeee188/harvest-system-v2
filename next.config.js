@@ -1,17 +1,8 @@
-/** @type {import('next').NextConfig} */
+/** @type {import('next').Next.jsConfig} */
 const nextConfig = {
-  turbopack: {},
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'i.imgur.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'imgur.com',
-      },
-    ],
+  serverExternalPackages: ['firebase-admin'],
+  webpack: (config) => {
+    return config;
   },
 };
 

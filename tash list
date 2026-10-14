@@ -1,0 +1,76 @@
+[33m88667cc[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{0}: commit: Clean up corrupt api folder
+[33m29bb9a0[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{1}: reset: moving to HEAD
+[33m29bb9a0[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{2}: commit: Fix lazy initialization for firebaseAdmin to prevent build errors
+[33meda5b54[m HEAD@{3}: commit: Fix safe firebase-admin initialization for Next.js build
+[33m76fa7d4[m HEAD@{4}: commit: Fix firebase-admin import syntax in firebaseAdmin.js
+[33mc774eb5[m HEAD@{5}: commit: Fix import path for firebaseAdmin in send-push route
+[33m96758f8[m HEAD@{6}: commit: Integrate FCM push notification and admin triggers
+[33m0ee5196[m HEAD@{7}: commit: Fix final SSR compatibility and clean up static imports
+[33m31a08a8[m HEAD@{8}: commit: Fix SSR compatibility for FCM initialization
+[33me4664e6[m HEAD@{9}: commit: Fix web push notification FCM service worker and token setup
+[33meda78b6[m HEAD@{10}: commit: Update Notifikasi
+[33m129d828[m HEAD@{11}: commit: Tambahan Kecil
+[33mf6c910e[m HEAD@{12}: commit: add and fix apk download file name
+[33md10e1c8[m HEAD@{13}: commit: Feat:Update Next.js
+[33mbcc59dd[m HEAD@{14}: commit: feat: add cron job configuration and env secrets
+[33m43ff743[m HEAD@{15}: commit: feat: setup native PWA and fix build configuration
+[33m0f65832[m HEAD@{16}: reset: moving to HEAD~1
+[33m01b94c8[m HEAD@{17}: commit: feat: setup native PWA and fix build configuration
+[33m0f65832[m HEAD@{18}: commit: Update lib telegram
+[33m55b4c00[m HEAD@{19}: commit: Update Extra komisi 2
+[33mbc376a8[m HEAD@{20}: commit: Update Extra komisi
+[33mc47a626[m HEAD@{21}: commit: update promo nasabah
+[33m10fb253[m HEAD@{22}: commit: update Bot
+[33mf8743e4[m HEAD@{23}: commit: Update Promo Nasabah
+[33m426b12b[m HEAD@{24}: commit: Update Role Agent/Leader Daily Activity
+[33m266e80c[m HEAD@{25}: commit: Update Kalende
+[33m888ba9d[m HEAD@{26}: commit: Update Kalender
+[33m66f0c55[m HEAD@{27}: commit: Fungsi/Library diganti
+[33med31861[m HEAD@{28}: commit: Update Notifikasi dan fitur next, slide
+[33mdcc4c66[m HEAD@{29}: commit: memperbaiki fitur bot
+[33mc84b8d1[m HEAD@{30}: commit: Update Semua
+[33m0ec72f0[m HEAD@{31}: commit: Update Baru
+[33mc619966[m HEAD@{32}: commit: Update Excel
+[33m8a3a8a1[m HEAD@{33}: commit: Update bot youtube and web
+[33m0e516bf[m HEAD@{34}: commit: Update Besar
+[33m7903a23[m HEAD@{35}: commit: Perubahan Id Topic
+[33mcea699f[m HEAD@{36}: commit: update deskripsi academy
+[33mbbbb783[m HEAD@{37}: commit: update hilangkan kata zoom
+[33m3b8b403[m HEAD@{38}: commit: updatebanyaksih
+[33m9ab135c[m HEAD@{39}: commit: Update bot dan production
+[33m8fc07dc[m HEAD@{40}: commit: fix: import path for telegram lib
+[33mb0a4e62[m HEAD@{41}: commit: feat: complete telegram notification integration with topic routing and full metadata
+[33meb8d1b4[m HEAD@{42}: commit: fix telegram import path
+[33m2bec5f5[m HEAD@{43}: commit: update setelah error
+[33md3c09c7[m HEAD@{44}: commit: updateeeeeeeeee
+[33m308c1bc[m HEAD@{45}: commit: hapus subdeskripsi
+[33m4a9dbc2[m HEAD@{46}: commit: UPDATE TEROSSSSSSSSSSSSSSSSSSS
+[33m6e82b64[m HEAD@{47}: commit: update teros
+[33m9e3a402[m HEAD@{48}: commit: update lagi
+[33mc166288[m HEAD@{49}: commit: UPDATE
+[33mbd5fd4f[m HEAD@{50}: commit: update new
+[33me9447bd[m HEAD@{51}: commit: update 2
+[33mf37dac8[m HEAD@{52}: commit: Update Zoom in Zoom Out
+[33mf6af6f6[m HEAD@{53}: commit: Update Revisi academy
+[33m777b620[m HEAD@{54}: commit: Update Revisi
+[33m43ea606[m HEAD@{55}: commit: update final
+[33mceab1e3[m HEAD@{56}: commit: Update Visi Misi
+[33m92dc53a[m HEAD@{57}: commit: update done
+[33m4f9df23[m HEAD@{58}: commit: update final done
+[33m33d270e[m HEAD@{59}: commit: fear:Update Final Semoga
+[33md3a54a8[m HEAD@{60}: commit: feat:UPDATE GEDE
+[33m6b387d5[m HEAD@{61}: commit: fear:Mulai Academy
+[33m4e8304e[m HEAD@{62}: commit: fear:UpdateLogin-admin-Home
+[33m5df62a7[m HEAD@{63}: commit: feat:Update Academy
+[33mc51924d[m HEAD@{64}: commit: feat:update contest
+[33m472cbcb[m HEAD@{65}: commit: feat:update2
+[33m73f3d4a[m HEAD@{66}: commit: feat:Renew LOGO
+[33m8cbc06d[m HEAD@{67}: commit: feat: hapus contest & tambahkan logo di homepage
+[33macb84d1[m HEAD@{68}: commit: feat: hapus contest & tambahkan logo di homepage
+[33mc2f382f[m HEAD@{69}: commit: feat: hapus contest & tambahkan logo di homepage
+[33m2662a8c[m HEAD@{70}: commit: feat: hapus contest & tambahkan logo di homepage
+[33m3e2f7dd[m HEAD@{71}: commit: feat: landing page dynamic based on auth
+[33m9b6d9f6[m HEAD@{72}: commit: update admin
+[33m6ae8ec4[m HEAD@{73}: commit: feat: menambah hamburger menu di mobile view
+[33m39d8ee8[m HEAD@{74}: Branch: renamed refs/heads/master to refs/heads/main
+[33m39d8ee8[m HEAD@{76}: commit (initial): Initial clean commit

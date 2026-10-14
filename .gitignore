@@ -7,3 +7,5 @@
 
 # production build
 /build
+
+serviceAccountKey.json

@@ -9,7 +9,7 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail 
 } from 'firebase/auth';
-import { doc, collection, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, collection, onSnapshot, setDoc, arrayUnion } from 'firebase/firestore';
 
 export default function HomePage() {
   const [user, setUser] = useState(null);
@@ -24,6 +24,21 @@ export default function HomePage() {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setNotifPermission(Notification.permission);
     }
+  }, []);
+
+  // ================= STATE DROPDOWN MENU INFORMASI =================
+  const [showInfoDropdown, setShowInfoDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Menutup dropdown jika mengklik di luar area menu
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowInfoDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // ================= STATE SWITCH TAB LOGIN / REGISTER =================
@@ -83,38 +98,44 @@ export default function HomePage() {
     }
 
     try {
-      const permission = await Notification.requestPermission();
+      let permission = Notification.permission;
+      if (permission !== 'granted') {
+        permission = await Notification.requestPermission();
+      }
       setNotifPermission(permission);
       
       if (permission === 'granted') {
         try {
-          // Inisialisasi messaging secara aman hanya di sisi client
           const { getMessaging, getToken } = await import('firebase/messaging');
           const messaging = getMessaging(app);
           
           const currentToken = await getToken(messaging, {
-            vapidKey: 'BMyflZUFceyZu7I1D__ZSht9d7VRxfdVMPARRy7rQmbxWV79wiQT7spkaUwOXfWWuPHBcbjACm2f26Rpm2B8RJs'
+            vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
           });
 
           if (currentToken && user) {
             await setDoc(
               doc(db, 'users', user.uid),
               { 
-                fcmToken: currentToken, 
+                fcmTokens: arrayUnion(currentToken),
                 fcmTokenUpdatedAt: new Date().toISOString() 
               },
               { merge: true }
             );
-            alert('Notifikasi berhasil diaktifkan! Perangkat Anda telah terhubung.');
+
+            // Menampilkan token ke console browser agar mudah dipantau
+            console.log('FCM Token berhasil disimpan ke Firestore:', currentToken);
+
+            alert('Sukses! Notifikasi Telah Dizinkan.');
           } else {
-            alert('Izin diberikan, tetapi tidak dapat mengambil token perangkat.');
+            alert('Izin diberikan, tetapi user belum login atau token gagal diambil.');
           }
         } catch (tokenErr) {
           console.error('Error saat mengambil FCM token:', tokenErr);
-          alert('Gagal meregistrasikan token notifikasi.');
+          alert('Gagal meregistrasikan token notifikasi: ' + tokenErr.message);
         }
-      } else if (permission === 'denied') {
-        alert('Izin notifikasi ditolak. Silakan izinkan melalui Pengaturan Browser/HP Anda.');
+      } else {
+        alert('Izin notifikasi ditolak. Silakan izinkan melalui Pengaturan Browser Anda.');
       }
     } catch (error) {
       console.error('Gagal meminta izin notifikasi:', error);
@@ -857,15 +878,13 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* TOMBOL HANYA TAMPIL JIKA NOTIFIKASI BELUM DIIZINKAN */}
-          {notifPermission !== 'granted' && (
-            <button
-              onClick={handleEnableNotification}
-              className="flex items-center justify-center gap-2 bg-[#a8c338] text-[#072c38] font-bold px-4 py-2.5 rounded-xl hover:bg-[#96af31] transition shadow-md text-xs sm:text-sm"
-            >
-              🔔 Aktifkan Notifikasi Web
-            </button>
-          )}
+          {/* TOMBOL TRIGGER SELALU TAMPIL UNTUK SINKRONISASI TOKEN */}
+          <button
+            onClick={handleEnableNotification}
+            className="flex items-center justify-center gap-2 bg-[#a8c338] text-[#072c38] font-bold px-5 py-3 rounded-xl hover:bg-[#96af31] transition shadow-md text-xs sm:text-sm whitespace-nowrap"
+          >
+            🔔 Izinkan Notifikasi
+          </button>
 
         </div>
       </div>
@@ -873,86 +892,115 @@ export default function HomePage() {
      {/* QUICK NAVIGATION */}
       <div className="max-w-[1400px] mx-auto px-4 mt-8">
         <div className="flex items-center justify-between mb-4 px-1">
-          <h2 className="text-xs sm:text-sm font-black tracking-wider uppercase text-gray-400">Quick Navigation</h2>
+          <h2 className="text-xs sm:text-sm font-black tracking-wider uppercase text-gray-400">QUICK NAVIGATION</h2>
         </div>
         
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
           
+          {/* 1. Top Achiever */}
           <a
             href="#top-achievers"
             onClick={scrollToAchievers}
-            className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group cursor-pointer relative overflow-hidden"
+            className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition text-center flex flex-col items-center justify-center cursor-pointer"
           >
-            <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+            <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mb-2">
               🏆
             </div>
-            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-amber-600 transition-colors">Top Achiever</h3>
-            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Peringkat Terbaik</p>
+            <span className="font-bold text-sm text-[#083344]">Top Achiever</span>
+            <span className="text-[10px] text-gray-400">Peringkat Terbaik</span>
           </a>
 
-          <Link href="/daily-activity" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+          {/* 2. Activity */}
+          <Link href="/daily-activity" className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition text-center flex flex-col items-center justify-center">
+            <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-2">
               📝
             </div>
-            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-blue-600 transition-colors">Activity</h3>
-            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Isi Form Harian</p>
+            <span className="font-bold text-sm text-[#083344]">Activity</span>
+            <span className="text-[10px] text-gray-400">Isi Form Harian</span>
           </Link>
 
-          <Link href="/academy" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+          {/* 3. Academy */}
+          <Link href="/academy" className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition text-center flex flex-col items-center justify-center">
+            <div className="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center mb-2">
               🎓
             </div>
-            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-emerald-600 transition-colors">Academy</h3>
-            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Modul & Bank File</p>
+            <span className="font-bold text-sm text-[#083344]">Academy</span>
+            <span className="text-[10px] text-gray-400">Modul & Learning</span>
           </Link>
 
-          <Link href="/events" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-              🗓️
-            </div>
-            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-purple-600 transition-colors">Events</h3>
-            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Jadwal Training</p>
-          </Link>
-
-          <Link href="/contest" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-rose-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-              🏅
-            </div>
-            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-rose-600 transition-colors">Contest</h3>
-            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Lihat Kontes</p>
-          </Link>
-
-          <Link href="/production-report" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-cyan-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+          {/* 4. Production */}
+          <Link href="/production-report" className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition text-center flex flex-col items-center justify-center">
+            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mb-2">
               📊
             </div>
-            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-cyan-600 transition-colors">Production</h3>
-            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Laporan Produksi</p>
+            <span className="font-bold text-sm text-[#083344]">Production</span>
+            <span className="text-[10px] text-gray-400">Laporan Produksi</span>
           </Link>
 
-          <Link href="/promo-nasabah" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-lime-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-              🏷️
+          {/* 5. Tools (Menu Baru Library/Tools) */}
+          <Link href="/tools" className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition text-center flex flex-col items-center justify-center">
+            <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center mb-2">
+              🧰
             </div>
-            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-lime-600 transition-colors">Promo Nasabah</h3>
-            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Penawaran Spesial</p>
+            <span className="font-bold text-sm text-[#083344]">Tools</span>
+            <span className="text-[10px] text-gray-400">Media & File</span>
           </Link>
 
-          <Link href="/extra-komisi" className="bg-white/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-sm border border-gray-100/80 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 hover:border-[#A8C338]/50 group relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#A8C338]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-2xl sm:text-3xl mb-2 sm:mb-3 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-              💸
-            </div>
-            <h3 className="font-extrabold text-[#083344] text-xs sm:text-sm group-hover:text-amber-600 transition-colors">Extra Komisi</h3>
-            <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 sm:mt-1">Ekstra Komisi</p>
-          </Link>
+          {/* 6. Informasi (Dropdown Menu) */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setShowInfoDropdown(!showInfoDropdown)}
+              className="w-full h-full bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition text-center flex flex-col items-center justify-center focus:outline-none"
+            >
+              <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-2 text-blue-800 font-serif font-black text-xl">
+                ℹ️
+              </div>
+              <span className="font-bold text-sm text-[#083344]">Informasi</span>
+              <span className="text-[10px] text-gray-400">Menu</span>
+            </button>
+
+            {/* Popup Dropdown Menu */}
+            {showInfoDropdown && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-3 py-1.5 border-b border-gray-100 mb-1">
+                  <p className="font-bold text-xs text-[#083344]">Informasi Menu</p>
+                </div>
+
+                <Link
+                  href="/events"
+                  onClick={() => setShowInfoDropdown(false)}
+                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition text-xs font-bold text-gray-700"
+                >
+                  <span className="text-base">📅</span> Event
+                </Link>
+
+                <Link
+                  href="/promo-nasabah"
+                  onClick={() => setShowInfoDropdown(false)}
+                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition text-xs font-bold text-gray-700"
+                >
+                  <span className="text-base">🎁</span> Promo
+                </Link>
+
+                <Link
+                  href="/contest"
+                  onClick={() => setShowInfoDropdown(false)}
+                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition text-xs font-bold text-gray-700"
+                >
+                  <span className="text-base">🏆</span> Contest
+                </Link>
+
+                <Link
+                  href="/extra-komisi"
+                  onClick={() => setShowInfoDropdown(false)}
+                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition text-xs font-bold text-gray-700"
+                >
+                  <span className="text-base">💸</span> Extra Komisi
+                </Link>
+              </div>
+            )}
+          </div>
 
         </div>
       </div>

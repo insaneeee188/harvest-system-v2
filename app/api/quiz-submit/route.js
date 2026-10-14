@@ -1,20 +1,30 @@
 import { NextResponse } from 'next/server';
-import admin from 'firebase-admin';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
+// Inisialisasi Firebase Admin yang aman untuk Vercel build
+if (!getApps().length) {
+  try {
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+    });
+  } catch (error) {
+    console.error('Firebase admin init error:', error);
+  }
 }
 
-const db = admin.firestore();
+const db = getApps().length > 0 ? getFirestore() : null;
 
 export async function POST(request) {
   try {
+    if (!db) {
+      return NextResponse.json({ success: false, error: 'Database belum siap' }, { status: 500 });
+    }
+
     const { userId, level, answers } = await request.json(); 
 
     if (!userId || !answers) {

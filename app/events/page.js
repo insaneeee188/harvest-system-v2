@@ -7,6 +7,9 @@ import { auth, db } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 
+// MENGIMPOR KOMPONEN TOMBOL DOWNLOAD
+import DownloadButton from '../../components/DownloadButton'; 
+
 export default function EventsPage() {
   const router = useRouter();
   const [userData, setUserData] = useState(null);
@@ -449,9 +452,24 @@ export default function EventsPage() {
                               </p>
                             )}
                           </div>
-                          <button className="mt-auto w-full text-center bg-[#A8C338] text-[#083344] font-black text-xs py-3 rounded-xl transition hover:opacity-90">
-                            🔍 Lihat Detail
-                          </button>
+                          
+                          {/* BAGIAN TOMBOL YANG SUDAH DIUBAH */}
+                          <div className="mt-auto flex flex-row items-center gap-2 w-full">
+                            <button 
+                              type="button"
+                              className="flex-1 text-center bg-[#A8C338] text-[#083344] font-black text-xs py-3 rounded-xl transition hover:opacity-90 hover:shadow-md"
+                            >
+                              🔍 Lihat Detail
+                            </button>
+                            
+                            {/* Panggil komponen DownloadButton dengan pembungkus stopPropagation */}
+                            {ev.posterUrl && (
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <DownloadButton imageUrl={ev.posterUrl} fileName={ev.judul} />
+                              </div>
+                            )}
+                          </div>
+
                         </div>
                       </div>
                     );

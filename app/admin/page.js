@@ -1581,7 +1581,7 @@ export default function AdminDashboardPage() {
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Kunci Jawaban Benar</label>
-              <select value={kuisJawabanBenar} onChange={(e) => setKunciJawabanBenar(e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 font-bold">
+              <select value={kuisJawabanBenar} onChange={(e) => setKuisJawabanBenar(e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 font-bold">
                 <option value="A">A</option>
                 <option value="B">B</option>
                 <option value="C">C</option>

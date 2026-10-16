@@ -7,6 +7,9 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
+// MENGIMPOR KOMPONEN TOMBOL DOWNLOAD BARU
+import DownloadButton from '../../components/DownloadButton';
+
 export default function PromoNasabahPage() {
   const router = useRouter();
   const [userData, setUserData] = useState(null);
@@ -347,7 +350,24 @@ export default function PromoNasabahPage() {
                            <p>Periode Promo: <span className="font-normal text-gray-500">{promo.periode || 'Cek Detail'}</span></p>
                            <p>Kategori Promo: <span className="font-normal text-gray-500">{promo.kategori || 'Nasabah'}</span></p>
                         </div>
-                        <button className="mt-auto block w-full bg-[#A8C338] text-[#083344] font-black text-xs py-3.5 rounded-xl transition">🔍 Lihat Detail </button>
+                        
+                        {/* BAGIAN TOMBOL YANG SUDAH DIUBAH */}
+                        <div className="mt-auto flex flex-row items-center gap-2 w-full">
+                          <button 
+                            type="button"
+                            className="flex-1 bg-[#A8C338] text-[#083344] font-black text-xs py-3.5 rounded-xl transition hover:shadow-md"
+                          >
+                            🔍 Lihat Detail
+                          </button>
+                          
+                          {/* Panggil komponen DownloadButton dengan pembungkus stopPropagation */}
+                          {promo.posterUrl && (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <DownloadButton imageUrl={promo.posterUrl} fileName={promo.judul} />
+                            </div>
+                          )}
+                        </div>
+                        
                       </div>
                     </div>
                   ))}

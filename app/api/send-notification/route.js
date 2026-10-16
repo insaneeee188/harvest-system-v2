@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 // Pastikan huruf besar/kecil pada nama file 'firebaseadmin' sesuai dengan yang ada di folder lib Kakak
-import { adminMessaging } from '../../../lib/firebaseadmin';
+import { adminMessaging } from '../../../lib/firebaseAdmin';
 
 export async function POST(request) {
   try {

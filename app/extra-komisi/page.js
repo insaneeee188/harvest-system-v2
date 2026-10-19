@@ -7,8 +7,9 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
-// MENGIMPOR KOMPONEN TOMBOL DOWNLOAD BARU
+// MENGIMPOR KOMPONEN TOMBOL DOWNLOAD & SHARE
 import DownloadButton from '../../components/DownloadButton';
+import ShareButtons from '../../components/ShareButtons';
 
 export default function ExtraKomisiPage() {
   const router = useRouter();
@@ -318,7 +319,7 @@ export default function ExtraKomisiPage() {
                            <p>Kategori: <span className="font-normal text-gray-500">{item.kategori || 'Agency'}</span></p>
                         </div>
                         
-                        {/* BAGIAN TOMBOL YANG SUDAH DIUBAH */}
+                        {/* BAGIAN TOMBOL CARD */}
                         <div className="mt-auto flex flex-row items-center gap-2 w-full">
                           <button 
                             type="button"
@@ -500,6 +501,10 @@ export default function ExtraKomisiPage() {
                 <p>🗓️ Periode Program: <span className="font-semibold text-gray-500">{selectedItem.periode || 'Sesuai ketentuan'}</span></p>
                 <p>🎯 Target Peserta: <span className="font-semibold text-gray-500">{selectedItem.target || 'Semua User'}</span></p>
               </div>
+
+              {/* FITUR SHARE WHATSAPP & TELEGRAM DITAMBAHKAN DI SINI */}
+              <ShareButtons item={selectedItem} />
+
             </div>
 
           </div>

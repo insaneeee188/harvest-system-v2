@@ -6,8 +6,10 @@ import { auth, db } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-// MENGIMPOR KOMPONEN TOMBOL DOWNLOAD BARU
+
+// MENGIMPOR KOMPONEN TOMBOL DOWNLOAD & SHARE
 import DownloadButton from '../../components/DownloadButton'; 
+import ShareButtons from '../../components/ShareButtons';
 
 export default function ContestPage() {
   const router = useRouter();
@@ -318,7 +320,7 @@ export default function ContestPage() {
                            <p>Kategori Contest: <span className="font-normal text-gray-500">{contest.kategori || 'Agency'}</span></p>
                         </div>
                         
-                        {/* BAGIAN TOMBOL YANG SUDAH DIUBAH */}
+                        {/* BAGIAN TOMBOL CARD */}
                         <div className="mt-auto flex flex-row items-center gap-2 w-full">
                           <button 
                             type="button"
@@ -500,6 +502,10 @@ export default function ContestPage() {
                 <p>🗓️ Periode Contest: <span className="font-semibold text-gray-500">{selectedContest.periode || 'Sesuai ketentuan'}</span></p>
                 <p>🎯 Target Peserta: <span className="font-semibold text-gray-500">{selectedContest.target || 'Semua User'}</span></p>
               </div>
+
+              {/* FITUR SHARE WHATSAPP & TELEGRAM DITAMBAHKAN DI SINI */}
+              <ShareButtons item={selectedContest} />
+
             </div>
 
           </div>

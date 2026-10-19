@@ -7,8 +7,9 @@ import { auth, db } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 
-// MENGIMPOR KOMPONEN TOMBOL DOWNLOAD
+// MENGIMPOR KOMPONEN TOMBOL DOWNLOAD & SHARE
 import DownloadButton from '../../components/DownloadButton'; 
+import ShareButtons from '../../components/ShareButtons';
 
 export default function EventsPage() {
   const router = useRouter();
@@ -453,7 +454,7 @@ export default function EventsPage() {
                             )}
                           </div>
                           
-                          {/* BAGIAN TOMBOL YANG SUDAH DIUBAH */}
+                          {/* BAGIAN TOMBOL CARD */}
                           <div className="mt-auto flex flex-row items-center gap-2 w-full">
                             <button 
                               type="button"
@@ -684,6 +685,9 @@ export default function EventsPage() {
                 )}
                 {selectedEvent.lokasi && <p>📍 Lokasi: {selectedEvent.lokasi}</p>}
               </div>
+
+              {/* FITUR SHARE WHATSAPP & TELEGRAM DITAMBAHKAN DI SINI */}
+              <ShareButtons item={selectedEvent} />
 
               {selectedEvent.linkZoom && (
                 <a

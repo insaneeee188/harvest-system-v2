@@ -7,8 +7,9 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
-// MENGIMPOR KOMPONEN TOMBOL DOWNLOAD BARU
+// MENGIMPOR KOMPONEN TOMBOL DOWNLOAD & SHARE
 import DownloadButton from '../../components/DownloadButton';
+import ShareButtons from '../../components/ShareButtons';
 
 export default function PromoNasabahPage() {
   const router = useRouter();
@@ -56,7 +57,7 @@ export default function PromoNasabahPage() {
         if (userDoc.exists() && isMounted) {
           setUserData(userDoc.data());
 
-          // PERBAIKAN: Fetch Data Promo langsung dari collection 'promo_nasabah'
+          // Fetch Data Promo langsung dari collection 'promo_nasabah'
           const snapPromos = await getDocs(collection(db, 'promo_nasabah'));
 
           if (isMounted) {
@@ -147,7 +148,7 @@ export default function PromoNasabahPage() {
     return matchKategori && matchTarget;
   });
 
-  // Filter khusus untuk panel Side Highlight (Prioritaskan promo yang dicentang isHighlight oleh Admin)
+  // Filter khusus untuk panel Side Highlight
   const highlightPromos = filteredPromos.filter(pro => pro.isHighlight).length > 0
     ? filteredPromos.filter(pro => pro.isHighlight)
     : filteredPromos;
@@ -351,7 +352,7 @@ export default function PromoNasabahPage() {
                            <p>Kategori Promo: <span className="font-normal text-gray-500">{promo.kategori || 'Nasabah'}</span></p>
                         </div>
                         
-                        {/* BAGIAN TOMBOL YANG SUDAH DIUBAH */}
+                        {/* BAGIAN TOMBOL CARD */}
                         <div className="mt-auto flex flex-row items-center gap-2 w-full">
                           <button 
                             type="button"
@@ -529,6 +530,10 @@ export default function PromoNasabahPage() {
                 <p>🗓️ Periode Promo: <span className="font-semibold text-gray-500">{selectedPromo.periode || 'Sesuai ketentuan'}</span></p>
                 <p>🎯 Target Peserta: <span className="font-semibold text-gray-500">{selectedPromo.target || 'Semua Nasabah'}</span></p>
               </div>
+
+              {/* FITUR SHARE WHATSAPP & TELEGRAM */}
+              <ShareButtons item={selectedPromo} modulePath="promo-nasabah" />
+
             </div>
 
           </div>

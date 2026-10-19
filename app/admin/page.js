@@ -1221,7 +1221,7 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-1 gap-3 bg-slate-100/70 p-3 rounded-2xl border border-slate-200">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Lokasi Fisik (Offline)</label>
-                <input type="text" value={lokasiEvent} onChange={(e) => setLokasiEvent(e.target.value)} placeholder="Contoh: Kantor Surabaya R.302" className="w-full px-3 py-2 border rounded-xl text-sm bg-white" />
+                <input type="text" value={lokasiEvent} onChange={(e) => setLokasiEvent(e.target.value)} placeholder="Contoh: Kantor SB12 - Harvest Agency" className="w-full px-3 py-2 border rounded-xl text-sm bg-white" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Link Zoom (Online)</label>

@@ -177,7 +177,6 @@ export default function AdminDashboardPage() {
 
   const [editToolId, setEditToolId] = useState(null);
   const [judulTool, setJudulTool] = useState('');
-  const [kategoriTool, setKategoriTool] = useState('Selling'); 
   const [tipeTool, setTipeTool] = useState('video'); 
   const [linkTool, setLinkTool] = useState('');
   const [isSubmittingTool, setIsSubmittingTool] = useState(false);
@@ -513,12 +512,12 @@ export default function AdminDashboardPage() {
   };
 
   const resetToolForm = () => {
-    setEditToolId(null); setJudulTool(''); setLinkTool(''); setKategoriTool('Selling'); setTipeTool('video');
+    setEditToolId(null); setJudulTool(''); setLinkTool(''); setTipeTool('video');
   };
 
   const handleSaveTool = async (e) => { 
     e.preventDefault(); setIsSubmittingTool(true); 
-    const payload = { judul: judulTool, kategori: kategoriTool, tipe: tipeTool, link: linkTool };
+    const payload = { judul: judulTool, tipe: tipeTool, link: linkTool };
     try {
       if (editToolId) {
         await updateDoc(doc(db, 'sales_tools', editToolId), { ...payload, updatedAt: new Date().toISOString() });
@@ -526,9 +525,9 @@ export default function AdminDashboardPage() {
       } else {
         await addDoc(collection(db, 'sales_tools'), { ...payload, createdAt: new Date().toISOString() });
         try {
-          await addDoc(collection(db, 'notifications'), { title: `🧰 Tools Baru: ${judulTool}`, message: `Materi ${kategoriTool} baru ditambahkan ke Tools.`, type: tipeTool, target: 'Semua', link: '/tools', createdAt: new Date().toISOString(), isRead: false });
+          await addDoc(collection(db, 'notifications'), { title: `🧰 Tools Baru: ${judulTool}`, message: `Materi baru ditambahkan ke Tools.`, type: tipeTool, target: 'Semua', link: '/tools', createdAt: new Date().toISOString(), isRead: false });
         } catch (e) { console.error(e); }
-        await broadcastPushNotification(`🧰 Tools Baru: ${judulTool}`, `Materi ${kategoriTool} baru tersedia di Tools.`, '/tools');
+        await broadcastPushNotification(`🧰 Tools Baru: ${judulTool}`, `Materi baru tersedia di Tools.`, '/tools');
         alert("Tools berhasil dipublikasikan ke halaman /tools & Notifikasi terkirim!"); 
       }
       resetToolForm(); fetchTools(); 
@@ -1300,23 +1299,12 @@ export default function AdminDashboardPage() {
               <label className="block text-xs font-bold text-slate-700 mb-1">Judul Tools</label>
               <input type="text" value={judulTool} onChange={(e) => setJudulTool(e.target.value)} required placeholder="Contoh: Brosur Katalog 2026" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Tipe</label>
-                <select value={tipeTool} onChange={(e) => setTipeTool(e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 font-bold">
-                  <option value="video">🎥 Video</option>
-                  <option value="file">📄 File / PDF</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Kategori</label>
-                <select value={kategoriTool} onChange={(e) => setKategoriTool(e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 font-bold">
-                  <option value="Selling">Selling</option>
-                  <option value="Product Knowledge">Product Knowledge</option>
-                  <option value="Recruiting Skill">Recruiting Skill</option>
-                  <option value="Soft Skill">Soft Skill</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Tipe</label>
+              <select value={tipeTool} onChange={(e) => setTipeTool(e.target.value)} className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 font-bold">
+                <option value="video">🎥 Video</option>
+                <option value="file">📄 File / PDF</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Link URL (Akses / Unduh)</label>
@@ -1336,7 +1324,7 @@ export default function AdminDashboardPage() {
                  <thead>
                    <tr className="bg-slate-100/70 border-y border-slate-200 text-slate-600 text-xs font-bold">
                      <th className="py-3 px-4">JUDUL TOOLS</th>
-                     <th className="py-3 px-4">TIPE & KATEGORI</th>
+                     <th className="py-3 px-4">TIPE</th>
                      <th className="py-3 px-4 text-center">AKSI</th>
                    </tr>
                  </thead>
@@ -1346,17 +1334,12 @@ export default function AdminDashboardPage() {
                        <tr key={item.id} className="hover:bg-slate-50">
                          <td className="py-4 px-4 font-bold text-slate-900">{item.judul}</td>
                          <td className="py-4 px-4">
-                           <div className="flex flex-wrap items-center gap-1.5">
-                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${item.tipe === 'video' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                               {item.tipe === 'video' ? '🎥 Video' : '📄 File'}
-                             </span>
-                             <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
-                               {item.kategori}
-                             </span>
-                           </div>
+                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${item.tipe === 'video' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                             {item.tipe === 'video' ? '🎥 Video' : '📄 File'}
+                           </span>
                          </td>
                          <td className="py-4 px-4 text-center whitespace-nowrap">
-                           <button onClick={() => { setEditToolId(item.id); setJudulTool(item.judul); setKategoriTool(item.kategori); setTipeTool(item.tipe); setLinkTool(item.link); scrollToSection('form-tool'); }} className="text-cyan-600 hover:bg-cyan-50 font-bold px-3 py-1.5 rounded-lg text-xs mr-2 border border-cyan-200 transition">Edit</button>
+                           <button onClick={() => { setEditToolId(item.id); setJudulTool(item.judul); setTipeTool(item.tipe); setLinkTool(item.link); scrollToSection('form-tool'); }} className="text-cyan-600 hover:bg-cyan-50 font-bold px-3 py-1.5 rounded-lg text-xs mr-2 border border-cyan-200 transition">Edit</button>
                            <button onClick={async () => { if(window.confirm('Hapus tools ini?')) { await deleteDoc(doc(db, 'sales_tools', item.id)); fetchTools(); } }} className="text-rose-600 hover:bg-rose-50 font-bold px-3 py-1.5 rounded-lg text-xs border border-rose-200 transition">Hapus</button>
                          </td>
                        </tr>

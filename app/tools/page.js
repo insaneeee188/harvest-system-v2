@@ -6,7 +6,6 @@ import { collection, getDocs } from 'firebase/firestore';
 
 export default function ToolsPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
   const [salesMaterials, setSalesMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,19 +25,8 @@ export default function ToolsPage() {
     fetchTools();
   }, []);
 
-  const categories = [
-    { id: 'All', label: 'All' },
-    { id: 'Selling', label: 'Selling' },
-    { id: 'Product Knowledge', label: 'Product Knowledge' },
-    { id: 'Recruiting Skill', label: 'Recruiting Skill' },
-    { id: 'Soft Skill', label: 'Soft Skill' },
-  ];
-
   const filteredMaterials = salesMaterials.filter((item) => {
-    const matchesCategory = selectedCategory === 'All' || item.kategori === selectedCategory;
-    const matchesSearch =
-      item.judul?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return item.judul?.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   return (
@@ -51,9 +39,9 @@ export default function ToolsPage() {
           </div>
         </div>
 
-        {/* Search Bar & Category Filter Container */}
+        {/* Search Bar Container */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
-          <div className="flex justify-end mb-6">
+          <div className="flex justify-end">
             <div className="relative w-full md:w-80">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,25 +57,6 @@ export default function ToolsPage() {
               />
             </div>
           </div>
-
-          <div className="flex flex-wrap gap-2 items-center">
-            {categories.map((cat) => {
-              const isActive = selectedCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-5 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-[#0F3A47] text-white shadow-sm'
-                      : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         {/* Content Area */}
@@ -101,10 +70,7 @@ export default function ToolsPage() {
                 className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
               >
                 <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold uppercase rounded-md tracking-wider">
-                      {item.kategori || 'Selling'}
-                    </span>
+                  <div className="flex justify-end items-center mb-3">
                     <span className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-md tracking-wider flex items-center gap-1 ${item.tipe === 'video' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
                       {item.tipe === 'video' ? '🎥 Video' : '📄 File'}
                     </span>

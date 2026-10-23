@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { auth, db, app } from '../firebase';
 import { 
   onAuthStateChanged, 
@@ -10,6 +11,10 @@ import {
   sendPasswordResetEmail 
 } from 'firebase/auth';
 import { doc, collection, onSnapshot, setDoc, arrayUnion } from 'firebase/firestore';
+
+// MENGIMPOR KOMPONEN TOMBOL DOWNLOAD & SHARE
+import DownloadButton from '../components/DownloadButton'; 
+import ShareButtons from '../components/ShareButtons';
 
 export default function HomePage() {
   const [user, setUser] = useState(null);
@@ -123,9 +128,7 @@ export default function HomePage() {
               { merge: true }
             );
 
-            // Menampilkan token ke console browser agar mudah dipantau
             console.log('FCM Token berhasil disimpan ke Firestore:', currentToken);
-
             alert('Sukses! Notifikasi Telah Dizinkan.');
           } else {
             alert('Izin diberikan, tetapi user belum login atau token gagal diambil.');
@@ -937,7 +940,7 @@ export default function HomePage() {
             <span className="text-[10px] text-gray-400">Laporan Produksi</span>
           </Link>
 
-          {/* 5. Tools (Menu Baru Library/Tools) */}
+          {/* 5. Tools */}
           <Link href="/tools" className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition text-center flex flex-col items-center justify-center">
             <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center mb-2">
               🧰
@@ -1030,6 +1033,7 @@ export default function HomePage() {
                     const startDateStr = ev.tanggal || ev.startDate || ev.date || ev.tanggalSelesaiEvent || ev.tanggalSelesai;
                     const endDateStr = ev.tanggalSelesaiEvent || ev.tanggalSelesai || ev.endDate || startDateStr;
                     const isMultiDay = endDateStr && endDateStr !== startDateStr;
+                    const posterImage = ev.posterUrl || ev.imageUrl || ev.flyerUrl || ev.poster;
 
                     return (
                       <div
@@ -1038,8 +1042,8 @@ export default function HomePage() {
                         className="bg-white rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden flex flex-col transition-all duration-300 hover:shadow-xl hover:border-[#A8C338] hover:-translate-y-1 cursor-pointer group pb-4"
                       >
                         <div className="h-44 bg-gray-100 relative overflow-hidden">
-                          {ev.posterUrl || ev.imageUrl || ev.flyerUrl || ev.poster ? (
-                            <img src={ev.posterUrl || ev.imageUrl || ev.flyerUrl || ev.poster} alt={ev.judul || 'Event Poster'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          {posterImage ? (
+                            <img src={posterImage} alt={ev.judul || 'Event Poster'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs bg-gray-50">Tidak ada gambar</div>
                           )}
@@ -1055,7 +1059,7 @@ export default function HomePage() {
                           <h3 className="font-bold text-[#083344] text-base leading-snug mb-3 line-clamp-2 group-hover:text-[#A8C338] transition-colors">
                             {ev.judul || ev.title || ev.namaEvent}
                           </h3>
-                          <div className="space-y-1.5 mt-auto bg-gray-50/80 p-3 rounded-xl border border-gray-100">
+                          <div className="space-y-1.5 mt-auto bg-gray-50/80 p-3 rounded-xl border border-gray-100 mb-4">
                             <p className="text-xs text-gray-600 font-medium flex items-center gap-2">
                               🗓️ <span className="font-semibold text-gray-800">
                                 {formatDateDDMMYYYY(startDateStr)}
@@ -1066,9 +1070,19 @@ export default function HomePage() {
                               📍 <span className="truncate">{ev.lokasi || (ev.linkZoom ? 'Online (Zoom Meeting)' : 'Kantor / Hybrid')}</span>
                             </p>
                           </div>
-                          <button className="mt-4 block w-full text-center bg-[#A8C338] hover:bg-[#96af31] text-[#062c38] font-bold text-xs py-2.5 rounded-xl transition-all shadow-sm">
-                            Lihat Detail Event
-                          </button>
+
+                          {/* BAGIAN TOMBOL CARD EVENT (DETAIL + DOWNLOAD FLYER) */}
+                          <div className="flex flex-row items-center gap-2 w-full">
+                            <button className="flex-1 text-center bg-[#A8C338] hover:bg-[#96af31] text-[#062c38] font-bold text-xs py-2.5 rounded-xl transition-all shadow-sm">
+                              🔍 Lihat Detail
+                            </button>
+                            {posterImage && (
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <DownloadButton imageUrl={posterImage} fileName={ev.judul || ev.title || ev.namaEvent} />
+                              </div>
+                            )}
+                          </div>
+
                         </div>
                       </div>
                     );
@@ -1244,7 +1258,7 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* MODAL DETAIL EVENT DENGAN DUKUNGAN FULLSCREEN IMAGE & ZOOM */}
+      {/* MODAL DETAIL EVENT DENGAN SUPPORT SHARE & DOWNLOAD */}
       {isModalOpen && selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white w-full max-w-xl rounded-3xl overflow-hidden relative shadow-2xl flex flex-col max-h-[92vh]">
@@ -1335,6 +1349,9 @@ export default function HomePage() {
                   🎯 <span>Target: {selectedItem.target || 'Semua User'}</span>
                 </p>
               </div>
+
+              {/* FITUR SHARE WHATSAPP & TELEGRAM */}
+              <ShareButtons item={selectedItem} modulePath="events" />
 
               {(selectedItem.linkZoom || selectedItem.link) && (
                 <a
